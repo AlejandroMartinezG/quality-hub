@@ -1,0 +1,306 @@
+"use client"
+
+import { useState, useMemo, useCallback } from "react"
+import { useRouter } from "next/navigation"
+import { Breadcrumbs } from "@/components/Breadcrumbs"
+import { DataTable } from "@/components/DataTable"
+import { SimpleSearchInput } from "@/components/SearchInput"
+import { Filters, FilterConfig } from "@/components/Filters"
+import { Badge } from "@/components/ui/badge"
+import { ColumnDef } from "@tanstack/react-table"
+import { ArrowUpDown, Eye, Download, FileText, ShieldAlert, BadgeCheck, Sparkles } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { FinishedProduct, FamilyGroup, CategoryGroup } from "@/lib/types"
+import { getBasePath, cn } from "@/lib/utils"
+import Fuse from "fuse.js"
+
+const columns: ColumnDef<FinishedProduct>[] = [
+    {
+        accessorKey: "sku_code",
+        header: ({ column }) => {
+            return (
+                <Button
+                    variant="ghost"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                >
+                    SKU
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                </Button>
+            )
+        },
+        cell: ({ row }) => (
+            <span className="font-mono font-medium text-slate-700">{row.getValue("sku_code")}</span>
+        ),
+    },
+    {
+        accessorKey: "base_product",
+        header: ({ column }) => {
+            return (
+                <Button
+                    variant="ghost"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                >
+                    Variante / Aroma
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                </Button>
+            )
+        },
+        cell: ({ row }) => (
+            <Badge variant="secondary" className="bg-slate-100 text-slate-700 border-none gap-1.5 px-2.5 py-1">
+                <Sparkles className="h-3.5 w-3.5 text-slate-400" />
+                {row.getValue("base_product")}
+            </Badge>
+        ),
+    },
+    {
+        accessorKey: "status",
+        header: "Estado",
+        cell: ({ row }) => {
+            const status = row.getValue("status") as string
+            const variant = status === "Activo" ? "success" : "secondary"
+            return <Badge variant={variant}>{status}</Badge>
+        },
+    },
+    {
+        accessorKey: "updated_at",
+        header: ({ column }) => {
+            return (
+                <Button
+                    variant="ghost"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                >
+                    Actualizado
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                </Button>
+            )
+        },
+        cell: ({ row }) => {
+            const date = row.getValue("updated_at") as string
+            try {
+                return new Date(date).toLocaleDateString("es-MX")
+            } catch {
+                return date
+            }
+        },
+    },
+    {
+        id: "tds",
+        header: "TDS",
+        cell: ({ row }) => {
+            const p = row.original
+            return (
+                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Button variant="ghost" size="icon" asChild={!!p.tds_view_url} title="Ver TDS" disabled={!p.tds_view_url}>
+                        {p.tds_view_url ? (
+                            <a href={p.tds_view_url} target="_blank" rel="noopener noreferrer">
+                                <Eye className="h-4 w-4 text-[#16149a]" />
+                            </a>
+                        ) : (
+                            <Eye className="h-4 w-4 text-[#16149a]/30" />
+                        )}
+                    </Button>
+                    <Button variant="ghost" size="icon" asChild={!!p.tds_download_url} title="Descargar TDS" disabled={!p.tds_download_url}>
+                        {p.tds_download_url ? (
+                            <a href={p.tds_download_url} target="_blank" rel="noopener noreferrer">
+                                <Download className="h-4 w-4 text-slate-600" />
+                            </a>
+                        ) : (
+                            <Download className="h-4 w-4 text-slate-400/30" />
+                        )}
+                    </Button>
+                </div>
+            )
+        }
+    },
+    {
+        id: "sds",
+        header: "SDS",
+        cell: ({ row }) => {
+            const p = row.original
+            return (
+                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Button variant="ghost" size="icon" asChild={!!p.sds_view_url} title="Ver SDS" disabled={!p.sds_view_url}>
+                        {p.sds_view_url ? (
+                            <a href={p.sds_view_url} target="_blank" rel="noopener noreferrer">
+                                <ShieldAlert className="h-4 w-4 text-[#c32420]" />
+                            </a>
+                        ) : (
+                            <ShieldAlert className="h-4 w-4 text-[#c32420]/30" />
+                        )}
+                    </Button>
+                    <Button variant="ghost" size="icon" asChild={!!p.sds_download_url} title="Descargar SDS" disabled={!p.sds_download_url}>
+                        {p.sds_download_url ? (
+                            <a href={p.sds_download_url} target="_blank" rel="noopener noreferrer">
+                                <Download className="h-4 w-4 text-slate-600" />
+                            </a>
+                        ) : (
+                            <Download className="h-4 w-4 text-slate-400/30" />
+                        )}
+                    </Button>
+                </div>
+            )
+        }
+    },
+    {
+        id: "coa",
+        header: "COA",
+        cell: ({ row }) => {
+            const p = row.original
+            return (
+                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Button variant="ghost" size="icon" asChild={!!p.coa_view_url} title="Ver COA" disabled={!p.coa_view_url}>
+                        {p.coa_view_url ? (
+                            <a href={p.coa_view_url} target="_blank" rel="noopener noreferrer">
+                                <BadgeCheck className="h-4 w-4 text-green-600" />
+                            </a>
+                        ) : (
+                            <BadgeCheck className="h-4 w-4 text-green-600/30" />
+                        )}
+                    </Button>
+                    <Button variant="ghost" size="icon" asChild={!!p.coa_download_url} title="Descargar COA" disabled={!p.coa_download_url}>
+                        {p.coa_download_url ? (
+                            <a href={p.coa_download_url} target="_blank" rel="noopener noreferrer">
+                                <Download className="h-4 w-4 text-slate-600" />
+                            </a>
+                        ) : (
+                            <Download className="h-4 w-4 text-slate-400/30" />
+                        )}
+                    </Button>
+                </div>
+            )
+        }
+    }
+]
+
+const SEARCH_KEYS = ["sku_code", "base_product", "variant"]
+
+interface CategoryDetailViewProps {
+    family: FamilyGroup
+    category: CategoryGroup
+}
+
+export function CategoryDetailView({ family, category }: CategoryDetailViewProps) {
+    const router = useRouter()
+    const basePath = getBasePath()
+    const [searchQuery, setSearchQuery] = useState("")
+    const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({})
+
+    const products = category.products
+
+    // Build filter options
+    const filterConfigs: FilterConfig[] = useMemo(() => {
+        const statuses = Array.from(new Set(products.map(p => p.status)))
+        const variants = Array.from(new Set(products.map(p => p.variant).filter(Boolean)))
+
+        const configs: FilterConfig[] = [
+            {
+                id: "status",
+                label: "Estado",
+                options: statuses.map(s => ({
+                    value: s,
+                    label: s,
+                    count: products.filter(p => p.status === s).length,
+                })),
+            },
+        ]
+
+        if (variants.length > 0) {
+            configs.push({
+                id: "variant",
+                label: "Variante",
+                options: variants.map(v => ({
+                    value: v,
+                    label: v,
+                    count: products.filter(p => p.variant === v).length,
+                })),
+            })
+        }
+
+        return configs
+    }, [products])
+
+    // Fuse instance
+    const fuse = useMemo(() => {
+        return new Fuse(products, {
+            keys: SEARCH_KEYS,
+            threshold: 0.3,
+            ignoreLocation: true,
+        })
+    }, [products])
+
+    // Filter data
+    const filteredData = useMemo(() => {
+        let result = products
+
+        if (searchQuery.trim()) {
+            result = fuse.search(searchQuery).map(r => r.item)
+        }
+
+        Object.entries(activeFilters).forEach(([key, values]) => {
+            if (values.length > 0) {
+                result = result.filter(item => values.includes((item as any)[key]))
+            }
+        })
+
+        return result
+    }, [searchQuery, activeFilters, fuse, products])
+
+    const handleFilterChange = useCallback((filterId: string, values: string[]) => {
+        setActiveFilters(prev => ({
+            ...prev,
+            [filterId]: values,
+        }))
+    }, [])
+
+    const handleClearAllFilters = useCallback(() => {
+        setActiveFilters({})
+    }, [])
+
+    const handleRowClick = useCallback((row: FinishedProduct) => {
+        router.push(`${basePath}/catalog/finished-products/${family.slug}/${category.slug}/${row.sku_code}/`)
+    }, [router, basePath, family.slug, category.slug])
+
+    return (
+        <div className="space-y-6">
+            <Breadcrumbs
+                items={[
+                    { label: "Catálogo", href: "/catalog" },
+                    { label: "Productos Terminados", href: "/catalog/finished-products" },
+                    { label: family.name, href: `/catalog/finished-products/${family.slug}` },
+                    { label: category.name },
+                ]}
+            />
+
+            <div className="space-y-1">
+                <h1 className="text-3xl font-bold tracking-tight text-slate-900">{category.name}</h1>
+                <p className="text-slate-500 font-medium">
+                    {products.length} variantes disponibles
+                </p>
+            </div>
+
+            {/* Search and Filters */}
+            <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row gap-4">
+                    <SimpleSearchInput
+                        value={searchQuery}
+                        onChange={setSearchQuery}
+                        placeholder="Buscar por SKU, producto base, variante..."
+                    />
+                </div>
+                <Filters
+                    filters={filterConfigs}
+                    activeFilters={activeFilters}
+                    onFilterChange={handleFilterChange}
+                    onClearAll={handleClearAllFilters}
+                />
+            </div>
+
+            {/* Data Table */}
+            <DataTable
+                columns={columns}
+                data={filteredData}
+                onRowClick={handleRowClick}
+            />
+        </div>
+    )
+}

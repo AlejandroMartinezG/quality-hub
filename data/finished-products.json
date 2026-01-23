@@ -1,0 +1,361 @@
+{
+    "families": [
+        {
+            "name": "Cuidado del Hogar",
+            "slug": "cuidado-del-hogar",
+            "categories": [
+                {
+                    "name": "Limpiadores Líquidos Multiusos",
+                    "slug": "limpiadores-liquidos-multiusos",
+                    "products": [
+                        {
+                            "family": "Cuidado del Hogar",
+                            "family_slug": "cuidado-del-hogar",
+                            "category": "Limpiadores Líquidos Multiusos",
+                            "category_slug": "limpiadores-liquidos-multiusos",
+                            "sku_code": "PT-CH-001",
+                            "base_product": "MultiClean Power",
+                            "variant": "Lavanda 1L",
+                            "status": "Activo",
+                            "updated_at": "2024-01-15",
+                            "tds_view_url": null,
+                            "tds_download_url": null,
+                            "sds_view_url": null,
+                            "sds_download_url": null,
+                            "internal_qc_view_url": null,
+                            "internal_qc_download_url": null,
+                            "label_view_url": null,
+                            "label_download_url": null
+                        },
+                        {
+                            "family": "Cuidado del Hogar",
+                            "family_slug": "cuidado-del-hogar",
+                            "category": "Limpiadores Líquidos Multiusos",
+                            "category_slug": "limpiadores-liquidos-multiusos",
+                            "sku_code": "PT-CH-002",
+                            "base_product": "MultiClean Power",
+                            "variant": "Cítrico 1L",
+                            "status": "Activo",
+                            "updated_at": "2024-01-15",
+                            "tds_view_url": null,
+                            "tds_download_url": null,
+                            "sds_view_url": null,
+                            "sds_download_url": null,
+                            "internal_qc_view_url": null,
+                            "internal_qc_download_url": null,
+                            "label_view_url": null,
+                            "label_download_url": null
+                        },
+                        {
+                            "family": "Cuidado del Hogar",
+                            "family_slug": "cuidado-del-hogar",
+                            "category": "Limpiadores Líquidos Multiusos",
+                            "category_slug": "limpiadores-liquidos-multiusos",
+                            "sku_code": "PT-CH-003",
+                            "base_product": "MultiClean Power",
+                            "variant": "Manzana Verde 1L",
+                            "status": "Inactivo",
+                            "updated_at": "2023-12-01",
+                            "tds_view_url": null,
+                            "tds_download_url": null,
+                            "sds_view_url": null,
+                            "sds_download_url": null,
+                            "internal_qc_view_url": null,
+                            "internal_qc_download_url": null,
+                            "label_view_url": null,
+                            "label_download_url": null
+                        }
+                    ]
+                },
+                {
+                    "name": "Detergentes Líquidos para Trastes",
+                    "slug": "detergentes-liquidos-para-trastes",
+                    "products": [
+                        {
+                            "family": "Cuidado del Hogar",
+                            "family_slug": "cuidado-del-hogar",
+                            "category": "Detergentes Líquidos para Trastes",
+                            "category_slug": "detergentes-liquidos-para-trastes",
+                            "sku_code": "PT-CH-010",
+                            "base_product": "DishPro Ultra",
+                            "variant": "Limón 750ml",
+                            "status": "Activo",
+                            "updated_at": "2024-02-01",
+                            "tds_view_url": null,
+                            "tds_download_url": null,
+                            "sds_view_url": null,
+                            "sds_download_url": null,
+                            "internal_qc_view_url": null,
+                            "internal_qc_download_url": null,
+                            "label_view_url": null,
+                            "label_download_url": null
+                        },
+                        {
+                            "family": "Cuidado del Hogar",
+                            "family_slug": "cuidado-del-hogar",
+                            "category": "Detergentes Líquidos para Trastes",
+                            "category_slug": "detergentes-liquidos-para-trastes",
+                            "sku_code": "PT-CH-011",
+                            "base_product": "DishPro Ultra",
+                            "variant": "Naranja 750ml",
+                            "status": "Activo",
+                            "updated_at": "2024-02-01",
+                            "tds_view_url": null,
+                            "tds_download_url": null,
+                            "sds_view_url": null,
+                            "sds_download_url": null,
+                            "internal_qc_view_url": null,
+                            "internal_qc_download_url": null,
+                            "label_view_url": null,
+                            "label_download_url": null
+                        }
+                    ]
+                },
+                {
+                    "name": "Aromatizantes Ambientales",
+                    "slug": "aromatizantes-ambientales",
+                    "products": [
+                        {
+                            "family": "Cuidado del Hogar",
+                            "family_slug": "cuidado-del-hogar",
+                            "category": "Aromatizantes Ambientales",
+                            "category_slug": "aromatizantes-ambientales",
+                            "sku_code": "PT-CH-020",
+                            "base_product": "AromaFresh",
+                            "variant": "Bosque 360ml",
+                            "status": "Activo",
+                            "updated_at": "2024-01-20",
+                            "tds_view_url": null,
+                            "tds_download_url": null,
+                            "sds_view_url": null,
+                            "sds_download_url": null,
+                            "internal_qc_view_url": null,
+                            "internal_qc_download_url": null,
+                            "label_view_url": null,
+                            "label_download_url": null
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Lavandería",
+            "slug": "lavanderia",
+            "categories": [
+                {
+                    "name": "Detergentes Líquidos para Ropa",
+                    "slug": "detergentes-liquidos-para-ropa",
+                    "products": [
+                        {
+                            "family": "Lavandería",
+                            "family_slug": "lavanderia",
+                            "category": "Detergentes Líquidos para Ropa",
+                            "category_slug": "detergentes-liquidos-para-ropa",
+                            "sku_code": "PT-LV-001",
+                            "base_product": "CleanWash Premium",
+                            "variant": "Original 2L",
+                            "status": "Activo",
+                            "updated_at": "2024-01-20",
+                            "tds_view_url": null,
+                            "tds_download_url": null,
+                            "sds_view_url": null,
+                            "sds_download_url": null,
+                            "internal_qc_view_url": null,
+                            "internal_qc_download_url": null,
+                            "label_view_url": null,
+                            "label_download_url": null
+                        },
+                        {
+                            "family": "Lavandería",
+                            "family_slug": "lavanderia",
+                            "category": "Detergentes Líquidos para Ropa",
+                            "category_slug": "detergentes-liquidos-para-ropa",
+                            "sku_code": "PT-LV-002",
+                            "base_product": "CleanWash Premium",
+                            "variant": "Color Protect 2L",
+                            "status": "Activo",
+                            "updated_at": "2024-01-20",
+                            "tds_view_url": null,
+                            "tds_download_url": null,
+                            "sds_view_url": null,
+                            "sds_download_url": null,
+                            "internal_qc_view_url": null,
+                            "internal_qc_download_url": null,
+                            "label_view_url": null,
+                            "label_download_url": null
+                        }
+                    ]
+                },
+                {
+                    "name": "Suavizantes Líquidos para Telas",
+                    "slug": "suavizantes-liquidos-para-telas",
+                    "products": [
+                        {
+                            "family": "Lavandería",
+                            "family_slug": "lavanderia",
+                            "category": "Suavizantes Líquidos para Telas",
+                            "category_slug": "suavizantes-liquidos-para-telas",
+                            "sku_code": "PT-LV-020",
+                            "base_product": "SuaveMax",
+                            "variant": "Brisa Marina 1L",
+                            "status": "Activo",
+                            "updated_at": "2024-01-25",
+                            "tds_view_url": null,
+                            "tds_download_url": null,
+                            "sds_view_url": null,
+                            "sds_download_url": null,
+                            "internal_qc_view_url": null,
+                            "internal_qc_download_url": null,
+                            "label_view_url": null,
+                            "label_download_url": null
+                        },
+                        {
+                            "family": "Lavandería",
+                            "family_slug": "lavanderia",
+                            "category": "Suavizantes Líquidos para Telas",
+                            "category_slug": "suavizantes-liquidos-para-telas",
+                            "sku_code": "PT-LV-021",
+                            "base_product": "SuaveMax",
+                            "variant": "Primavera 1L",
+                            "status": "Activo",
+                            "updated_at": "2024-01-25",
+                            "tds_view_url": null,
+                            "tds_download_url": null,
+                            "sds_view_url": null,
+                            "sds_download_url": null,
+                            "internal_qc_view_url": null,
+                            "internal_qc_download_url": null,
+                            "label_view_url": null,
+                            "label_download_url": null
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Cuidado Personal",
+            "slug": "cuidado-personal",
+            "categories": [
+                {
+                    "name": "Jabones Líquidos para Manos",
+                    "slug": "jabones-liquidos-para-manos",
+                    "products": [
+                        {
+                            "family": "Cuidado Personal",
+                            "family_slug": "cuidado-personal",
+                            "category": "Jabones Líquidos para Manos",
+                            "category_slug": "jabones-liquidos-para-manos",
+                            "sku_code": "PT-CP-001",
+                            "base_product": "HandCare Deluxe",
+                            "variant": "Aloe Vera 300ml",
+                            "status": "Activo",
+                            "updated_at": "2024-02-10",
+                            "tds_view_url": null,
+                            "tds_download_url": null,
+                            "sds_view_url": null,
+                            "sds_download_url": null,
+                            "internal_qc_view_url": null,
+                            "internal_qc_download_url": null,
+                            "label_view_url": null,
+                            "label_download_url": null
+                        },
+                        {
+                            "family": "Cuidado Personal",
+                            "family_slug": "cuidado-personal",
+                            "category": "Jabones Líquidos para Manos",
+                            "category_slug": "jabones-liquidos-para-manos",
+                            "sku_code": "PT-CP-002",
+                            "base_product": "HandCare Deluxe",
+                            "variant": "Antibacterial 300ml",
+                            "status": "Activo",
+                            "updated_at": "2024-02-10",
+                            "tds_view_url": null,
+                            "tds_download_url": null,
+                            "sds_view_url": null,
+                            "sds_download_url": null,
+                            "internal_qc_view_url": null,
+                            "internal_qc_download_url": null,
+                            "label_view_url": null,
+                            "label_download_url": null
+                        }
+                    ]
+                },
+                {
+                    "name": "Shampoo Capilar",
+                    "slug": "shampoo-capilar",
+                    "products": [
+                        {
+                            "family": "Cuidado Personal",
+                            "family_slug": "cuidado-personal",
+                            "category": "Shampoo Capilar",
+                            "category_slug": "shampoo-capilar",
+                            "sku_code": "PT-CP-010",
+                            "base_product": "HairPro Shine",
+                            "variant": "Control Caspa 400ml",
+                            "status": "Activo",
+                            "updated_at": "2024-02-15",
+                            "tds_view_url": null,
+                            "tds_download_url": null,
+                            "sds_view_url": null,
+                            "sds_download_url": null,
+                            "internal_qc_view_url": null,
+                            "internal_qc_download_url": null,
+                            "label_view_url": null,
+                            "label_download_url": null
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Línea Automotriz",
+            "slug": "linea-automotriz",
+            "categories": [],
+            "products": [
+                {
+                    "family": "Línea Automotriz",
+                    "family_slug": "linea-automotriz",
+                    "category": "Automotriz",
+                    "category_slug": "automotriz",
+                    "sku_code": "PT-AU-001",
+                    "base_product": "AutoShampoo Gloss",
+                    "variant": "Concentrado 5L",
+                    "status": "Activo",
+                    "updated_at": "2024-03-01",
+                    "tds_view_url": null,
+                    "tds_download_url": null,
+                    "sds_view_url": null,
+                    "sds_download_url": null,
+                    "internal_qc_view_url": null,
+                    "internal_qc_download_url": null,
+                    "label_view_url": null,
+                    "label_download_url": null
+                },
+                {
+                    "family": "Línea Automotriz",
+                    "family_slug": "linea-automotriz",
+                    "category": "Automotriz",
+                    "category_slug": "automotriz",
+                    "sku_code": "PT-AU-010",
+                    "base_product": "TireShine Ultra",
+                    "variant": "Gel 500ml",
+                    "status": "Activo",
+                    "updated_at": "2024-03-05",
+                    "tds_view_url": null,
+                    "tds_download_url": null,
+                    "sds_view_url": null,
+                    "sds_download_url": null,
+                    "internal_qc_view_url": null,
+                    "internal_qc_download_url": null,
+                    "label_view_url": null,
+                    "label_download_url": null
+                }
+            ]
+        },
+        {
+            "name": "Línea Antibacterial",
+            "slug": "linea-antibacterial",
+            "categories": []
+        }
+    ]
+}
