@@ -11,6 +11,7 @@ interface ModuleCardProps {
     href?: string
     disabled?: boolean
     badge?: string
+    iconColor?: string
 }
 
 export function ModuleCard({
@@ -19,7 +20,8 @@ export function ModuleCard({
     icon: Icon,
     href,
     disabled = false,
-    badge
+    badge,
+    iconColor
 }: ModuleCardProps) {
     const basePath = getBasePath()
     const CardComponent = (
@@ -38,13 +40,14 @@ export function ModuleCard({
             )}
             <CardHeader className="pb-2">
                 <div className="flex items-center space-x-3">
-                    <div className={cn(
-                        "flex h-12 w-12 items-center justify-center rounded-lg",
-                        disabled
-                            ? "bg-muted text-muted-foreground"
-                            : "bg-gradient-to-br from-[#16149a] to-[#2a28d6] text-white shadow-md"
-                    )}>
-                        <Icon className="h-6 w-6" />
+                    <div
+                        className={cn(
+                            "flex h-12 w-12 items-center justify-center rounded-lg shadow-md",
+                            disabled && "bg-muted"
+                        )}
+                        style={!disabled && iconColor ? { backgroundColor: iconColor } : undefined}
+                    >
+                        <Icon className="h-6 w-6 text-white" />
                     </div>
                     <CardTitle className="text-lg">{title}</CardTitle>
                 </div>

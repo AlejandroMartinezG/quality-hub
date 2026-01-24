@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useDeferredValue } from "react"
 import { useRouter } from "next/navigation"
 import { Breadcrumbs } from "@/components/Breadcrumbs"
 import { DataTable } from "@/components/DataTable"
@@ -33,7 +33,7 @@ const columns: ColumnDef<FinishedProduct>[] = [
         ),
     },
     {
-        accessorKey: "base_product",
+        accessorKey: "variant",
         header: ({ column }) => {
             return (
                 <Button
@@ -48,7 +48,7 @@ const columns: ColumnDef<FinishedProduct>[] = [
         cell: ({ row }) => (
             <Badge variant="secondary" className="bg-slate-100 text-slate-700 border-none gap-1.5 px-2.5 py-1">
                 <Sparkles className="h-3.5 w-3.5 text-slate-400" />
-                {row.getValue("base_product")}
+                {row.getValue("variant")}
             </Badge>
         ),
     },
@@ -183,6 +183,7 @@ export function CategoryDetailView({ family, category }: CategoryDetailViewProps
     const router = useRouter()
     const basePath = getBasePath()
     const [searchQuery, setSearchQuery] = useState("")
+    const deferredSearchQuery = useDeferredValue(searchQuery)
     const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({})
 
     const products = category.products
@@ -232,8 +233,8 @@ export function CategoryDetailView({ family, category }: CategoryDetailViewProps
     const filteredData = useMemo(() => {
         let result = products
 
-        if (searchQuery.trim()) {
-            result = fuse.search(searchQuery).map(r => r.item)
+        if (deferredSearchQuery.trim()) {
+            result = fuse.search(deferredSearchQuery).map(r => r.item)
         }
 
         Object.entries(activeFilters).forEach(([key, values]) => {
@@ -243,7 +244,7 @@ export function CategoryDetailView({ family, category }: CategoryDetailViewProps
         })
 
         return result
-    }, [searchQuery, activeFilters, fuse, products])
+    }, [deferredSearchQuery, activeFilters, fuse, products])
 
     const handleFilterChange = useCallback((filterId: string, values: string[]) => {
         setActiveFilters(prev => ({

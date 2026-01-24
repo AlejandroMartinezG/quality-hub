@@ -62,7 +62,7 @@ export function SearchInput<T>({
     )
 }
 
-// Simple controlled search without Fuse.js for external filtering
+// Simple controlled search input
 interface SimpleSearchInputProps {
     value: string
     onChange: (value: string) => void

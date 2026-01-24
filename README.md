@@ -7,8 +7,9 @@ Sistema de Gestión de Calidad y Documentación para GINEZ. Portal estático par
 - **100% Estático**: Sitio generado con Next.js, desplegable en GitHub Pages
 - **Datos desde Google Sheets**: Actualiza el catálogo editando tu Sheet
 - **Documentos en Google Drive**: PDFs accesibles con enlaces Ver/Descargar
-- **Búsqueda Fuzzy**: Encuentra productos rápidamente con Fuse.js
-- **Filtros Avanzados**: Filtra por categoría, familia química, disposición, estado
+- **Optimización de Rendimiento**: Uso de `useDeferredValue` para búsquedas y filtros ultra fluidos
+- **Identidad GINEZ**: Colores institucionales (#16149a, #c32420) e iconografía personalizada
+- **Documentación Inteligente**: Iconos de documentos con estados "disponible" e "inactivo" para mejor visibilidad
 - **Responsive**: Diseño adaptable a móviles y escritorio
 
 ## 📋 Estructura del Proyecto

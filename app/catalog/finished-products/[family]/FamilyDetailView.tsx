@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useDeferredValue } from "react"
 import { useRouter } from "next/navigation"
 import { notFound } from "next/navigation"
 import { Breadcrumbs } from "@/components/Breadcrumbs"
@@ -184,6 +184,7 @@ export function FamilyDetailView({ family }: FamilyDetailViewProps) {
     const router = useRouter()
     const basePath = getBasePath()
     const [searchQuery, setSearchQuery] = useState("")
+    const deferredSearchQuery = useDeferredValue(searchQuery)
     const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({})
 
     const isDirectTable = family.slug === "linea-automotriz" || family.slug === "linea-antibacterial"
@@ -242,8 +243,8 @@ export function FamilyDetailView({ family }: FamilyDetailViewProps) {
     const filteredData = useMemo(() => {
         let result = products
 
-        if (searchQuery.trim()) {
-            result = fuse.search(searchQuery).map(r => r.item)
+        if (deferredSearchQuery.trim()) {
+            result = fuse.search(deferredSearchQuery).map(r => r.item)
         }
 
         Object.entries(activeFilters).forEach(([key, values]) => {
@@ -253,7 +254,7 @@ export function FamilyDetailView({ family }: FamilyDetailViewProps) {
         })
 
         return result
-    }, [searchQuery, activeFilters, fuse, products])
+    }, [deferredSearchQuery, activeFilters, fuse, products])
 
     const handleFilterChange = useCallback((filterId: string, values: string[]) => {
         setActiveFilters(prev => ({
@@ -298,6 +299,7 @@ export function FamilyDetailView({ family }: FamilyDetailViewProps) {
                             title={category.name}
                             description={`${category.products.length} producto(s)`}
                             icon={Package}
+                            iconColor="#16149a"
                             href={`/catalog/finished-products/${family.slug}/${category.slug}`}
                         />
                     ))}

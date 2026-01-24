@@ -13,7 +13,7 @@ export default function HomePage() {
         <div className="space-y-8">
             {/* Hero Section */}
             <div className="text-center space-y-4">
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+                <h1 className="text-4xl font-bold text-[#16149a]">
                     Panel Principal
                 </h1>
                 <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -28,12 +28,14 @@ export default function HomePage() {
                     title="Catálogo"
                     description="Consulta y descarga documentación de materias primas y productos terminados."
                     icon={BookOpen}
+                    iconColor="#c32420"
                     href="/catalog"
                 />
                 <ModuleCard
                     title="Bitácora de Producción"
                     description="Registro y seguimiento de actividades de producción."
                     icon={ClipboardList}
+                    iconColor="#c32420"
                     disabled
                     badge="Próximamente"
                 />
@@ -41,6 +43,7 @@ export default function HomePage() {
                     title="Control de Calidad"
                     description="Gestión de controles y análisis de calidad."
                     icon={Microscope}
+                    iconColor="#c32420"
                     disabled
                     badge="Próximamente"
                 />
@@ -48,6 +51,7 @@ export default function HomePage() {
                     title="Inventarios"
                     description="Control y seguimiento de inventarios de materiales."
                     icon={Package}
+                    iconColor="#c32420"
                     disabled
                     badge="Próximamente"
                 />
@@ -55,6 +59,7 @@ export default function HomePage() {
                     title="Reportes"
                     description="Generación de reportes y estadísticas."
                     icon={BarChart3}
+                    iconColor="#c32420"
                     disabled
                     badge="Próximamente"
                 />
@@ -62,6 +67,7 @@ export default function HomePage() {
                     title="Configuración"
                     description="Ajustes y configuración del sistema."
                     icon={Settings}
+                    iconColor="#c32420"
                     disabled
                     badge="Próximamente"
                 />

@@ -19,12 +19,14 @@ export default function CatalogPage() {
                     title="Materias Primas"
                     description="Fichas técnicas, hojas de seguridad y certificados de análisis de materias primas."
                     icon={FlaskConical}
+                    iconColor="#16149a"
                     href="/catalog/raw-materials"
                 />
                 <ModuleCard
                     title="Productos Terminados"
                     description="Documentación técnica y de calidad de productos terminados."
                     icon={Package}
+                    iconColor="#c32420"
                     href="/catalog/finished-products"
                 />
             </div>

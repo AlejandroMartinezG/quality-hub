@@ -22,6 +22,14 @@ const familyIcons: Record<string, any> = {
     "cuidado-personal": User,
 }
 
+const familyColors: Record<string, string> = {
+    "cuidado-del-hogar": "#ff8000",
+    "lavanderia": "#0b109f",
+    "linea-automotriz": "#000000",
+    "linea-antibacterial": "#00b0f0",
+    "cuidado-personal": "#00b050",
+}
+
 export default function FinishedProductsPage() {
     return (
         <div className="space-y-8">
@@ -42,6 +50,7 @@ export default function FinishedProductsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {data.families.map((family) => {
                     const Icon = familyIcons[family.slug] || Home
+                    const iconColor = familyColors[family.slug]
                     const productCount = family.categories.reduce(
                         (acc, cat) => acc + cat.products.length,
                         0
@@ -53,6 +62,7 @@ export default function FinishedProductsPage() {
                             title={family.name}
                             description={`${family.categories.length} categorías · ${productCount} productos`}
                             icon={Icon}
+                            iconColor={iconColor}
                             href={`/catalog/finished-products/${family.slug}`}
                         />
                     )

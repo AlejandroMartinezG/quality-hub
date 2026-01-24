@@ -32,12 +32,15 @@ interface DataTableProps<TData, TValue> {
     columnFilters?: ColumnFiltersState
 }
 
+const DEFAULT_COLUMN_FILTERS: ColumnFiltersState = []
+const DEFAULT_GLOBAL_FILTER = ""
+
 export function DataTable<TData, TValue>({
     columns,
     data,
     onRowClick,
-    globalFilter = "",
-    columnFilters = [],
+    globalFilter = DEFAULT_GLOBAL_FILTER,
+    columnFilters = DEFAULT_COLUMN_FILTERS,
 }: DataTableProps<TData, TValue>) {
     const [sorting, setSorting] = React.useState<SortingState>([])
 

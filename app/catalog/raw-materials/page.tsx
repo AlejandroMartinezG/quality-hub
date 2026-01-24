@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useDeferredValue } from "react"
 import { useRouter } from "next/navigation"
 import { Breadcrumbs } from "@/components/Breadcrumbs"
 import { DataTable } from "@/components/DataTable"
@@ -50,6 +50,9 @@ const columns: ColumnDef<RawMaterial>[] = [
                 </Button>
             )
         },
+        cell: ({ row }) => (
+            <span className="font-bold">{row.getValue("name")}</span>
+        ),
     },
     {
         accessorKey: "transport_name",
@@ -145,6 +148,7 @@ export default function RawMaterialsPage() {
     const router = useRouter()
     const basePath = getBasePath()
     const [searchQuery, setSearchQuery] = useState("")
+    const deferredSearchQuery = useDeferredValue(searchQuery)
     const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({})
 
     // Build filter options from data
@@ -197,9 +201,9 @@ export default function RawMaterialsPage() {
     const filteredData = useMemo(() => {
         let result = data
 
-        // Apply search
-        if (searchQuery.trim()) {
-            result = fuse.search(searchQuery).map(r => r.item)
+        // Apply search using deferred value
+        if (deferredSearchQuery.trim()) {
+            result = fuse.search(deferredSearchQuery).map(r => r.item)
         }
 
         // Apply filters
@@ -210,7 +214,7 @@ export default function RawMaterialsPage() {
         })
 
         return result
-    }, [searchQuery, activeFilters, fuse])
+    }, [deferredSearchQuery, activeFilters, fuse])
 
     const handleFilterChange = useCallback((filterId: string, values: string[]) => {
         setActiveFilters(prev => ({
@@ -237,7 +241,7 @@ export default function RawMaterialsPage() {
             />
 
             <div className="space-y-2">
-                <h1 className="text-3xl font-bold">Materias Primas</h1>
+                <h1 className="text-3xl font-bold" style={{ textShadow: '2px 2px 4px rgba(0, 0, 0, 0.1)' }}>Materias Primas</h1>
                 <p className="text-muted-foreground">
                     Consulta la documentación técnica y de seguridad de las materias primas.
                 </p>
