@@ -74,12 +74,12 @@ export default function ProductDetailPage({ params }: PageProps) {
                     </div>
                     <div className="space-y-1">
                         <h1 className="text-3xl font-bold text-slate-900 truncate">
-                            {product.base_product}
+                            {product.variant || product.base_product}
                         </h1>
                         {product.variant && (
-                            <Badge variant="secondary" className="bg-slate-100 text-slate-700 border-none gap-1.5 px-3 py-1 text-sm">
-                                <Sparkles className="h-4 w-4 text-slate-400" />
-                                {product.variant}
+                            <Badge variant="secondary" className="bg-indigo-50 text-indigo-700 border-indigo-100 gap-1.5 px-3 py-1 text-sm font-medium">
+                                <Beaker className="h-4 w-4" />
+                                {product.base_product}
                             </Badge>
                         )}
                     </div>
@@ -144,7 +144,7 @@ export default function ProductDetailPage({ params }: PageProps) {
                 <div className="space-y-1">
                     <h2 className="text-2xl font-bold text-slate-900">Documentación del Producto</h2>
                     <p className="text-slate-500 text-sm">
-                        Documentos disponibles para {product.base_product} - {product.variant}
+                        Documentos disponibles para {product.variant || product.base_product}
                     </p>
                 </div>
 

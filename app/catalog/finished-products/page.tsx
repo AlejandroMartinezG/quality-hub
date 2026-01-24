@@ -51,16 +51,18 @@ export default function FinishedProductsPage() {
                 {data.families.map((family) => {
                     const Icon = familyIcons[family.slug] || Home
                     const iconColor = familyColors[family.slug]
-                    const productCount = family.categories.reduce(
+                    const productCount = (family.products?.length || 0) + family.categories.reduce(
                         (acc, cat) => acc + cat.products.length,
                         0
                     )
+
+                    const categoryCount = family.categories.length || (family.products && family.products.length > 0 ? 1 : 0)
 
                     return (
                         <ModuleCard
                             key={family.slug}
                             title={family.name}
-                            description={`${family.categories.length} categorías · ${productCount} productos`}
+                            description={`${categoryCount} categoría${categoryCount !== 1 ? 's' : ''} · ${productCount} producto${productCount !== 1 ? 's' : ''}`}
                             icon={Icon}
                             iconColor={iconColor}
                             href={`/catalog/finished-products/${family.slug}`}

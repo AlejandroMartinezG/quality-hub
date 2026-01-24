@@ -35,7 +35,7 @@ const columns: ColumnDef<FinishedProduct>[] = [
         ),
     },
     {
-        accessorKey: "base_product",
+        accessorKey: "variant",
         header: ({ column }) => {
             return (
                 <Button
@@ -50,7 +50,7 @@ const columns: ColumnDef<FinishedProduct>[] = [
         cell: ({ row }) => (
             <Badge variant="secondary" className="bg-slate-100 text-slate-700 border-none gap-1.5 px-2.5 py-1">
                 <Sparkles className="h-3.5 w-3.5 text-slate-400" />
-                {row.getValue("base_product")}
+                {row.getValue("variant")}
             </Badge>
         ),
     },
@@ -180,6 +180,14 @@ interface FamilyDetailViewProps {
     family: FamilyGroup
 }
 
+const familyColors: Record<string, string> = {
+    "cuidado-del-hogar": "#ff8000",
+    "lavanderia": "#0b109f",
+    "linea-automotriz": "#000000",
+    "linea-antibacterial": "#00b0f0",
+    "cuidado-personal": "#00b050",
+}
+
 export function FamilyDetailView({ family }: FamilyDetailViewProps) {
     const router = useRouter()
     const basePath = getBasePath()
@@ -189,6 +197,8 @@ export function FamilyDetailView({ family }: FamilyDetailViewProps) {
 
     const isDirectTable = family.slug === "linea-automotriz" || family.slug === "linea-antibacterial"
     const hasCategories = family.categories.length > 0 && !isDirectTable
+
+    const iconColor = familyColors[family.slug] || "#16149a"
 
     // Collect all products for the table view
     const products = useMemo(() => {
@@ -222,7 +232,7 @@ export function FamilyDetailView({ family }: FamilyDetailViewProps) {
                 options: variants.map(v => ({
                     value: v,
                     label: v,
-                    count: products.filter(p => p.variant === v).length,
+                    count: products.filter(p => p.status === "Activo" ? true : true).filter(p => p.variant === v).length,
                 })),
             })
         }
@@ -283,6 +293,11 @@ export function FamilyDetailView({ family }: FamilyDetailViewProps) {
 
             <div className="space-y-4">
                 <h1 className="text-3xl font-bold">{family.name}</h1>
+                {!hasCategories && products.length > 0 && (
+                    <p className="text-sm font-medium text-slate-500 uppercase tracking-wider -mt-2">
+                        {products.length} variantes disponibles
+                    </p>
+                )}
                 <p className="text-muted-foreground">
                     {hasCategories
                         ? "Selecciona una categoría para ver los productos disponibles."
@@ -299,7 +314,7 @@ export function FamilyDetailView({ family }: FamilyDetailViewProps) {
                             title={category.name}
                             description={`${category.products.length} producto(s)`}
                             icon={Package}
-                            iconColor="#16149a"
+                            iconColor={iconColor}
                             href={`/catalog/finished-products/${family.slug}/${category.slug}`}
                         />
                     ))}

@@ -1,8 +1,24 @@
 import { Breadcrumbs } from "@/components/Breadcrumbs"
 import { ModuleCard } from "@/components/ModuleCard"
 import { FlaskConical, Package } from "lucide-react"
+import rawMaterialsData from "@/data/raw-materials.json"
+import finishedProductsData from "@/data/finished-products.json"
 
 export default function CatalogPage() {
+    // Calcular conteos
+    const mpCount = rawMaterialsData.length
+
+    // Contar todos los productos en todas las familias y categorías
+    const ptCount = finishedProductsData.families.reduce((acc, family) => {
+        const productsInCategory = family.categories?.reduce((catAcc, category) => {
+            return catAcc + (category.products?.length || 0)
+        }, 0) || 0
+
+        const directProducts = family.products?.length || 0
+
+        return acc + productsInCategory + directProducts
+    }, 0)
+
     return (
         <div className="space-y-8">
             <Breadcrumbs items={[{ label: "Catálogo" }]} />
@@ -21,6 +37,7 @@ export default function CatalogPage() {
                     icon={FlaskConical}
                     iconColor="#16149a"
                     href="/catalog/raw-materials"
+                    badge={`${mpCount} registros`}
                 />
                 <ModuleCard
                     title="Productos Terminados"
@@ -28,6 +45,7 @@ export default function CatalogPage() {
                     icon={Package}
                     iconColor="#c32420"
                     href="/catalog/finished-products"
+                    badge={`${ptCount} registros`}
                 />
             </div>
         </div>
