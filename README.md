@@ -1,6 +1,6 @@
 # Quality Hub GINEZ
 
-Sistema de Gestión de Calidad y Documentación para GINEZ. Portal estático para consulta y descarga de documentación de Materias Primas (MP) y Productos Terminados (PT).
+Sistema de Gestión Documental del Laboratorio de Calidad y Desarrollo para GINEZ. Portal estático para consulta y descarga de documentación de Materias Primas (MP) y Productos Terminados (PT).
 
 ## 🚀 Características
 

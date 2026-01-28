@@ -27,7 +27,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         <img src={`${basePath}/logo.png`} alt="GINEZ" className="h-10 w-auto" />
                         <div className="flex flex-col">
                             <span className="text-xs text-muted-foreground hidden lg:block">
-                                Sistema de Gestión: Calidad y Documentación
+                                Sistema de Gestión Documental del Laboratorio de Calidad y Desarrollo
                             </span>
                         </div>
                     </Link>
@@ -106,7 +106,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {/* Footer */}
             <footer className="border-t bg-white mt-auto">
                 <div className="container py-6 text-center text-sm text-muted-foreground">
-                    <p>© {new Date().getFullYear()} GINEZ. Sistema de Gestión de Calidad y Documentación.</p>
+                    <p>© {new Date().getFullYear()} GINEZ. Sistema de Gestión Documental del Laboratorio de Calidad y Desarrollo.</p>
                 </div>
             </footer>
         </div>

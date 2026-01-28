@@ -17,7 +17,7 @@ export default function HomePage() {
                     Panel Principal
                 </h1>
                 <p className="text-muted-foreground max-w-2xl mx-auto">
-                    Bienvenido al Sistema de Gestión de Calidad y Documentación de GINEZ.
+                    Bienvenido al Sistema de Gestión Documental del Laboratorio de Calidad y Desarrollo de GINEZ.
                     Selecciona un módulo para comenzar.
                 </p>
             </div>
