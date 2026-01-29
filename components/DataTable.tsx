@@ -15,6 +15,7 @@ import {
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import {
     Table,
     TableBody,
@@ -66,13 +67,13 @@ export function DataTable<TData, TValue>({
 
     return (
         <div className="space-y-4">
-            <div className="rounded-md border bg-white">
+            <div className="rounded-md border bg-card transition-colors duration-300">
                 <Table>
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
                             <TableRow key={headerGroup.id}>
                                 {headerGroup.headers.map((header) => (
-                                    <TableHead key={header.id} className="bg-muted/50">
+                                    <TableHead key={header.id} className="bg-muted/50 text-foreground font-semibold">
                                         {header.isPlaceholder
                                             ? null
                                             : flexRender(
@@ -90,7 +91,10 @@ export function DataTable<TData, TValue>({
                                 <TableRow
                                     key={row.id}
                                     data-state={row.getIsSelected() && "selected"}
-                                    className={onRowClick ? "cursor-pointer hover:bg-blue-50" : ""}
+                                    className={cn(
+                                        "transition-colors",
+                                        onRowClick && "cursor-pointer hover:bg-muted/80"
+                                    )}
                                     onClick={() => onRowClick?.(row.original)}
                                 >
                                     {row.getVisibleCells().map((cell) => (

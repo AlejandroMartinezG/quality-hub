@@ -90,19 +90,19 @@ const columns: ColumnDef<RawMaterial>[] = [
                     <Button variant="ghost" size="icon" asChild={!!viewUrl} title="Ver TDS" disabled={!viewUrl}>
                         {viewUrl ? (
                             <a href={viewUrl} target="_blank" rel="noopener noreferrer">
-                                <Eye className="h-4 w-4 text-[#16149a]" />
+                                <Eye className="h-4 w-4 text-primary" />
                             </a>
                         ) : (
-                            <Eye className="h-4 w-4 text-[#16149a]/30" />
+                            <Eye className="h-4 w-4 text-muted-foreground/30" />
                         )}
                     </Button>
                     <Button variant="ghost" size="icon" asChild={!!downloadUrl} title="Descargar TDS" disabled={!downloadUrl}>
                         {downloadUrl ? (
                             <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
-                                <Download className="h-4 w-4 text-slate-600" />
+                                <Download className="h-4 w-4 text-muted-foreground" />
                             </a>
                         ) : (
-                            <Download className="h-4 w-4 text-slate-400/30" />
+                            <Download className="h-4 w-4 text-muted-foreground/30" />
                         )}
                     </Button>
                 </div>
@@ -120,19 +120,19 @@ const columns: ColumnDef<RawMaterial>[] = [
                     <Button variant="ghost" size="icon" asChild={!!viewUrl} title="Ver SDS" disabled={!viewUrl}>
                         {viewUrl ? (
                             <a href={viewUrl} target="_blank" rel="noopener noreferrer">
-                                <ShieldAlert className="h-4 w-4 text-[#c32420]" />
+                                <ShieldAlert className="h-4 w-4 text-destructive" />
                             </a>
                         ) : (
-                            <ShieldAlert className="h-4 w-4 text-[#c32420]/30" />
+                            <ShieldAlert className="h-4 w-4 text-destructive/30" />
                         )}
                     </Button>
                     <Button variant="ghost" size="icon" asChild={!!downloadUrl} title="Descargar SDS" disabled={!downloadUrl}>
                         {downloadUrl ? (
                             <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
-                                <Download className="h-4 w-4 text-slate-600" />
+                                <Download className="h-4 w-4 text-muted-foreground" />
                             </a>
                         ) : (
-                            <Download className="h-4 w-4 text-slate-400/30" />
+                            <Download className="h-4 w-4 text-muted-foreground/30" />
                         )}
                     </Button>
                 </div>
@@ -241,7 +241,7 @@ export default function RawMaterialsPage() {
             />
 
             <div className="space-y-2">
-                <h1 className="text-3xl font-bold" style={{ textShadow: '2px 2px 4px rgba(0, 0, 0, 0.1)' }}>Materias Primas</h1>
+                <h1 className="text-3xl font-bold text-foreground">Materias Primas</h1>
                 <p className="text-muted-foreground">
                     Consulta la documentación técnica y de seguridad de las materias primas.
                 </p>

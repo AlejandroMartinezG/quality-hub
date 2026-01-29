@@ -31,7 +31,7 @@ const columns: ColumnDef<FinishedProduct>[] = [
             )
         },
         cell: ({ row }) => (
-            <span className="font-mono font-medium text-slate-700">{row.getValue("sku_code")}</span>
+            <span className="font-mono font-medium text-foreground/80">{row.getValue("sku_code")}</span>
         ),
     },
     {
@@ -48,8 +48,8 @@ const columns: ColumnDef<FinishedProduct>[] = [
             )
         },
         cell: ({ row }) => (
-            <Badge variant="secondary" className="bg-slate-100 text-slate-700 border-none gap-1.5 px-2.5 py-1">
-                <Sparkles className="h-3.5 w-3.5 text-slate-400" />
+            <Badge variant="secondary" className="bg-muted text-foreground border-none gap-1.5 px-2.5 py-1">
+                <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
                 {row.getValue("variant")}
             </Badge>
         ),
@@ -95,19 +95,19 @@ const columns: ColumnDef<FinishedProduct>[] = [
                     <Button variant="ghost" size="icon" asChild={!!p.tds_view_url} title="Ver TDS" disabled={!p.tds_view_url}>
                         {p.tds_view_url ? (
                             <a href={p.tds_view_url} target="_blank" rel="noopener noreferrer">
-                                <Eye className="h-4 w-4 text-[#16149a]" />
+                                <Eye className="h-4 w-4 text-primary" />
                             </a>
                         ) : (
-                            <Eye className="h-4 w-4 text-[#16149a]/30" />
+                            <Eye className="h-4 w-4 text-primary/30" />
                         )}
                     </Button>
                     <Button variant="ghost" size="icon" asChild={!!p.tds_download_url} title="Descargar TDS" disabled={!p.tds_download_url}>
                         {p.tds_download_url ? (
                             <a href={p.tds_download_url} target="_blank" rel="noopener noreferrer">
-                                <Download className="h-4 w-4 text-slate-600" />
+                                <Download className="h-4 w-4 text-muted-foreground" />
                             </a>
                         ) : (
-                            <Download className="h-4 w-4 text-slate-400/30" />
+                            <Download className="h-4 w-4 text-muted-foreground/30" />
                         )}
                     </Button>
                 </div>
@@ -124,19 +124,19 @@ const columns: ColumnDef<FinishedProduct>[] = [
                     <Button variant="ghost" size="icon" asChild={!!p.sds_view_url} title="Ver SDS" disabled={!p.sds_view_url}>
                         {p.sds_view_url ? (
                             <a href={p.sds_view_url} target="_blank" rel="noopener noreferrer">
-                                <ShieldAlert className="h-4 w-4 text-[#c32420]" />
+                                <ShieldAlert className="h-4 w-4 text-destructive" />
                             </a>
                         ) : (
-                            <ShieldAlert className="h-4 w-4 text-[#c32420]/30" />
+                            <ShieldAlert className="h-4 w-4 text-destructive/30" />
                         )}
                     </Button>
                     <Button variant="ghost" size="icon" asChild={!!p.sds_download_url} title="Descargar SDS" disabled={!p.sds_download_url}>
                         {p.sds_download_url ? (
                             <a href={p.sds_download_url} target="_blank" rel="noopener noreferrer">
-                                <Download className="h-4 w-4 text-slate-600" />
+                                <Download className="h-4 w-4 text-muted-foreground" />
                             </a>
                         ) : (
-                            <Download className="h-4 w-4 text-slate-400/30" />
+                            <Download className="h-4 w-4 text-muted-foreground/30" />
                         )}
                     </Button>
                 </div>
@@ -153,19 +153,19 @@ const columns: ColumnDef<FinishedProduct>[] = [
                     <Button variant="ghost" size="icon" asChild={!!p.coa_view_url} title="Ver COA" disabled={!p.coa_view_url}>
                         {p.coa_view_url ? (
                             <a href={p.coa_view_url} target="_blank" rel="noopener noreferrer">
-                                <BadgeCheck className="h-4 w-4 text-green-600" />
+                                <BadgeCheck className="h-4 w-4 text-green-500" />
                             </a>
                         ) : (
-                            <BadgeCheck className="h-4 w-4 text-green-600/30" />
+                            <BadgeCheck className="h-4 w-4 text-green-500/30" />
                         )}
                     </Button>
                     <Button variant="ghost" size="icon" asChild={!!p.coa_download_url} title="Descargar COA" disabled={!p.coa_download_url}>
                         {p.coa_download_url ? (
                             <a href={p.coa_download_url} target="_blank" rel="noopener noreferrer">
-                                <Download className="h-4 w-4 text-slate-600" />
+                                <Download className="h-4 w-4 text-muted-foreground" />
                             </a>
                         ) : (
-                            <Download className="h-4 w-4 text-slate-400/30" />
+                            <Download className="h-4 w-4 text-muted-foreground/30" />
                         )}
                     </Button>
                 </div>
@@ -294,7 +294,7 @@ export function FamilyDetailView({ family }: FamilyDetailViewProps) {
             <div className="space-y-4">
                 <h1 className="text-3xl font-bold">{family.name}</h1>
                 {!hasCategories && products.length > 0 && (
-                    <p className="text-sm font-medium text-slate-500 uppercase tracking-wider -mt-2">
+                    <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider -mt-2">
                         {products.length} variantes disponibles
                     </p>
                 )}
