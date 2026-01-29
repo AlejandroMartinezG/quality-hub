@@ -131,7 +131,7 @@ export default function ProductDetailPage({ params }: PageProps) {
                             ].map((item, i) => (
                                 <div key={i} className="flex justify-between items-center text-sm border-b border-border pb-2 last:border-0 last:pb-0">
                                     <dt className="text-muted-foreground">{item.label}:</dt>
-                                    <dd className="font-semibold text-slate-700">{item.value}</dd>
+                                    <dd className="font-semibold text-foreground/80">{item.value}</dd>
                                 </div>
                             ))}
                         </dl>
