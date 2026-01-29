@@ -49,17 +49,17 @@ export default function RawMaterialDetailPage({ params }: PageProps) {
                 </div>
                 <div className="space-y-3 flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-bold text-slate-500 font-mono tracking-wider bg-slate-100 px-2 py-0.5 rounded-md">
+                        <span className="text-sm font-bold text-muted-foreground font-mono tracking-wider bg-muted px-2 py-0.5 rounded-md">
                             {material.code}
                         </span>
-                        <Badge variant="secondary" className="font-medium text-slate-600">
+                        <Badge variant="secondary" className="font-medium text-foreground/80">
                             {material.functional_category}
                         </Badge>
                         <Badge variant={dispositionVariant} className="px-3">
                             {material.disposition}
                         </Badge>
                     </div>
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+                    <h1 className="text-3xl font-bold text-foreground tracking-tight">
                         {material.name}
                     </h1>
                 </div>
@@ -98,8 +98,8 @@ export default function RawMaterialDetailPage({ params }: PageProps) {
             {/* Documentation Section */}
             <div className="space-y-6">
                 <div className="space-y-1">
-                    <h2 className="text-2xl font-bold text-slate-900">Documentación del Producto</h2>
-                    <p className="text-slate-500 text-sm">
+                    <h2 className="text-2xl font-bold text-foreground">Documentación del Producto</h2>
+                    <p className="text-muted-foreground text-sm">
                         Documentos disponibles para {material.name}
                     </p>
                 </div>
@@ -137,7 +137,7 @@ export default function RawMaterialDetailPage({ params }: PageProps) {
                         {
                             label: "Información de Etiquetado",
                             desc: "Diseño y contenido de etiquetas",
-                            icon: <div className="p-1 rounded-md bg-slate-100 text-slate-600"><FileText className="h-6 w-6" /></div>,
+                            icon: <div className="p-1 rounded-md bg-muted text-foreground/70"><FileText className="h-6 w-6" /></div>,
                             viewUrl: material.label_view_url,
                             downloadUrl: material.label_download_url
                         },
@@ -145,12 +145,12 @@ export default function RawMaterialDetailPage({ params }: PageProps) {
                         <Card key={i} className="rounded-xl border shadow-sm">
                             <CardContent className="p-5">
                                 <div className="flex items-start gap-4 mb-4">
-                                    <div className="shrink-0 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                                    <div className="shrink-0 p-3 rounded-xl bg-muted/50 border border-border">
                                         {doc.icon}
                                     </div>
                                     <div className="space-y-1">
-                                        <h3 className="font-bold text-slate-800">{doc.label}</h3>
-                                        <p className="text-xs text-slate-500">{doc.desc}</p>
+                                        <h3 className="font-bold text-foreground">{doc.label}</h3>
+                                        <p className="text-xs text-muted-foreground">{doc.desc}</p>
                                     </div>
                                 </div>
                                 <div className="flex gap-2 pt-2">
