@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { ModeToggle } from "@/components/mode-toggle"
 
 export function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname()
@@ -19,12 +20,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const basePath = getBasePath()
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="min-h-screen bg-background transition-colors duration-300">
             {/* Header */}
-            <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+            <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="container flex h-16 items-center justify-between">
                     <Link href={`${basePath}/`} className="flex items-center space-x-3">
-                        <img src={`${basePath}/logo.png`} alt="GINEZ" className="h-10 w-auto" />
+                        {/* Logo support for light/dark can be added here if needed */}
+                        <img src={`${basePath}/logo.png`} alt="GINEZ" className="h-10 w-auto dark:brightness-110" />
                         <div className="flex flex-col">
                             <span className="text-xs text-muted-foreground hidden lg:block">
                                 Sistema de Gestión Documental del Laboratorio de Calidad y Desarrollo
@@ -54,22 +56,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             <BookOpen className="h-4 w-4" />
                             <span>Catálogo</span>
                         </Link>
+
+                        <div className="pl-4 border-l">
+                            <ModeToggle />
+                        </div>
                     </nav>
 
-                    {/* Mobile menu button */}
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="md:hidden"
-                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                    >
-                        {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-                    </Button>
+                    {/* Right side for Mobile */}
+                    <div className="flex items-center space-x-2 md:hidden">
+                        <ModeToggle />
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                        >
+                            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Mobile Navigation */}
                 {mobileMenuOpen && (
-                    <div className="md:hidden border-t bg-white">
+                    <div className="md:hidden border-t bg-background">
                         <nav className="container py-4 space-y-2">
                             <Link
                                 href={`${basePath}/`}
@@ -104,7 +112,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </main>
 
             {/* Footer */}
-            <footer className="border-t bg-white mt-auto">
+            <footer className="border-t bg-card mt-auto transition-colors duration-300">
                 <div className="container py-6 text-center text-sm text-muted-foreground">
                     <p>© {new Date().getFullYear()} GINEZ. Sistema de Gestión Documental del Laboratorio de Calidad y Desarrollo.</p>
                 </div>

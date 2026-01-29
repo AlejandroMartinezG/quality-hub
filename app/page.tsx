@@ -5,7 +5,8 @@ import {
     Microscope,
     Package,
     BarChart3,
-    Settings
+    Settings,
+    Beaker
 } from "lucide-react"
 
 export default function HomePage() {
@@ -13,7 +14,7 @@ export default function HomePage() {
         <div className="space-y-8">
             {/* Hero Section */}
             <div className="text-center space-y-4">
-                <h1 className="text-4xl font-bold text-[#16149a]">
+                <h1 className="text-4xl font-bold text-[#16149a] dark:text-indigo-400">
                     Panel Principal
                 </h1>
                 <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -48,9 +49,9 @@ export default function HomePage() {
                     badge="Próximamente"
                 />
                 <ModuleCard
-                    title="Inventarios"
-                    description="Control y seguimiento de inventarios de materiales."
-                    icon={Package}
+                    title="Manual de Formulación Ginez"
+                    description="Consulta de fórmulas y procedimientos técnicos de elaboración."
+                    icon={Beaker}
                     iconColor="#c32420"
                     disabled
                     badge="Próximamente"
