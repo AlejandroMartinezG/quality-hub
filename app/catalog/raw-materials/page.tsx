@@ -154,6 +154,7 @@ export default function RawMaterialsPage() {
     // Build filter options from data
     const filterConfigs: FilterConfig[] = useMemo(() => {
         const functionalCategories = Array.from(new Set(data.map(d => d.functional_category).filter(Boolean)))
+        const transportNames = Array.from(new Set(data.map(d => d.transport_name).filter(Boolean))) as string[]
         const chemicalFamilies = Array.from(new Set(data.map(d => d.chemical_family).filter(Boolean)))
         const dispositions = Array.from(new Set(data.map(d => d.disposition).filter(Boolean)))
 
@@ -165,6 +166,15 @@ export default function RawMaterialsPage() {
                     value: c,
                     label: c,
                     count: data.filter(d => d.functional_category === c).length,
+                })),
+            },
+            {
+                id: "transport_name",
+                label: "Nombre de Transporte",
+                options: transportNames.map(t => ({
+                    value: t,
+                    label: t,
+                    count: data.filter(d => d.transport_name === t).length,
                 })),
             },
             {
