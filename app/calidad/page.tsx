@@ -1,0 +1,597 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { useAuth } from "@/components/AuthProvider"
+import { Breadcrumbs } from "@/components/Breadcrumbs"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow
+} from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { supabase } from "@/lib/supabase"
+import {
+    Search,
+    Filter,
+    CheckCircle2,
+    AlertCircle,
+    XCircle,
+    Loader2,
+    Calendar,
+    ArrowUpDown,
+    Trash2,
+    Edit2,
+    RotateCcw,
+    X
+} from "lucide-react"
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from "@/components/ui/dialog"
+import { Label as UILabel } from "@/components/ui/label"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
+import { toast } from "sonner"
+import {
+    PRODUCT_STANDARDS,
+    PH_STANDARDS,
+    APPEARANCE_STANDARDS,
+    SUCURSALES
+} from "@/lib/production-constants"
+import { cn } from "@/lib/utils"
+
+interface BitacoraRecord {
+    id: number
+    created_at: string
+    lote_producto: string
+    codigo_producto: string
+    sucursal: string
+    fecha_fabricacion: string
+    ph: number | null
+    solidos_medicion_1: number | null
+    solidos_medicion_2: number | null
+    apariencia: string
+    color: string
+    aroma: string
+    nombre_preparador: string
+}
+
+export default function CalidadPage() {
+    const { user, profile } = useAuth()
+    const [records, setRecords] = useState<BitacoraRecord[]>([])
+    const [loading, setLoading] = useState(true)
+    const [searchTerm, setSearchTerm] = useState("")
+    const [sucursalFilter, setSucursalFilter] = useState("all")
+    const [statusFilter, setStatusFilter] = useState("all")
+    const [editingRecord, setEditingRecord] = useState<BitacoraRecord | null>(null)
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+    const [isUpdating, setIsUpdating] = useState(false)
+
+    useEffect(() => {
+        if (user) {
+            console.log("Effect triggered: Fetching records...")
+            fetchRecords()
+        }
+    }, [user?.id, profile?.is_admin])
+
+    const fetchRecords = async () => {
+        if (!user) return
+        try {
+            setLoading(true)
+            console.log("fetchRecords() - Triggered. Admin:", !!profile?.is_admin)
+
+            let query = supabase
+                .from('bitacora_produccion_calidad')
+                .select('*')
+                .order('created_at', { ascending: false })
+
+            if (profile && !profile.is_admin) {
+                query = query.eq('user_id', user?.id)
+            }
+
+            const { data, error } = await query.limit(100)
+            if (error) throw error
+
+            setRecords(data || [])
+            console.log("fetchRecords() - Success. Count:", data?.length)
+        } catch (error: any) {
+            console.error("fetchRecords() - Error:", error.message)
+            toast.error("Error al cargar los registros: " + error.message)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const performDelete = async (id: number) => {
+        try {
+            console.log("performDelete() - Executing for ID:", id)
+            const { error } = await supabase
+                .from('bitacora_produccion_calidad')
+                .delete()
+                .eq('id', id)
+
+            if (error) throw error
+
+            toast.success("Registro eliminado permanentemente")
+            fetchRecords()
+        } catch (error: any) {
+            console.error("performDelete() - Error:", error.message)
+            toast.error("Error al eliminar: " + error.message)
+        }
+    }
+
+    const requestDelete = (id: number, lote: string) => {
+        console.log("requestDelete() - Triggered for:", lote)
+        toast("¿Estás seguro?", {
+            description: `Se eliminará el lote ${lote} de forma permanente.`,
+            action: {
+                label: "Confirmar",
+                onClick: () => performDelete(id),
+            },
+            cancel: {
+                label: "Cancelar",
+                onClick: () => console.log("Delete cancelled"),
+            },
+            duration: 5000,
+        })
+    }
+
+    const handleEditSave = async () => {
+        if (!editingRecord) return
+        try {
+            setIsUpdating(true)
+            console.log("handleEditSave() - Updating record:", editingRecord.id)
+
+            const { error } = await supabase
+                .from('bitacora_produccion_calidad')
+                .update({
+                    ph: editingRecord.ph,
+                    solidos_medicion_1: editingRecord.solidos_medicion_1,
+                    solidos_medicion_2: editingRecord.solidos_medicion_2,
+                    apariencia: editingRecord.apariencia,
+                    color: editingRecord.color,
+                    aroma: editingRecord.aroma
+                })
+                .eq('id', editingRecord.id)
+
+            if (error) throw error
+
+            toast.success("Registro actualizado")
+            setIsEditDialogOpen(false)
+            fetchRecords()
+        } catch (error: any) {
+            console.error("handleEditSave() - Error:", error.message)
+            toast.error("Error al actualizar: " + error.message)
+        } finally {
+            setIsUpdating(false)
+        }
+    }
+
+    const getStatusInfo = (record: BitacoraRecord) => {
+        let status: 'success' | 'warning' | 'error' = 'success'
+
+        // Check Solids (Primary driver for Status as per request)
+        const standardSolids = PRODUCT_STANDARDS[record.codigo_producto]
+        if (standardSolids && record.solidos_medicion_1 !== null && record.solidos_medicion_2 !== null) {
+            const avg = (record.solidos_medicion_1 + record.solidos_medicion_2) / 2
+            const min = standardSolids.min || 0
+            const max = standardSolids.max || 0
+            const minTol = min * 0.95
+            const maxTol = max * 1.05
+
+            if (avg < min || avg > max) {
+                if (avg >= minTol && avg <= maxTol) {
+                    status = 'warning'
+                } else {
+                    status = 'error'
+                }
+            }
+        } else if (!standardSolids) {
+            // If no standard exists, we can't judge concormity based on solids. 
+            // Defaulting to success or maybe handle as N/A? 
+            // For now keeping usage of 'success' if no standard to avoid red errors on everything.
+        }
+
+        return status
+    }
+
+    const filteredRecords = records.filter(r => {
+        const matchesSearch =
+            r.lote_producto?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            r.codigo_producto?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            r.sucursal?.toLowerCase().includes(searchTerm.toLowerCase())
+
+        const matchesSucursal = sucursalFilter === "all" || r.sucursal === sucursalFilter
+        const matchesStatus = statusFilter === "all" || getStatusInfo(r) === statusFilter
+
+        return matchesSearch && matchesSucursal && matchesStatus
+    })
+
+    return (
+        <div className="space-y-6 max-w-7xl mx-auto pb-12">
+            <Breadcrumbs items={[{ label: "Control de Calidad" }]} />
+
+            <div className="flex flex-col gap-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="space-y-1">
+                        <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
+                            Historial de Mediciones
+                        </h1>
+                        <p className="text-muted-foreground text-sm">
+                            Últimos 50 registros comparados con límites de control.
+                        </p>
+                    </div>
+
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={fetchRecords}
+                        className="gap-2"
+                        disabled={loading}
+                    >
+                        <RotateCcw className={cn("h-4 w-4", loading && "animate-spin")} />
+                        Actualizar
+                    </Button>
+                </div>
+
+                {/* Filtros */}
+                <Card className="border-primary/5 bg-muted/20">
+                    <CardContent className="p-4 flex flex-col md:flex-row gap-4">
+                        <div className="flex-1 relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Buscar por lote o producto..."
+                                className="pl-10 h-10"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+
+                        {profile?.is_admin && (
+                            <div className="w-full md:w-56">
+                                <Select value={sucursalFilter} onValueChange={setSucursalFilter}>
+                                    <SelectTrigger className="h-10">
+                                        <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
+                                        <SelectValue placeholder="Sucursal" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Todas las sucursales</SelectItem>
+                                        {SUCURSALES.map((suc) => (
+                                            <SelectItem key={suc} value={suc}>{suc}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+
+                        <div className="w-full md:w-48">
+                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                <SelectTrigger className="h-10">
+                                    <SelectValue placeholder="Estado" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Todos los estados</SelectItem>
+                                    <SelectItem value="success">Conforme</SelectItem>
+                                    <SelectItem value="warning">Semi-Conforme</SelectItem>
+                                    <SelectItem value="error">No Conforme</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card className="relative overflow-hidden bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/20 dark:to-green-900/10 border-green-200 dark:border-green-900/30">
+                    <div className="absolute top-0 right-0 p-4 opacity-10">
+                        <CheckCircle2 className="w-24 h-24 text-green-600" />
+                    </div>
+                    <CardHeader className="pb-2 relative z-10">
+                        <CardTitle className="text-sm font-bold text-green-700 dark:text-green-400 uppercase tracking-widest flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+                            Lotes Conformes
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="relative z-10">
+                        <div className="flex flex-col gap-1">
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-5xl font-extrabold text-green-700 dark:text-green-400 tracking-tight">
+                                    {filteredRecords.filter(r => getStatusInfo(r) === 'success').length}
+                                </span>
+                                <span className="text-sm font-medium text-green-600/80 dark:text-green-400/80">registros</span>
+                            </div>
+                            <span className="text-xs font-semibold text-green-700/70 dark:text-green-300/70">
+                                {filteredRecords.length > 0
+                                    ? ((filteredRecords.filter(r => getStatusInfo(r) === 'success').length / filteredRecords.length) * 100).toFixed(1)
+                                    : "0.0"}% del total analizado
+                            </span>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="relative overflow-hidden bg-gradient-to-br from-yellow-50 to-yellow-100/50 dark:from-yellow-950/20 dark:to-yellow-900/10 border-yellow-200 dark:border-yellow-900/30">
+                    <div className="absolute top-0 right-0 p-4 opacity-10">
+                        <AlertCircle className="w-24 h-24 text-yellow-600" />
+                    </div>
+                    <CardHeader className="pb-2 relative z-10">
+                        <CardTitle className="text-sm font-bold text-yellow-700 dark:text-yellow-400 uppercase tracking-widest flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)]" />
+                            Semi-Conformes
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="relative z-10">
+                        <div className="flex flex-col gap-1">
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-5xl font-extrabold text-yellow-700 dark:text-yellow-400 tracking-tight">
+                                    {filteredRecords.filter(r => getStatusInfo(r) === 'warning').length}
+                                </span>
+                                <span className="text-sm font-medium text-yellow-600/80 dark:text-yellow-400/80">registros</span>
+                            </div>
+                            <span className="text-xs font-semibold text-yellow-700/70 dark:text-yellow-300/70">
+                                {filteredRecords.length > 0
+                                    ? ((filteredRecords.filter(r => getStatusInfo(r) === 'warning').length / filteredRecords.length) * 100).toFixed(1)
+                                    : "0.0"}% del total analizado
+                            </span>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="relative overflow-hidden bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/20 dark:to-red-900/10 border-red-200 dark:border-red-900/30">
+                    <div className="absolute top-0 right-0 p-4 opacity-10">
+                        <XCircle className="w-24 h-24 text-red-600" />
+                    </div>
+                    <CardHeader className="pb-2 relative z-10">
+                        <CardTitle className="text-sm font-bold text-red-700 dark:text-red-400 uppercase tracking-widest flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
+                            No Conformes
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="relative z-10">
+                        <div className="flex flex-col gap-1">
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-5xl font-extrabold text-red-700 dark:text-red-400 tracking-tight">
+                                    {filteredRecords.filter(r => getStatusInfo(r) === 'error').length}
+                                </span>
+                                <span className="text-sm font-medium text-red-600/80 dark:text-red-400/80">registros</span>
+                            </div>
+                            <span className="text-xs font-semibold text-red-700/70 dark:text-red-300/70">
+                                {filteredRecords.length > 0
+                                    ? ((filteredRecords.filter(r => getStatusInfo(r) === 'error').length / filteredRecords.length) * 100).toFixed(1)
+                                    : "0.0"}% del total analizado
+                            </span>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <Card className="shadow-lg border-primary/10">
+                <CardHeader>
+                    <CardTitle>Historial de Mediciones</CardTitle>
+                    <CardDescription>Últimos 50 registros comparados con límites de control.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {loading ? (
+                        <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            <p className="text-muted-foreground">Cargando registros de calidad...</p>
+                        </div>
+                    ) : (
+                        <div className="rounded-md border overflow-x-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="bg-muted/50">
+                                        <TableHead className="w-[150px]">Lote</TableHead>
+                                        <TableHead>Producto/Sucursal</TableHead>
+                                        <TableHead className="text-center">pH</TableHead>
+                                        <TableHead className="text-center">% Sólidos (Avg)</TableHead>
+                                        <TableHead>Estado</TableHead>
+                                        <TableHead className="text-center">Apariencia</TableHead>
+                                        <TableHead className="text-right">Fecha</TableHead>
+                                        {profile?.is_admin && <TableHead className="text-right">Acciones</TableHead>}
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredRecords.length > 0 ? (
+                                        filteredRecords.map((record) => {
+                                            const status = getStatusInfo(record)
+                                            const avgSolids = (record.solidos_medicion_1 !== null && record.solidos_medicion_2 !== null)
+                                                ? (record.solidos_medicion_1 + record.solidos_medicion_2) / 2
+                                                : null
+
+                                            const stdSolids = PRODUCT_STANDARDS[record.codigo_producto]
+                                            const stdPH = PH_STANDARDS[record.codigo_producto]
+                                            const stdApp = APPEARANCE_STANDARDS[record.codigo_producto]
+
+                                            return (
+                                                <TableRow key={record.id} className="hover:bg-muted/30 transition-colors">
+                                                    <TableCell className="font-mono font-bold text-xs text-slate-700">
+                                                        {record.lote_producto}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex flex-col">
+                                                            <span className="font-bold text-sm text-slate-800">{record.codigo_producto}</span>
+                                                            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{record.sucursal}</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <div className="flex flex-col items-center">
+                                                            <span className={record.ph !== null ? "font-bold" : "text-muted-foreground text-xs"}>
+                                                                {record.ph ?? "N/A"}
+                                                            </span>
+                                                            {stdPH && (
+                                                                <span className="text-[9px] text-muted-foreground">
+                                                                    Ref: {stdPH.min}-{stdPH.max}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <div className="flex flex-col items-center">
+                                                            <span className={avgSolids !== null ? "font-bold" : "text-muted-foreground text-xs"}>
+                                                                {avgSolids !== null ? avgSolids.toFixed(2) + "%" : "N/A"}
+                                                            </span>
+                                                            {stdSolids && (
+                                                                <span className="text-[9px] text-muted-foreground">
+                                                                    Tol: {(stdSolids.min! * 0.95).toFixed(1)}-{(stdSolids.max! * 1.05).toFixed(1)}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge
+                                                            className={cn(
+                                                                "gap-1.5 shadow-none px-3 py-1 text-[10px] font-semibold uppercase tracking-wider rounded-full",
+                                                                status === 'success' && "bg-green-600 text-white hover:bg-green-700 border-none",
+                                                                status === 'warning' && "bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200",
+                                                                status === 'error' && "bg-red-600 text-white hover:bg-red-700 border-none"
+                                                            )}
+                                                        >
+                                                            {status === 'success' && <CheckCircle2 className="h-3 w-3" />}
+                                                            {status === 'warning' && <AlertCircle className="h-3 w-3" />}
+                                                            {status === 'error' && <XCircle className="h-3 w-3" />}
+                                                            {status === 'success' ? 'CONFORME' : status === 'warning' ? 'SEMI-CONFORME' : 'NO CONFORME'}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <div className="flex flex-col items-center">
+                                                            <span className="text-xs font-semibold">{record.apariencia || "N/A"}</span>
+                                                            {stdApp && (
+                                                                <span className="text-[9px] text-muted-foreground">
+                                                                    Esp: {stdApp}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-right text-xs text-muted-foreground">
+                                                        {new Date(record.fecha_fabricacion).toLocaleDateString()}
+                                                    </TableCell>
+                                                    {profile?.is_admin && (
+                                                        <TableCell className="text-right">
+                                                            <div className="flex justify-end gap-2">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 cursor-pointer pointer-events-auto"
+                                                                    title="Editar registro"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation()
+                                                                        console.log("Edit clicked for:", record.id)
+                                                                        setEditingRecord(record)
+                                                                        setIsEditDialogOpen(true)
+                                                                    }}
+                                                                >
+                                                                    <Edit2 className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer pointer-events-auto"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation()
+                                                                        requestDelete(record.id, record.lote_producto)
+                                                                    }}
+                                                                    title="Eliminar registro"
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
+                                                    )}
+                                                </TableRow>
+                                            )
+                                        })
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                                                No se encontraron registros.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Modal de Edición */}
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Editar Registro de Calidad</DialogTitle>
+                        <DialogDescription>
+                            Modifica los parámetros físico-químicos del lote {editingRecord?.lote_producto}.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {editingRecord && (
+                        <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <UILabel htmlFor="ph" className="text-right text-xs">pH</UILabel>
+                                <Input
+                                    id="ph"
+                                    type="number"
+                                    step="0.1"
+                                    value={editingRecord.ph || ""}
+                                    onChange={(e) => setEditingRecord({ ...editingRecord, ph: parseFloat(e.target.value) || null })}
+                                    className="col-span-3"
+                                />
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <UILabel htmlFor="s1" className="text-right text-xs">Sólidos M1</UILabel>
+                                <Input
+                                    id="s1"
+                                    type="number"
+                                    step="0.01"
+                                    value={editingRecord.solidos_medicion_1 || ""}
+                                    onChange={(e) => setEditingRecord({ ...editingRecord, solidos_medicion_1: parseFloat(e.target.value) || null })}
+                                    className="col-span-3"
+                                />
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <UILabel htmlFor="s2" className="text-right text-xs">Sólidos M2</UILabel>
+                                <Input
+                                    id="s2"
+                                    type="number"
+                                    step="0.01"
+                                    value={editingRecord.solidos_medicion_2 || ""}
+                                    onChange={(e) => setEditingRecord({ ...editingRecord, solidos_medicion_2: parseFloat(e.target.value) || null })}
+                                    className="col-span-3"
+                                />
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <UILabel htmlFor="apariencia" className="text-right text-xs">Apariencia</UILabel>
+                                <Input
+                                    id="apariencia"
+                                    value={editingRecord.apariencia || ""}
+                                    onChange={(e) => setEditingRecord({ ...editingRecord, apariencia: e.target.value })}
+                                    className="col-span-3"
+                                />
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button type="submit" onClick={handleEditSave} disabled={isUpdating}>
+                            {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Guardar Cambios
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
+    )
+}

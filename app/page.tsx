@@ -3,75 +3,168 @@ import {
     BookOpen,
     ClipboardList,
     Microscope,
-    Package,
     BarChart3,
     Settings,
-    Beaker
+    Beaker,
+    ArrowRight,
+    CheckCircle2
 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent } from "@/components/ui/card"
+import Link from "next/link"
 
 export default function HomePage() {
     return (
-        <div className="space-y-8">
-            {/* Hero Section */}
-            <div className="text-center space-y-4">
-                <h1 className="text-4xl font-bold text-[#16149a] dark:text-indigo-400">
-                    Panel Principal
-                </h1>
-                <p className="text-muted-foreground max-w-2xl mx-auto">
-                    Bienvenido al Sistema de Gestión Documental del Laboratorio de Calidad y Desarrollo de GINEZ.
-                    Selecciona un módulo para comenzar.
-                </p>
+        <div className="space-y-8 pb-12">
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b pb-6">
+                <div>
+                    <h2 className="text-sm font-bold text-blue-900 uppercase tracking-wide">
+                        GINEZ Quality Control
+                    </h2>
+                    <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mt-1">
+                        Módulos de Operación
+                    </h1>
+                </div>
             </div>
 
             {/* Modules Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <ModuleCard
-                    title="Catálogo"
-                    description="Consulta y descarga documentación de materias primas y productos terminados."
-                    icon={BookOpen}
-                    iconColor="#c32420"
-                    href="/catalog"
-                />
-                <ModuleCard
-                    title="Bitácora de Producción"
-                    description="Registro y seguimiento de actividades de producción."
-                    icon={ClipboardList}
-                    iconColor="#c32420"
-                    disabled
-                    badge="Próximamente"
-                />
-                <ModuleCard
-                    title="Control de Calidad"
-                    description="Gestión de controles y análisis de calidad."
-                    icon={Microscope}
-                    iconColor="#c32420"
-                    disabled
-                    badge="Próximamente"
-                />
-                <ModuleCard
-                    title="Manual de Formulación Ginez"
-                    description="Consulta de fórmulas y procedimientos técnicos de elaboración."
-                    icon={Beaker}
-                    iconColor="#c32420"
-                    disabled
-                    badge="Próximamente"
-                />
-                <ModuleCard
-                    title="Reportes"
-                    description="Generación de reportes y estadísticas."
-                    icon={BarChart3}
-                    iconColor="#c32420"
-                    disabled
-                    badge="Próximamente"
-                />
-                <ModuleCard
-                    title="Configuración"
-                    description="Ajustes y configuración del sistema."
-                    icon={Settings}
-                    iconColor="#c32420"
-                    disabled
-                    badge="Próximamente"
-                />
+                {/* 1. Catálogo */}
+                <Link href="/catalog" className="group block">
+                    <Card className="h-full border-none shadow-sm hover:shadow-md transition-all bg-[#FFFBF7] dark:bg-slate-900">
+                        <CardContent className="p-8 flex flex-col items-start gap-4 h-full relative">
+                            <Badge className="absolute top-6 right-6 bg-blue-100 text-blue-700 hover:bg-blue-200 border-none px-3 font-bold">
+                                ACTIVO
+                            </Badge>
+                            <div className="h-14 w-14 rounded-full bg-blue-900 flex items-center justify-center mb-2 shadow-blue-900/20 shadow-lg group-hover:scale-110 transition-transform">
+                                <BookOpen className="h-7 w-7 text-white" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2 group-hover:text-blue-900 transition-colors">
+                                    Catálogo
+                                </h3>
+                                <p className="text-slate-500 text-sm leading-relaxed mb-6">
+                                    Consulta y descarga documentación de materias primas y productos terminados.
+                                </p>
+                            </div>
+                            <div className="mt-auto flex items-center text-blue-700 font-bold text-sm">
+                                Acceder al repositorio <ArrowRight className="ml-2 h-4 w-4" />
+                            </div>
+                        </CardContent>
+                    </Card>
+                </Link>
+
+                {/* 2. Bitácora */}
+                <Link href="/bitacora" className="group block">
+                    <Card className="h-full border-none shadow-sm hover:shadow-md transition-all bg-[#FFFBF7] dark:bg-slate-900">
+                        <CardContent className="p-8 flex flex-col items-start gap-4 h-full">
+                            <div className="h-14 w-14 rounded-full bg-blue-50 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                                <ClipboardList className="h-7 w-7 text-blue-900" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2 group-hover:text-blue-900 transition-colors">
+                                    Bitácora de Producción
+                                </h3>
+                                <p className="text-slate-500 text-sm leading-relaxed mb-6">
+                                    Registro y seguimiento de actividades de producción y parámetros de calidad.
+                                </p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </Link>
+
+                {/* 3. Control de Calidad */}
+                <Link href="/calidad" className="group block">
+                    <Card className="h-full border-none shadow-sm hover:shadow-md transition-all bg-[#FFFBF7] dark:bg-slate-900">
+                        <CardContent className="p-8 flex flex-col items-start gap-4 h-full relative">
+                            <Badge className="absolute top-6 right-6 bg-slate-100 text-slate-500 border-none px-3 font-bold">
+                                ESTÁNDARES
+                            </Badge>
+                            <div className="h-14 w-14 rounded-full bg-blue-50 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                                <Microscope className="h-7 w-7 text-blue-900" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2 group-hover:text-blue-900 transition-colors">
+                                    Control de Calidad
+                                </h3>
+                                <p className="text-slate-500 text-sm leading-relaxed mb-6">
+                                    Resumen de mediciones y cumplimiento de límites de control registrados en bitácora.
+                                </p>
+                            </div>
+                            <div className="mt-auto w-12 h-1 bg-slate-200 rounded-full group-hover:bg-blue-900 transition-colors" />
+                        </CardContent>
+                    </Card>
+                </Link>
+
+                {/* 4. Manual de Formulación (Disabled) */}
+                <Card className="h-full border-none shadow-sm bg-[#FFFBF7] dark:bg-slate-900 opacity-60">
+                    <CardContent className="p-8 flex flex-col items-start gap-4 h-full relative">
+                        <Badge className="absolute top-6 right-6 bg-slate-200 text-slate-600 border-none px-3 font-bold">
+                            DESARROLLO
+                        </Badge>
+                        <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center mb-2">
+                            <Beaker className="h-7 w-7 text-slate-400" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">
+                                Manual de Formulación Ginez
+                            </h3>
+                            <p className="text-slate-500 text-sm leading-relaxed mb-6">
+                                Consulta de fórmulas y procedimientos técnicos de elaboración.
+                            </p>
+                        </div>
+                        <div className="mt-auto w-12 h-1 bg-slate-200 rounded-full" />
+                    </CardContent>
+                </Card>
+
+                {/* 5. Reportes (Disabled) */}
+                <Card className="h-full border-none shadow-sm bg-[#FFFBF7] dark:bg-slate-900 opacity-60">
+                    <CardContent className="p-8 flex flex-col items-start gap-4 h-full">
+                        <div className="h-14 w-14 rounded-full bg-blue-50 flex items-center justify-center mb-2">
+                            <BarChart3 className="h-7 w-7 text-blue-900" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">
+                                Reportes
+                            </h3>
+                            <p className="text-slate-500 text-sm leading-relaxed mb-6">
+                                Generación de reportes y estadísticas.
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* 6. Configuración */}
+                <Link href="/configuracion" className="group block">
+                    <Card className="h-full border-none shadow-sm hover:shadow-md transition-all bg-[#FFFBF7] dark:bg-slate-900">
+                        <CardContent className="p-8 flex flex-col items-start gap-4 h-full">
+                            <div className="h-14 w-14 rounded-full bg-blue-50 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                                <Settings className="h-7 w-7 text-blue-900" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2 group-hover:text-blue-900 transition-colors">
+                                    Configuración
+                                </h3>
+                                <p className="text-slate-500 text-sm leading-relaxed mb-6">
+                                    Ajustes y configuración del sistema.
+                                </p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </Link>
+            </div>
+
+            <div className="flex justify-between items-center text-xs text-slate-400 pt-8 border-t mt-8">
+                <p>© 2026 GINEZ Corporate. División Industrial & Limpieza.</p>
+                <div className="flex gap-6">
+                    <div className="flex items-center gap-2 cursor-pointer hover:text-blue-900">
+                        <CheckCircle2 className="h-3 w-3" /> Cumplimiento
+                    </div>
+                    <div className="flex items-center gap-2 cursor-pointer hover:text-blue-900">
+                        <BookOpen className="h-3 w-3" /> Manual de Usuario
+                    </div>
+                </div>
             </div>
         </div>
     )

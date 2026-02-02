@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { FinishedProduct, FinishedProductsData } from "@/lib/types"
+import { TrackedLink } from "@/components/TrackedLink"
 import { Package, Info, Calendar, Beaker, FileText, ShieldAlert, BadgeCheck, Eye, Download, Sparkles } from "lucide-react"
 
 import finishedProductsData from "@/data/finished-products.json"
@@ -192,16 +193,30 @@ export default function ProductDetailPage({ params }: PageProps) {
                                 </div>
                                 <div className="flex gap-2 pt-2">
                                     <Button variant="outline" size="sm" className="flex-1 gap-1.5" disabled={!doc.viewUrl} asChild>
-                                        <a href={doc.viewUrl || "#"} target="_blank" rel="noopener noreferrer">
+                                        <TrackedLink
+                                            href={doc.viewUrl || "#"}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            fileName={product.variant || product.base_product}
+                                            fileType={`${doc.label} (Vista)`}
+                                            skuCode={product.sku_code}
+                                        >
                                             <Eye className="h-3.5 w-3.5" />
                                             Ver
-                                        </a>
+                                        </TrackedLink>
                                     </Button>
                                     <Button size="sm" className="flex-1 gap-1.5" disabled={!doc.downloadUrl} asChild>
-                                        <a href={doc.downloadUrl || "#"} target="_blank" rel="noopener noreferrer">
+                                        <TrackedLink
+                                            href={doc.downloadUrl || "#"}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            fileName={product.variant || product.base_product}
+                                            fileType={`${doc.label} (Descarga)`}
+                                            skuCode={product.sku_code}
+                                        >
                                             <Download className="h-3.5 w-3.5" />
                                             Descargar
-                                        </a>
+                                        </TrackedLink>
                                     </Button>
                                 </div>
                             </CardContent>

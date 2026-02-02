@@ -12,6 +12,7 @@ import { getBasePath, cn } from "@/lib/utils"
 import { ArrowUpDown, Eye, Download, FileText, ShieldAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { RawMaterial } from "@/lib/types"
+import { TrackedLink } from "@/components/TrackedLink"
 import Fuse from "fuse.js"
 
 // Import data - will be generated at build time
@@ -89,18 +90,32 @@ const columns: ColumnDef<RawMaterial>[] = [
                 <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                     <Button variant="ghost" size="icon" asChild={!!viewUrl} title="Ver TDS" disabled={!viewUrl}>
                         {viewUrl ? (
-                            <a href={viewUrl} target="_blank" rel="noopener noreferrer">
+                            <TrackedLink
+                                href={viewUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                fileName={row.original.name}
+                                fileType="TDS (Vista)"
+                                skuCode={row.original.code}
+                            >
                                 <Eye className="h-4 w-4 text-primary" />
-                            </a>
+                            </TrackedLink>
                         ) : (
                             <Eye className="h-4 w-4 text-muted-foreground/30" />
                         )}
                     </Button>
                     <Button variant="ghost" size="icon" asChild={!!downloadUrl} title="Descargar TDS" disabled={!downloadUrl}>
                         {downloadUrl ? (
-                            <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
+                            <TrackedLink
+                                href={downloadUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                fileName={row.original.name}
+                                fileType="TDS (Descarga)"
+                                skuCode={row.original.code}
+                            >
                                 <Download className="h-4 w-4 text-muted-foreground" />
-                            </a>
+                            </TrackedLink>
                         ) : (
                             <Download className="h-4 w-4 text-muted-foreground/30" />
                         )}
@@ -119,18 +134,32 @@ const columns: ColumnDef<RawMaterial>[] = [
                 <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                     <Button variant="ghost" size="icon" asChild={!!viewUrl} title="Ver SDS" disabled={!viewUrl}>
                         {viewUrl ? (
-                            <a href={viewUrl} target="_blank" rel="noopener noreferrer">
+                            <TrackedLink
+                                href={viewUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                fileName={row.original.name}
+                                fileType="SDS (Vista)"
+                                skuCode={row.original.code}
+                            >
                                 <ShieldAlert className="h-4 w-4 text-destructive" />
-                            </a>
+                            </TrackedLink>
                         ) : (
                             <ShieldAlert className="h-4 w-4 text-destructive/30" />
                         )}
                     </Button>
                     <Button variant="ghost" size="icon" asChild={!!downloadUrl} title="Descargar SDS" disabled={!downloadUrl}>
                         {downloadUrl ? (
-                            <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
+                            <TrackedLink
+                                href={downloadUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                fileName={row.original.name}
+                                fileType="SDS (Descarga)"
+                                skuCode={row.original.code}
+                            >
                                 <Download className="h-4 w-4 text-muted-foreground" />
-                            </a>
+                            </TrackedLink>
                         ) : (
                             <Download className="h-4 w-4 text-muted-foreground/30" />
                         )}

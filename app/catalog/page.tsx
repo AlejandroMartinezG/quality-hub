@@ -9,8 +9,8 @@ export default function CatalogPage() {
     const mpCount = rawMaterialsData.length
 
     // Contar todos los productos en todas las familias y categorías
-    const ptCount = finishedProductsData.families.reduce((acc, family) => {
-        const productsInCategory = family.categories?.reduce((catAcc, category) => {
+    const ptCount = finishedProductsData.families.reduce((acc: number, family: any) => {
+        const productsInCategory = family.categories?.reduce((catAcc: number, category: any) => {
             return catAcc + (category.products?.length || 0)
         }, 0) || 0
 

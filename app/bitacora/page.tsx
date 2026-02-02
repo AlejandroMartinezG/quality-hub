@@ -1,0 +1,664 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { useAuth } from "@/components/AuthProvider"
+import { Breadcrumbs } from "@/components/Breadcrumbs"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue
+} from "@/components/ui/select"
+import {
+    SUCURSALES,
+    PRODUCT_CATEGORIES,
+    CATEGORY_PRODUCTS,
+    SUCURSAL_ACRONYMS,
+    PRODUCT_STANDARDS,
+    PH_STANDARDS,
+    APPEARANCE_STANDARDS,
+    PARAMETER_APPLICABILITY
+} from "@/lib/production-constants"
+import { supabase } from "@/lib/supabase"
+import { Loader2, CheckCircle2, AlertCircle, Info, FlaskConical, Beaker, Eye, Droplets, ClipboardCheck, ArrowRight, ArrowLeft } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { motion, AnimatePresence } from "framer-motion"
+import { toast } from "sonner"
+import { cn } from "@/lib/utils"
+
+export default function BitacoraPage() {
+    const { user, profile } = useAuth()
+    const [step, setStep] = useState(1) // 1: Category, 2: Form
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+    const [loading, setLoading] = useState(false)
+    const [formData, setFormData] = useState({
+        sucursal: "",
+        nombre_preparador: "",
+        fecha_fabricacion: new Date().toISOString().split('T')[0],
+        codigo_producto: "",
+        tamano_lote: "",
+        ph: "",
+        solidos_medicion_1: "",
+        temp_med1: "",
+        solidos_medicion_2: "",
+        temp_med2: "",
+        viscosidad_seg: "",
+        temperatura: "",
+        color: "CONFORME",
+        apariencia: "",
+        aroma: "CONFORME",
+        contaminacion_microbiologica: "SIN PRESENCIA",
+        observaciones: ""
+    })
+
+    useEffect(() => {
+        if (profile) {
+            setFormData(prev => ({
+                ...prev,
+                sucursal: profile.sucursal || "",
+                nombre_preparador: profile.full_name || ""
+            }))
+        }
+    }, [profile])
+
+    const handleCategorySelect = (categoryId: string) => {
+        const category = PRODUCT_CATEGORIES.find(c => c.id === categoryId)
+        if (category) {
+            setSelectedCategory(category.name)
+            setStep(2)
+        }
+    }
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target
+        setFormData(prev => ({ ...prev, [name]: value }))
+    }
+
+    const handleSelectChange = (name: string, value: string) => {
+        setFormData(prev => ({ ...prev, [name]: value }))
+    }
+
+    const calculateLotNumber = async (data: typeof formData) => {
+        if (!data.sucursal || !data.codigo_producto || !data.fecha_fabricacion) return ""
+
+        const datePart = data.fecha_fabricacion.replace(/-/g, "").slice(2) // YYMMDD
+        const acronym = SUCURSAL_ACRONYMS[data.sucursal] || "NA"
+        const productCode = data.codigo_producto
+        const size = data.tamano_lote.replace(/[^0-9]/g, "")
+
+        // Count existing records
+        try {
+            console.log("calculateLotNumber: counting records...")
+            const { count, error } = await supabase
+                .from('bitacora_produccion_calidad')
+                .select('*', { count: 'exact', head: true })
+                .eq('sucursal', data.sucursal)
+                .eq('codigo_producto', productCode)
+                .eq('fecha_fabricacion', data.fecha_fabricacion)
+                .not('lote_producto', 'is', null)
+                .neq('lote_producto', '')
+                .neq('lote_producto', 'EMPTY')
+
+            if (error) {
+                console.error("calculateLotNumber error:", error)
+                throw error
+            }
+
+            console.log("calculateLotNumber count:", count)
+            const sequence = String((count || 0) + 1).padStart(2, "0")
+            return `${datePart}-${acronym}-${productCode}${size}-${sequence}`
+        } catch (err) {
+            console.error("Error in calculateLotNumber:", err)
+            return null
+        }
+    }
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+
+        // Final validation
+        if (!formData.sucursal || !formData.codigo_producto || !formData.tamano_lote || !formData.fecha_fabricacion) {
+            toast.error("Campos obligatorios incompletos", {
+                description: "Por favor completa Sucursal, Producto, Tamaño de Lote y Fecha."
+            })
+            return
+        }
+
+        // Applicability checks
+        const applicability = PARAMETER_APPLICABILITY[formData.codigo_producto] || { solidos: false, ph: false }
+
+        // Solids validation
+        if (applicability.solidos) {
+            if (!formData.solidos_medicion_1 || !formData.temp_med1 || !formData.solidos_medicion_2 || !formData.temp_med2) {
+                toast.error("Faltan mediciones de Sólidos", {
+                    description: "Para este producto, debes registrar M1, T1, M2 y T2."
+                })
+                return
+            }
+        }
+
+        // pH validation
+        if (applicability.ph) {
+            if (!formData.ph) {
+                toast.error("Falta medición de pH", {
+                    description: "Para este producto, el pH es obligatorio."
+                })
+                return
+            }
+        }
+
+        // Apariencia validation
+        if (!formData.apariencia) {
+            toast.error("Falta registrar Apariencia", {
+                description: "Selecciona la apariencia del producto."
+            })
+            return
+        }
+
+        setLoading(true)
+
+        try {
+            const lotNumber = await calculateLotNumber(formData)
+
+            if (!lotNumber) {
+                throw new Error("No se pudo generar el número de lote. Verifica los datos básicos.")
+            }
+
+            console.log("Submitting with user_id:", user?.id)
+            if (!user?.id) {
+                toast.error("Sesión no válida", { description: "No se detectó usuario autenticado. Recarga la página." })
+                setLoading(false)
+                return
+            }
+
+            console.log("Inserting record into Supabase...")
+            const { error: insertError } = await supabase
+                .from('bitacora_produccion_calidad')
+                .insert([{
+                    ...formData,
+                    user_id: user.id,
+                    lote_producto: lotNumber,
+                    familia_producto: selectedCategory,
+                    tamano_lote: parseFloat(formData.tamano_lote) || 0,
+                    ph: parseFloat(formData.ph) || null,
+                    solidos_medicion_1: parseFloat(formData.solidos_medicion_1) || null,
+                    temp_med1: parseFloat(formData.temp_med1) || null,
+                    solidos_medicion_2: parseFloat(formData.solidos_medicion_2) || null,
+                    temp_med2: parseFloat(formData.temp_med2) || null,
+                    viscosidad_seg: null,
+                    temperatura: null,
+                    contaminacion_microbiologica: "SIN PRESENCIA"
+                }])
+
+            if (insertError) {
+                console.error("Insert error:", insertError)
+                throw insertError
+            }
+
+            toast.success("Registro guardado con éxito", {
+                description: `Lote generado: ${lotNumber}`,
+                action: {
+                    label: "Ir a Calidad",
+                    onClick: () => window.location.href = "/calidad"
+                }
+            })
+            setStep(1)
+
+            setFormData(prev => ({
+                ...prev,
+                codigo_producto: "",
+                tamano_lote: "",
+                ph: "",
+                solidos_medicion_1: "",
+                temp_med1: "",
+                solidos_medicion_2: "",
+                temp_med2: "",
+                viscosidad_seg: "",
+                temperatura: "",
+                color: "CONFORME",
+                apariencia: "",
+                aroma: "CONFORME",
+                contaminacion_microbiologica: "SIN PRESENCIA",
+                observaciones: ""
+            }))
+        } catch (error: any) {
+            toast.error("Error al guardar el registro", {
+                description: error.message
+            })
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const getEvaluation = () => {
+        const product = formData.codigo_producto
+        const applicability = PARAMETER_APPLICABILITY[product] || { solidos: false, ph: false }
+
+        const evaluations = []
+
+        // Solids evaluation
+        if (applicability.solidos) {
+            const s1 = parseFloat(formData.solidos_medicion_1)
+            const s2 = parseFloat(formData.solidos_medicion_2)
+            const avg = (!isNaN(s1) && !isNaN(s2)) ? (s1 + s2) / 2 : null
+            const standard = PRODUCT_STANDARDS[product]
+
+            if (avg !== null && standard) {
+                const min = standard.min || 0
+                const max = standard.max || 0
+                const minTol = min * 0.95
+                const maxTol = max * 1.05
+
+                if (avg >= min && avg <= max) {
+                    evaluations.push({ type: "Sólidos", status: "success", text: `Conforme (${avg.toFixed(2)}%)` })
+                } else if (avg >= minTol && avg <= maxTol) {
+                    evaluations.push({ type: "Sólidos", status: "warning", text: `En tolerancia (${avg.toFixed(2)}%) - Liberable` })
+                } else {
+                    evaluations.push({ type: "Sólidos", status: "error", text: `Fuera de rango (${avg.toFixed(2)}%) - Retener` })
+                }
+            }
+        }
+
+        // pH evaluation
+        if (applicability.ph) {
+            const phVal = parseFloat(formData.ph)
+            const standard = PH_STANDARDS[product]
+            if (!isNaN(phVal) && standard) {
+                if (phVal >= standard.min && phVal <= standard.max) {
+                    evaluations.push({ type: "pH", status: "success", text: `Conforme (${phVal})` })
+                } else {
+                    evaluations.push({ type: "pH", status: "error", text: `Fuera de rango (${phVal})` })
+                }
+            }
+        }
+
+        // Appearance evaluation
+        if (formData.apariencia) {
+            const expected = APPEARANCE_STANDARDS[product]
+            if (expected) {
+                if (formData.apariencia.toUpperCase() === expected.toUpperCase()) {
+                    evaluations.push({ type: "Apariencia", status: "success", text: `Conforme (${formData.apariencia})` })
+                } else {
+                    evaluations.push({ type: "Apariencia", status: "error", text: `No conforme (Esperado: ${expected})` })
+                }
+            }
+        }
+
+        return evaluations
+    }
+
+    const currentEvaluations = getEvaluation()
+
+    return (
+        <div className="space-y-6 max-w-5xl mx-auto pb-12">
+            <Breadcrumbs items={[{ label: "Bitácora de Producción" }]} />
+
+            <div className="flex flex-col gap-2">
+                <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-700 to-red-600 bg-clip-text text-transparent">
+                    Bitácora de Producción y Calidad
+                </h1>
+                <p className="text-muted-foreground">
+                    Registro de parámetros de calidad para productos terminados Ginez®
+                </p>
+            </div>
+
+            <AnimatePresence mode="wait">
+                {step === 1 ? (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+                    >
+                        {PRODUCT_CATEGORIES.map((cat) => (
+                            <Card
+                                key={cat.id}
+                                className="group cursor-pointer hover:shadow-xl hover:border-primary/50 transition-all duration-300 overflow-hidden bg-card/50 backdrop-blur-sm border-white/20"
+                                onClick={() => handleCategorySelect(cat.id)}
+                            >
+                                <div className="h-32 w-full overflow-hidden relative">
+                                    <img
+                                        src={cat.image}
+                                        alt={cat.name}
+                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                                </div>
+                                <CardHeader className="p-4">
+                                    <CardTitle className="text-sm font-semibold line-clamp-2 min-h-[2.5rem]">
+                                        {cat.name}
+                                    </CardTitle>
+                                </CardHeader>
+                            </Card>
+                        ))}
+                    </motion.div>
+                ) : (
+                    <motion.div
+                        initial={{ opacity: 0, x: 50 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -50 }}
+                        className="space-y-6"
+                    >
+                        <Button
+                            variant="ghost"
+                            onClick={() => setStep(1)}
+                            className="mb-2 group hover:text-primary transition-colors"
+                        >
+                            <ArrowLeft className="mr-2 h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+                            Cambiar Categoría ({selectedCategory})
+                        </Button>
+
+                        <form onSubmit={handleSubmit} className="space-y-8">
+                            <div className="flex justify-center gap-8 py-6 bg-white dark:bg-slate-900 rounded-2xl border shadow-sm">
+                                <div className="flex flex-col items-center">
+                                    <img src="https://i.imgur.com/AIqaFdy.jpeg" alt="Tiras de pH" className="h-20 w-auto rounded-lg shadow-sm mb-2" />
+                                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Tiras pH</span>
+                                </div>
+                                <div className="flex flex-col items-center">
+                                    <img src="https://i.imgur.com/jw10WEL.png" alt="Refractómetro" className="h-20 w-auto rounded-lg shadow-sm mb-2" />
+                                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Refractómetro</span>
+                                </div>
+                            </div>
+
+                            {/* Información General */}
+                            <Card className="border-primary/10 shadow-lg overflow-hidden">
+                                <CardHeader className="bg-gradient-to-r from-blue-50 to-red-50 dark:from-blue-950/20 dark:to-red-950/20 border-b">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-blue-600 rounded-lg text-white">
+                                            <Info className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <CardTitle>Información General</CardTitle>
+                                            <CardDescription>Datos básicos del lote y sucursal</CardDescription>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="sucursal">Sucursal</Label>
+                                        <Select
+                                            value={formData.sucursal}
+                                            onValueChange={(val) => handleSelectChange("sucursal", val)}
+                                            required
+                                        >
+                                            <SelectTrigger id="sucursal" className={!formData.sucursal ? "border-red-500" : ""}>
+                                                <SelectValue placeholder="Selecciona sucursal" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {SUCURSALES.map((suc) => (
+                                                    <SelectItem key={suc} value={suc}>{suc}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="nombre_preparador">Preparador</Label>
+                                        <Input
+                                            id="nombre_preparador"
+                                            name="nombre_preparador"
+                                            value={formData.nombre_preparador}
+                                            onChange={handleInputChange}
+                                            required
+                                            className={!formData.nombre_preparador ? "border-red-500" : "font-semibold"}
+                                            placeholder="Nombre del preparador"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="fecha_fabricacion">Fecha de Elaboración</Label>
+                                        <Input
+                                            id="fecha_fabricacion"
+                                            name="fecha_fabricacion"
+                                            type="date"
+                                            value={formData.fecha_fabricacion}
+                                            onChange={handleInputChange}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="codigo_producto">Código del Producto</Label>
+                                        <Select
+                                            value={formData.codigo_producto}
+                                            onValueChange={(val) => handleSelectChange("codigo_producto", val)}
+                                            required
+                                        >
+                                            <SelectTrigger id="codigo_producto" className={!formData.codigo_producto ? "border-red-500" : ""}>
+                                                <SelectValue placeholder="Selecciona el producto" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {(CATEGORY_PRODUCTS[selectedCategory || ""] || []).map((code) => (
+                                                    <SelectItem key={code} value={code}>{code}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="tamano_lote">
+                                            Tamaño de Lote ({selectedCategory?.includes("aromatizante") || selectedCategory?.includes("limpiadores") ? "Piezas" : "Litros"})
+                                        </Label>
+                                        <Input
+                                            id="tamano_lote"
+                                            name="tamano_lote"
+                                            type="number"
+                                            step="0.1"
+                                            placeholder={selectedCategory?.includes("aromatizante") || selectedCategory?.includes("limpiadores") ? "Ej: 500" : "Ej: 100"}
+                                            value={formData.tamano_lote}
+                                            onChange={handleInputChange}
+                                            required
+                                            className={!formData.tamano_lote ? "border-red-500" : ""}
+                                        />
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Parámetros de Calidad */}
+                            <Card className="border-primary/10 shadow-lg overflow-hidden">
+                                <CardHeader className="bg-gradient-to-r from-blue-50 to-red-50 dark:from-blue-950/20 dark:to-red-950/20 border-b">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-red-600 rounded-lg text-white">
+                                            <FlaskConical className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <CardTitle>Parámetros Físico-Químicos</CardTitle>
+                                            <CardDescription>Mediciones registradas en laboratorio</CardDescription>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="space-y-8 pt-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        {/* Sólidos Column */}
+                                        <div className="space-y-4 p-4 rounded-xl bg-blue-50/30 dark:bg-blue-900/10 border border-blue-100/50 dark:border-blue-800/20">
+                                            <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 font-bold mb-2">
+                                                <Beaker className="h-5 w-5" />
+                                                % Sólidos (Brix)
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label>% Sólidos - M1</Label>
+                                                    <Input
+                                                        name="solidos_medicion_1"
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={formData.solidos_medicion_1}
+                                                        onChange={handleInputChange}
+                                                        disabled={!PARAMETER_APPLICABILITY[formData.codigo_producto]?.solidos}
+                                                        className="bg-white/50 dark:bg-slate-900/50"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Temp - M1 (°C)</Label>
+                                                    <Input
+                                                        name="temp_med1"
+                                                        type="number"
+                                                        step="0.1"
+                                                        value={formData.temp_med1}
+                                                        onChange={handleInputChange}
+                                                        disabled={!PARAMETER_APPLICABILITY[formData.codigo_producto]?.solidos}
+                                                        className="bg-white/50 dark:bg-slate-900/50"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>% Sólidos - M2</Label>
+                                                    <Input
+                                                        name="solidos_medicion_2"
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={formData.solidos_medicion_2}
+                                                        onChange={handleInputChange}
+                                                        disabled={!PARAMETER_APPLICABILITY[formData.codigo_producto]?.solidos}
+                                                        className="bg-white/50 dark:bg-slate-900/50"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Temp - M2 (°C)</Label>
+                                                    <Input
+                                                        name="temp_med2"
+                                                        type="number"
+                                                        step="0.1"
+                                                        value={formData.temp_med2}
+                                                        onChange={handleInputChange}
+                                                        disabled={!PARAMETER_APPLICABILITY[formData.codigo_producto]?.solidos}
+                                                        className="bg-white/50 dark:bg-slate-900/50"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* pH Column */}
+                                        <div className="space-y-4 p-4 rounded-xl bg-red-50/30 dark:bg-red-900/10 border border-red-100/50 dark:border-red-800/20">
+                                            <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-bold mb-2">
+                                                <Droplets className="h-5 w-5" />
+                                                Mediciones Adicionales
+                                            </div>
+                                            <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <Label>Valor medido de pH</Label>
+                                                    <Input
+                                                        name="ph"
+                                                        type="number"
+                                                        step="0.01"
+                                                        placeholder="Ej: 7.20"
+                                                        value={formData.ph}
+                                                        onChange={handleInputChange}
+                                                        disabled={!PARAMETER_APPLICABILITY[formData.codigo_producto]?.ph}
+                                                        className="bg-white/50 dark:bg-slate-900/50 font-bold text-lg"
+                                                    />
+                                                </div>
+                                                <div className="p-3 bg-white/50 dark:bg-slate-900/50 rounded-lg border text-[11px] text-muted-foreground italic leading-tight">
+                                                    Usar tiras reactivas o potenciómetro según P-CC-04.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Organoleptic Row */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-dashed">
+                                        <div className="space-y-2">
+                                            <Label className="flex items-center gap-2">
+                                                <Eye className="h-4 w-4" /> Apariencia
+                                            </Label>
+                                            <Select
+                                                value={formData.apariencia}
+                                                onValueChange={(val) => handleSelectChange("apariencia", val)}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Selecciona" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="CRISTALINO">CRISTALINO</SelectItem>
+                                                    <SelectItem value="OPACO">OPACO</SelectItem>
+                                                    <SelectItem value="APERLADO">APERLADO</SelectItem>
+                                                    <SelectItem value="TURBIO">TURBIO</SelectItem>
+                                                    <SelectItem value="PARTICULAS SUSPENDIDAS">PARTICULAS SUSPENDIDAS</SelectItem>
+                                                    <SelectItem value="SEPARACION DE COMPONENTES">SEPARACION DE COMPONENTES</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Color</Label>
+                                            <Select
+                                                value={formData.color}
+                                                onValueChange={(val) => handleSelectChange("color", val)}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="CONFORME">CONFORME</SelectItem>
+                                                    <SelectItem value="NO CONFORME">NO CONFORME</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Aroma</Label>
+                                            <Select
+                                                value={formData.aroma}
+                                                onValueChange={(val) => handleSelectChange("aroma", val)}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="CONFORME">CONFORME</SelectItem>
+                                                    <SelectItem value="NO CONFORME">NO CONFORME</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="observaciones">Observaciones adicionales</Label>
+                                        <Textarea
+                                            id="observaciones"
+                                            name="observaciones"
+                                            placeholder="Cualquier desviación o nota relevante..."
+                                            value={formData.observaciones}
+                                            onChange={handleInputChange}
+                                            className="min-h-[100px]"
+                                        />
+                                    </div>
+                                </CardContent>
+                                <CardFooter className="bg-muted/30 border-t py-4 flex flex-col gap-4">
+                                    <div className="w-full flex flex-wrap gap-3">
+                                        {currentEvaluations.map((ev, i) => (
+                                            <Badge
+                                                key={i}
+                                                className={cn(
+                                                    "gap-1.5 py-1 px-3 text-sm border font-semibold",
+                                                    ev.status === "success" && "bg-green-600 hover:bg-green-700 text-white border-green-600",
+                                                    ev.status === "warning" && "bg-yellow-100 hover:bg-yellow-200 text-yellow-800 border-yellow-200",
+                                                    ev.status === "error" && "bg-red-600 hover:bg-red-700 text-white border-red-600"
+                                                )}
+                                            >
+                                                {ev.status === "success" ? <CheckCircle2 className="h-3.5 w-3.5" /> : ev.status === "warning" ? <AlertCircle className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
+                                                {ev.type}: {ev.text}
+                                            </Badge>
+                                        ))}
+                                        {currentEvaluations.length === 0 && (
+                                            <p className="text-xs text-muted-foreground italic">
+                                                Ingresa mediciones para ver la evaluación en tiempo real.
+                                            </p>
+                                        )}
+                                    </div>
+                                    <Button
+                                        type="submit"
+                                        className="w-full md:w-auto md:min-w-[200px] h-12 text-lg font-bold gap-2"
+                                        disabled={loading || !formData.codigo_producto}
+                                    >
+                                        {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ClipboardCheck className="h-5 w-5" />}
+                                        Finalizar y Generar Lote
+                                    </Button>
+                                </CardFooter>
+                            </Card>
+                        </form>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    )
+}

@@ -4,6 +4,8 @@ import "./globals.css"
 import { AppShell } from "@/components/AppShell"
 
 import { ThemeProvider } from "@/components/theme-provider"
+import { AuthProvider } from "@/components/AuthProvider"
+import { Toaster } from "sonner"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -26,7 +28,10 @@ export default function RootLayout({
                     enableSystem
                     disableTransitionOnChange
                 >
-                    <AppShell>{children}</AppShell>
+                    <AuthProvider>
+                        <AppShell>{children}</AppShell>
+                        <Toaster position="top-right" richColors />
+                    </AuthProvider>
                 </ThemeProvider>
             </body>
         </html>

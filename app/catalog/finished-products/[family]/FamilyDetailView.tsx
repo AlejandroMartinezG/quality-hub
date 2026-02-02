@@ -14,6 +14,7 @@ import { ArrowUpDown, Package, Eye, Download, FileText, ShieldAlert, BadgeCheck,
 import { Button } from "@/components/ui/button"
 import { FinishedProduct, FamilyGroup } from "@/lib/types"
 import { getBasePath, cn } from "@/lib/utils"
+import { TrackedLink } from "@/components/TrackedLink"
 import Fuse from "fuse.js"
 
 const columns: ColumnDef<FinishedProduct>[] = [
@@ -94,18 +95,32 @@ const columns: ColumnDef<FinishedProduct>[] = [
                 <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                     <Button variant="ghost" size="icon" asChild={!!p.tds_view_url} title="Ver TDS" disabled={!p.tds_view_url}>
                         {p.tds_view_url ? (
-                            <a href={p.tds_view_url} target="_blank" rel="noopener noreferrer">
+                            <TrackedLink
+                                href={p.tds_view_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                fileName={p.variant || p.base_product}
+                                fileType="TDS (Vista)"
+                                skuCode={p.sku_code}
+                            >
                                 <Eye className="h-4 w-4 text-primary" />
-                            </a>
+                            </TrackedLink>
                         ) : (
                             <Eye className="h-4 w-4 text-primary/30" />
                         )}
                     </Button>
                     <Button variant="ghost" size="icon" asChild={!!p.tds_download_url} title="Descargar TDS" disabled={!p.tds_download_url}>
                         {p.tds_download_url ? (
-                            <a href={p.tds_download_url} target="_blank" rel="noopener noreferrer">
+                            <TrackedLink
+                                href={p.tds_download_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                fileName={p.variant || p.base_product}
+                                fileType="TDS (Descarga)"
+                                skuCode={p.sku_code}
+                            >
                                 <Download className="h-4 w-4 text-muted-foreground" />
-                            </a>
+                            </TrackedLink>
                         ) : (
                             <Download className="h-4 w-4 text-muted-foreground/30" />
                         )}
@@ -123,18 +138,32 @@ const columns: ColumnDef<FinishedProduct>[] = [
                 <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                     <Button variant="ghost" size="icon" asChild={!!p.sds_view_url} title="Ver SDS" disabled={!p.sds_view_url}>
                         {p.sds_view_url ? (
-                            <a href={p.sds_view_url} target="_blank" rel="noopener noreferrer">
+                            <TrackedLink
+                                href={p.sds_view_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                fileName={p.variant || p.base_product}
+                                fileType="SDS (Vista)"
+                                skuCode={p.sku_code}
+                            >
                                 <ShieldAlert className="h-4 w-4 text-destructive" />
-                            </a>
+                            </TrackedLink>
                         ) : (
                             <ShieldAlert className="h-4 w-4 text-destructive/30" />
                         )}
                     </Button>
                     <Button variant="ghost" size="icon" asChild={!!p.sds_download_url} title="Descargar SDS" disabled={!p.sds_download_url}>
                         {p.sds_download_url ? (
-                            <a href={p.sds_download_url} target="_blank" rel="noopener noreferrer">
+                            <TrackedLink
+                                href={p.sds_download_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                fileName={p.variant || p.base_product}
+                                fileType="SDS (Descarga)"
+                                skuCode={p.sku_code}
+                            >
                                 <Download className="h-4 w-4 text-muted-foreground" />
-                            </a>
+                            </TrackedLink>
                         ) : (
                             <Download className="h-4 w-4 text-muted-foreground/30" />
                         )}
@@ -152,18 +181,32 @@ const columns: ColumnDef<FinishedProduct>[] = [
                 <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                     <Button variant="ghost" size="icon" asChild={!!p.coa_view_url} title="Ver COA" disabled={!p.coa_view_url}>
                         {p.coa_view_url ? (
-                            <a href={p.coa_view_url} target="_blank" rel="noopener noreferrer">
+                            <TrackedLink
+                                href={p.coa_view_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                fileName={p.variant || p.base_product}
+                                fileType="COA (Vista)"
+                                skuCode={p.sku_code}
+                            >
                                 <BadgeCheck className="h-4 w-4 text-green-500" />
-                            </a>
+                            </TrackedLink>
                         ) : (
                             <BadgeCheck className="h-4 w-4 text-green-500/30" />
                         )}
                     </Button>
                     <Button variant="ghost" size="icon" asChild={!!p.coa_download_url} title="Descargar COA" disabled={!p.coa_download_url}>
                         {p.coa_download_url ? (
-                            <a href={p.coa_download_url} target="_blank" rel="noopener noreferrer">
+                            <TrackedLink
+                                href={p.coa_download_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                fileName={p.variant || p.base_product}
+                                fileType="COA (Descarga)"
+                                skuCode={p.sku_code}
+                            >
                                 <Download className="h-4 w-4 text-muted-foreground" />
-                            </a>
+                            </TrackedLink>
                         ) : (
                             <Download className="h-4 w-4 text-muted-foreground/30" />
                         )}

@@ -1,191 +1,93 @@
 # Quality Hub GINEZ
 
-Sistema de Gestión Documental del Laboratorio de Calidad y Desarrollo para GINEZ. Portal estático para consulta y descarga de documentación de Materias Primas (MP) y Productos Terminados (PT).
+Sistema de Gestión de Calidad y Documentación para GINEZ. Aplicación web progresiva diseñada para el control de procesos de calidad, gestión de usuarios y consulta de documentación técnica.
 
-## 🚀 Características
+## 🚀 Nuevas Características (v2.0)
 
-- **100% Estático**: Sitio generado con Next.js, desplegable en GitHub Pages
-- **Datos desde Google Sheets**: Actualiza el catálogo editando tu Sheet
-- **Documentos en Google Drive**: PDFs accesibles con enlaces Ver/Descargar
-- **Optimización de Rendimiento**: Uso de `useDeferredValue` para búsquedas y filtros ultra fluidos
-- **Identidad GINEZ**: Colores institucionales (#16149a, #c32420) e iconografía personalizada
-- **Documentación Inteligente**: Iconos de documentos con estados "disponible" e "inactivo" para mejor visibilidad
-- **Responsive**: Diseño adaptable a móviles y escritorio
+Esta versión introduce una arquitectura dinámica basada en **Supabase**, permitiendo autenticación, gestión de datos en tiempo real y seguridad robusta.
 
-## 📋 Estructura del Proyecto
+### 🔐 Seguridad y Accesibilidad
+- **Autenticación Segura**: Sistema de Login con correo y contraseña.
+- **Control de Acceso Basado en Roles (RBAC)**:
+  - **Administrador**: Acceso total a gestión de usuarios, auditoría completa, eliminación de registros y configuración global.
+  - **Usuario**: Acceso a consulta de catálogo, creación de registros de calidad (visibilidad limitada a sus propios registros) y edición de su perfil básico.
 
-```
-quality-hub/
-├── app/                    # Páginas (App Router)
-│   ├── page.tsx           # Panel Principal
-│   ├── catalog/
-│   │   ├── page.tsx       # Catálogo
-│   │   ├── raw-materials/ # Materias Primas
-│   │   └── finished-products/ # Productos Terminados
-├── components/            # Componentes React
-├── data/                  # JSON generado (build time)
-├── lib/                   # Utilidades y tipos
-├── scripts/
-│   └── build-data.mjs    # Script de procesamiento CSV→JSON
-└── .github/workflows/
-    └── deploy.yml        # GitHub Actions para deploy
-```
+### 🧪 Módulo de Bitácora de Producción
+- **Registro de Lotes**: Interfaz guiada paso a paso para la creación de nuevos lotes de producción.
+- **Generación Inteligente de Lotes**: Algoritmo automático que crea números de lote únicos basados en fecha, sucursal y producto.
+- **Validación en Tiempo Real**: 
+  - Comparación instantánea de mediciones (pH, % Sólidos) contra estándares predefinidos del producto.
+  - Feedback visual inmediato (Conforme/Fuera de Rango) antes de guardar.
+- **Integridad de Datos**: Campos dinámicos que se activan según la aplicabilidad de parámetros para cada familia de productos.
 
-## 📊 Configuración del Google Sheet
+### 📊 Módulo de Control de Calidad
+- **Tablero de Resultados**: "Historial de Mediciones" con visualización gráfica del estado general de la producción.
+- **Indicadores Clave (KPIs)**: Tarjetas interactivas que muestran conteos y porcentajes de cumplimiento (Conformes, Semi-Conformes, No Conformes) filtrados en tiempo real.
+- **Gestión Integral**:
+  - Búsqueda potente por lote, producto o sucursal.
+  - Opciones de edición y eliminación (protegidas por roles).
+  - Cálculo automático de estatus global del lote.
 
-### Crear el Sheet
+### ⚙️ Módulo de Configuración
+- **Perfil de Usuario**: Edición de datos personales (Nombre, Área, Puesto) y cambio seguro de credenciales (con verificación de correo).
+- **Gestión de Usuarios (Admin)**:
+  - Panel centralizado para ver todos los usuarios registrados.
+  - Edición de roles y permisos.
+  - Eliminación forzada de usuarios (preservando integridad de datos históricos).
+- **Auditoría (Admin)**: Registro detallado de descargas y accesos a documentos críticos.
 
-1. Crea un nuevo Google Sheet
-2. Crea dos pestañas: `MP` y `PT`
+---
 
-### Pestaña MP (Materias Primas)
+## 📋 Estructura Estática (Catálogo)
+El módulo de catálogo mantiene su funcionalidad de alta disponibilidad:
+- **Datos Sincronizados**: Conexión con Google Sheets para listas de precios y especificaciones.
+- **Documentación en Drive**: Acceso directo a Fichas Técnicas y Hojas de Seguridad.
 
-Encabezados exactos (primera fila):
+---
 
-| Columna | Requerida | Descripción |
-|---------|-----------|-------------|
-| `code` | ✅ | Código único de la materia prima |
-| `name` | ✅ | Nombre de la materia prima |
-| `cas` | ❌ | Número CAS |
-| `transport_name` | ❌ | Nombre de transporte |
-| `functional_category` | ✅ | Categoría funcional |
-| `chemical_family` | ✅ | Familia química |
-| `disposition` | ✅ | Disposición (Aprobado/En Revisión/Rechazado) |
-| `provider` | ❌ | Nombre del proveedor |
-| `provider_code` | ❌ | Código del proveedor |
-| `lead_time_days` | ❌ | Tiempo de entrega en días |
-| `tds_file_id` | ❌ | FILE_ID del PDF de Ficha Técnica |
-| `sds_file_id` | ❌ | FILE_ID del PDF de Hoja de Seguridad |
-| `coa_cedis_file_id` | ❌ | FILE_ID del Certificado CEDIS |
-| `coa_branches_file_id` | ❌ | FILE_ID del Certificado Sucursales |
-| `label_file_id` | ❌ | FILE_ID de Info de Etiquetado |
+## 🛠️ Configuración para Desarrollo
 
-### Pestaña PT (Productos Terminados)
+### 1. Requisitos Previos
+- Node.js 18+
+- Cuenta en [Supabase](https://supabase.com/)
 
-Encabezados exactos (primera fila):
+### 2. Variables de Entorno
+Crea un archivo `.env.local` en la raíz del proyecto con las siguientes credenciales:
 
-| Columna | Requerida | Descripción |
-|---------|-----------|-------------|
-| `family` | ✅ | Familia del producto |
-| `category` | ✅ | Categoría del producto |
-| `sku_code` | ✅ | Código SKU único |
-| `base_product` | ✅ | Nombre del producto base |
-| `variant` | ❌ | Variante del producto |
-| `status` | ✅ | Estado: `Activo` o `Inactivo` |
-| `updated_at` | ✅ | Fecha de actualización (YYYY-MM-DD) |
-| `tds_file_id` | ❌ | FILE_ID del PDF de Ficha Técnica |
-| `sds_file_id` | ❌ | FILE_ID del PDF de Hoja de Seguridad |
-| `internal_qc_file_id` | ❌ | FILE_ID de Parámetros de Calidad |
-| `label_file_id` | ❌ | FILE_ID de Info de Etiquetado |
+```env
+# Google Sheets (Catálogo)
+SHEET_MP_CSV_URL="tu_url_csv_materia_prima"
+SHEET_PT_CSV_URL="tu_url_csv_producto_terminado"
 
-### ¿Qué es el FILE_ID?
-
-El FILE_ID es el identificador único de un archivo en Google Drive. Lo encuentras en la URL del archivo:
-
-```
-https://drive.google.com/file/d/1ABC123XYZ789/view
-                              ↑____________↑
-                              Este es el FILE_ID
+# Supabase (Auth & Database)
+NEXT_PUBLIC_SUPABASE_URL="https://tu-proyecto.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="tu-clave-anonima-publica"
 ```
 
-**Importante**: Cada PDF debe tener permiso "Cualquiera con el enlace puede ver".
-
-## 📤 Publicar el Sheet como CSV
-
-1. Abre tu Google Sheet
-2. Ve a **Archivo → Compartir → Publicar en la web**
-3. Selecciona pestaña `MP` → formato **CSV** → clic en **Publicar**
-4. Copia la URL generada (esta es tu `SHEET_MP_CSV_URL`)
-5. Repite para la pestaña `PT` (esta es tu `SHEET_PT_CSV_URL`)
-
-## ⚙️ Variables en GitHub
-
-Ve a tu repositorio → **Settings → Secrets and variables → Actions → Variables** y crea:
-
-| Variable | Valor | Descripción |
-|----------|-------|-------------|
-| `SHEET_MP_CSV_URL` | URL del paso 4 | URL CSV de Materias Primas |
-| `SHEET_PT_CSV_URL` | URL del paso 5 | URL CSV de Productos Terminados |
-| `NEXT_PUBLIC_BASE_PATH` | `/nombre-repo` | Ej: `/quality-hub` si tu repo se llama `quality-hub` |
-
-## 🔄 Proceso de Actualización
-
-1. **Edita el Sheet**: Agrega, modifica o elimina registros en tu Google Sheet
-2. **Sube PDFs a Drive**: Si hay nuevos documentos, súbelos y copia el FILE_ID
-3. **Actualiza FILE_IDs**: Pega los FILE_IDs en las columnas correspondientes
-4. **Dispara el deploy**: Ve a Actions → Deploy to GitHub Pages → Run workflow
-
-Los cambios se reflejarán en minutos.
-
-## 🛠️ Desarrollo Local
+### 3. Instalación y Ejecución
 
 ```bash
 # Instalar dependencias
 npm install
 
-# Generar datos de muestra (sin Google Sheets)
-npm run build-data
-
 # Iniciar servidor de desarrollo
 npm run dev
-
-# Construir para producción
-npm run build
+# El sitio estará disponible en http://localhost:3000 (o 3001 si está ocupado)
 ```
 
-### Variables de entorno para desarrollo
+## 📦 Stack Tecnológico Actualizado
 
-Crea un archivo `.env.local`:
+- **Framework**: [Next.js 14](https://nextjs.org/) (App Router)
+- **Base de Datos & Auth**: [Supabase](https://supabase.com/) (PostgreSQL)
+- **Estilos**: [Tailwind CSS](https://tailwindcss.com/)
+- **Componentes UI**: [shadcn/ui](https://ui.shadcn.com/)
+- **Visualización de Datos**: Tarjetas reactivas personalizadas
+- **Iconografía**: [Lucide React](https://lucide.dev/)
 
-```env
-SHEET_MP_CSV_URL=tu-url-csv-mp
-SHEET_PT_CSV_URL=tu-url-csv-pt
-NEXT_PUBLIC_BASE_PATH=
-```
+## 📝 Notas de Implementación
 
-## 📁 Familias de Productos Terminados
-
-Las familias disponibles son:
-
-- **Cuidado del Hogar**
-  - Limpiadores Líquidos Multiusos
-  - Detergentes Líquidos para Trastes
-  - Aromatizantes Ambientales
-  - Especialidades Cuidado del Hogar
-  - Bases Limpiadores Líquidos Multiusos
-  - Bases Aromatizantes Ambientales
-
-- **Lavandería**
-  - Detergentes Líquidos para Ropa
-  - Suavizantes Líquidos para Telas
-  - Especialidades Lavandería
-
-- **Línea Automotriz** (categorías por definir)
-
-- **Línea Antibacterial** (categorías por definir)
-
-- **Cuidado Personal**
-  - Jabones Líquidos para Manos
-  - Shampoo Capilar
-  - Enjuague Capilar
-  - Cremas Corporales
-
-## 🔒 Seguridad
-
-- El sitio es **público** (sin autenticación en MVP)
-- Los PDFs en Drive deben tener permiso "Cualquiera con el enlace"
-- No se almacenan credenciales en el código
-
-## 📦 Tecnologías
-
-- [Next.js 14](https://nextjs.org/) - Framework React
-- [Tailwind CSS](https://tailwindcss.com/) - Estilos
-- [shadcn/ui](https://ui.shadcn.com/) - Componentes UI
-- [TanStack Table](https://tanstack.com/table) - Tablas avanzadas
-- [Fuse.js](https://www.fusejs.io/) - Búsqueda fuzzy
-- [Zod](https://zod.dev/) - Validación de datos
-- [Lucide React](https://lucide.dev/) - Iconos
+- **Validación de Correos**: Los cambios de correo electrónico requieren confirmación vía email para hacerse efectivos en el login, aunque la interfaz visual se actualiza para evitar confusión.
+- **Integridad de Datos**: Al eliminar un usuario, sus registros de calidad históricos se conservan para fines de trazabilidad, pero el acceso de la cuenta se revoca inmediatamente.
 
 ## 📄 Licencia
-
-Uso interno GINEZ.
+Uso interno exclusivo para GINEZ.

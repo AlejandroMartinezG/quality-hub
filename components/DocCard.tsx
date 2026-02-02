@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Eye, Download, FileText } from "lucide-react"
+import { TrackedLink } from "./TrackedLink"
 
 interface DocItem {
     label: string
@@ -11,9 +12,10 @@ interface DocItem {
 interface DocCardProps {
     title: string
     documents: DocItem[]
+    skuCode?: string
 }
 
-export function DocCard({ title, documents }: DocCardProps) {
+export function DocCard({ title, documents, skuCode }: DocCardProps) {
     const availableDocs = documents.filter(doc => doc.viewUrl || doc.downloadUrl)
 
     if (availableDocs.length === 0) {
@@ -42,10 +44,17 @@ export function DocCard({ title, documents }: DocCardProps) {
                                     size="sm"
                                     asChild
                                 >
-                                    <a href={doc.viewUrl} target="_blank" rel="noopener noreferrer">
+                                    <TrackedLink
+                                        href={doc.viewUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        fileName={title}
+                                        fileType={`${doc.label} (Vista)`}
+                                        skuCode={skuCode}
+                                    >
                                         <Eye className="h-4 w-4 mr-1" />
                                         Ver
-                                    </a>
+                                    </TrackedLink>
                                 </Button>
                             ) : (
                                 <Button variant="outline" size="sm" disabled>
@@ -59,10 +68,17 @@ export function DocCard({ title, documents }: DocCardProps) {
                                     size="sm"
                                     asChild
                                 >
-                                    <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer">
+                                    <TrackedLink
+                                        href={doc.downloadUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        fileName={title}
+                                        fileType={`${doc.label} (Descarga)`}
+                                        skuCode={skuCode}
+                                    >
                                         <Download className="h-4 w-4 mr-1" />
                                         Descargar
-                                    </a>
+                                    </TrackedLink>
                                 </Button>
                             ) : (
                                 <Button variant="default" size="sm" disabled>
