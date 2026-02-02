@@ -90,7 +90,7 @@ export default function BitacoraPage() {
         const datePart = data.fecha_fabricacion.replace(/-/g, "").slice(2) // YYMMDD
         const acronym = SUCURSAL_ACRONYMS[data.sucursal] || "NA"
         const productCode = data.codigo_producto
-        const size = data.tamano_lote.replace(/[^0-9]/g, "")
+        const size = Math.round(parseFloat(data.tamano_lote)).toString()
 
         // Count existing records
         try {

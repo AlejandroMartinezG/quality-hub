@@ -447,15 +447,16 @@ export default function CalidadPage() {
                         <div className="rounded-md border overflow-x-auto">
                             <Table>
                                 <TableHeader>
-                                    <TableRow className="bg-muted/50">
-                                        <TableHead className="w-[150px]">Lote</TableHead>
-                                        <TableHead>Producto/Sucursal</TableHead>
-                                        <TableHead className="text-center">pH</TableHead>
-                                        <TableHead className="text-center">% Sólidos (Avg)</TableHead>
-                                        <TableHead>Estado</TableHead>
-                                        <TableHead className="text-center">Apariencia</TableHead>
-                                        <TableHead className="text-right">Fecha</TableHead>
-                                        {profile?.is_admin && <TableHead className="text-right">Acciones</TableHead>}
+                                    <TableRow className="bg-slate-900 hover:bg-slate-900/90 border-b-4 border-primary/20">
+                                        <TableHead className="w-[150px] text-white font-bold text-sm">Lote</TableHead>
+                                        <TableHead className="text-white font-bold text-sm">Producto/Sucursal</TableHead>
+                                        <TableHead className="text-center text-white font-bold text-sm">pH</TableHead>
+                                        <TableHead className="text-center text-white font-bold text-sm">% Sólidos (Avg)</TableHead>
+                                        <TableHead className="text-white font-bold text-sm">Estado</TableHead>
+                                        <TableHead className="text-center text-white font-bold text-sm">Apariencia</TableHead>
+                                        <TableHead className="text-right text-white font-bold text-sm">Fecha</TableHead>
+                                        {profile?.is_admin && <TableHead className="text-white font-bold text-sm">Preparador</TableHead>}
+                                        {profile?.is_admin && <TableHead className="text-right text-white font-bold text-sm">Acciones</TableHead>}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -472,22 +473,22 @@ export default function CalidadPage() {
 
                                             return (
                                                 <TableRow key={record.id} className="hover:bg-muted/30 transition-colors">
-                                                    <TableCell className="font-mono font-bold text-xs text-slate-700">
+                                                    <TableCell className="font-mono font-bold text-sm text-slate-700">
                                                         {record.lote_producto}
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="flex flex-col">
-                                                            <span className="font-bold text-sm text-slate-800">{record.codigo_producto}</span>
-                                                            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{record.sucursal}</span>
+                                                            <span className="font-bold text-base text-slate-800">{record.codigo_producto}</span>
+                                                            <span className="text-xs text-muted-foreground uppercase tracking-wide">{record.sucursal}</span>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="text-center">
                                                         <div className="flex flex-col items-center">
-                                                            <span className={record.ph !== null ? "font-bold" : "text-muted-foreground text-xs"}>
+                                                            <span className={record.ph !== null ? "font-bold text-sm" : "text-muted-foreground text-xs"}>
                                                                 {record.ph ?? "N/A"}
                                                             </span>
                                                             {stdPH && (
-                                                                <span className="text-[9px] text-muted-foreground">
+                                                                <span className="text-[10px] text-muted-foreground">
                                                                     Ref: {stdPH.min}-{stdPH.max}
                                                                 </span>
                                                             )}
@@ -495,20 +496,25 @@ export default function CalidadPage() {
                                                     </TableCell>
                                                     <TableCell className="text-center">
                                                         <div className="flex flex-col items-center">
-                                                            <span className={avgSolids !== null ? "font-bold" : "text-muted-foreground text-xs"}>
+                                                            <span className={avgSolids !== null ? "font-bold text-base" : "text-muted-foreground text-xs"}>
                                                                 {avgSolids !== null ? avgSolids.toFixed(2) + "%" : "N/A"}
                                                             </span>
                                                             {stdSolids && (
-                                                                <span className="text-[9px] text-muted-foreground">
-                                                                    Tol: {(stdSolids.min! * 0.95).toFixed(1)}-{(stdSolids.max! * 1.05).toFixed(1)}
-                                                                </span>
+                                                                <div className="flex flex-col items-center gap-0.5 mt-1">
+                                                                    <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                                                                        Std: {stdSolids.min}-{stdSolids.max}
+                                                                    </span>
+                                                                    <span className="text-[10px] text-muted-foreground/80">
+                                                                        Tol: {(stdSolids.min! * 0.95).toFixed(2)}-{(stdSolids.max! * 1.05).toFixed(2)}
+                                                                    </span>
+                                                                </div>
                                                             )}
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
                                                         <Badge
                                                             className={cn(
-                                                                "gap-1.5 shadow-none px-3 py-1 text-[10px] font-semibold uppercase tracking-wider rounded-full",
+                                                                "gap-1.5 shadow-none px-3 py-1 text-xs font-semibold uppercase tracking-wider rounded-full",
                                                                 status === 'success' && "bg-green-600 text-white hover:bg-green-700 border-none",
                                                                 status === 'warning' && "bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200",
                                                                 status === 'error' && "bg-red-600 text-white hover:bg-red-700 border-none"
@@ -522,17 +528,22 @@ export default function CalidadPage() {
                                                     </TableCell>
                                                     <TableCell className="text-center">
                                                         <div className="flex flex-col items-center">
-                                                            <span className="text-xs font-semibold">{record.apariencia || "N/A"}</span>
+                                                            <span className="text-sm font-semibold">{record.apariencia || "N/A"}</span>
                                                             {stdApp && (
-                                                                <span className="text-[9px] text-muted-foreground">
+                                                                <span className="text-[10px] text-muted-foreground">
                                                                     Esp: {stdApp}
                                                                 </span>
                                                             )}
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className="text-right text-xs text-muted-foreground">
+                                                    <TableCell className="text-right text-sm text-muted-foreground">
                                                         {new Date(record.fecha_fabricacion).toLocaleDateString()}
                                                     </TableCell>
+                                                    {profile?.is_admin && (
+                                                        <TableCell className="text-sm font-medium text-slate-700">
+                                                            {record.nombre_preparador || "N/A"}
+                                                        </TableCell>
+                                                    )}
                                                     {profile?.is_admin && (
                                                         <TableCell className="text-right">
                                                             <div className="flex justify-end gap-2">
@@ -570,7 +581,7 @@ export default function CalidadPage() {
                                         })
                                     ) : (
                                         <TableRow>
-                                            <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                                            <TableCell colSpan={profile?.is_admin ? 9 : 8} className="h-24 text-center text-muted-foreground">
                                                 No se encontraron registros.
                                             </TableCell>
                                         </TableRow>
