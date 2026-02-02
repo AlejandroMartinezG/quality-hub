@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { InfoCard } from "@/components/InfoCard"
 import { RawMaterial } from "@/lib/types"
 import { FlaskConical, Truck, Warehouse, FileText, ShieldAlert, BadgeCheck, Eye, Download } from "lucide-react"
+import { TrackedLink } from "@/components/TrackedLink"
 
 import rawMaterialsData from "@/data/raw-materials.json"
 
@@ -155,16 +156,44 @@ export default function RawMaterialDetailPage({ params }: PageProps) {
                                 </div>
                                 <div className="flex gap-2 pt-2">
                                     <Button variant="outline" size="sm" className="flex-1 gap-1.5" disabled={!doc.viewUrl} asChild>
-                                        <a href={doc.viewUrl || "#"} target="_blank" rel="noopener noreferrer">
-                                            <Eye className="h-3.5 w-3.5" />
-                                            Ver
-                                        </a>
+                                        {doc.viewUrl ? (
+                                            <TrackedLink
+                                                href={doc.viewUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                fileName={`${doc.label} - ${material.name}`}
+                                                fileType={`${doc.label} (Vista)`}
+                                                skuCode={material.code}
+                                            >
+                                                <Eye className="h-3.5 w-3.5" />
+                                                Ver
+                                            </TrackedLink>
+                                        ) : (
+                                            <span>
+                                                <Eye className="h-3.5 w-3.5" />
+                                                Ver
+                                            </span>
+                                        )}
                                     </Button>
                                     <Button size="sm" className="flex-1 gap-1.5" disabled={!doc.downloadUrl} asChild>
-                                        <a href={doc.downloadUrl || "#"} target="_blank" rel="noopener noreferrer">
-                                            <Download className="h-3.5 w-3.5" />
-                                            Descargar
-                                        </a>
+                                        {doc.downloadUrl ? (
+                                            <TrackedLink
+                                                href={doc.downloadUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                fileName={`${doc.label} - ${material.name}`}
+                                                fileType={`${doc.label} (Descarga)`}
+                                                skuCode={material.code}
+                                            >
+                                                <Download className="h-3.5 w-3.5" />
+                                                Descargar
+                                            </TrackedLink>
+                                        ) : (
+                                            <span>
+                                                <Download className="h-3.5 w-3.5" />
+                                                Descargar
+                                            </span>
+                                        )}
                                     </Button>
                                 </div>
                             </CardContent>

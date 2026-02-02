@@ -27,7 +27,9 @@ import {
     Trash2,
     Edit2,
     RotateCcw,
-    X
+    X,
+    ClipboardList,
+    Package
 } from "lucide-react"
 import {
     Dialog,
@@ -296,7 +298,58 @@ export default function CalidadPage() {
                 </Card>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                {/* 1. Total Analizado */}
+                <Card className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/20 dark:to-blue-900/10 border-blue-200 dark:border-blue-900/30">
+                    <div className="absolute top-0 right-0 p-4 opacity-10">
+                        <ClipboardList className="w-24 h-24 text-blue-600" />
+                    </div>
+                    <CardHeader className="pb-2 relative z-10">
+                        <CardTitle className="text-sm font-bold text-blue-700 dark:text-blue-400 uppercase tracking-widest flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
+                            Total
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="relative z-10">
+                        <div className="flex flex-col gap-1">
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-5xl font-extrabold text-blue-700 dark:text-blue-400 tracking-tight">
+                                    {filteredRecords.length}
+                                </span>
+                                <span className="text-sm font-medium text-blue-600/80 dark:text-blue-400/80">muestras</span>
+                            </div>
+                            <span className="text-xs font-semibold text-blue-700/70 dark:text-blue-300/70">
+                                Total filtrado
+                            </span>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* 2. Productos Únicos */}
+                <Card className="relative overflow-hidden bg-gradient-to-br from-indigo-50 to-indigo-100/50 dark:from-indigo-950/20 dark:to-indigo-900/10 border-indigo-200 dark:border-indigo-900/30">
+                    <div className="absolute top-0 right-0 p-4 opacity-10">
+                        <Package className="w-24 h-24 text-indigo-600" />
+                    </div>
+                    <CardHeader className="pb-2 relative z-10">
+                        <CardTitle className="text-sm font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]" />
+                            Variedad
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="relative z-10">
+                        <div className="flex flex-col gap-1">
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-5xl font-extrabold text-indigo-700 dark:text-indigo-400 tracking-tight">
+                                    {new Set(filteredRecords.map(r => r.codigo_producto)).size}
+                                </span>
+                                <span className="text-sm font-medium text-indigo-600/80 dark:text-indigo-400/80">productos</span>
+                            </div>
+                            <span className="text-xs font-semibold text-indigo-700/70 dark:text-indigo-300/70">
+                                Productos únicos
+                            </span>
+                        </div>
+                    </CardContent>
+                </Card>
                 <Card className="relative overflow-hidden bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/20 dark:to-green-900/10 border-green-200 dark:border-green-900/30">
                     <div className="absolute top-0 right-0 p-4 opacity-10">
                         <CheckCircle2 className="w-24 h-24 text-green-600" />

@@ -59,8 +59,8 @@ export default function HomePage() {
                 <Link href="/bitacora" className="group block">
                     <Card className="h-full border-none shadow-sm hover:shadow-md transition-all bg-[#FFFBF7] dark:bg-slate-900">
                         <CardContent className="p-8 flex flex-col items-start gap-4 h-full">
-                            <div className="h-14 w-14 rounded-full bg-blue-50 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                                <ClipboardList className="h-7 w-7 text-blue-900" />
+                            <div className="h-14 w-14 rounded-full bg-blue-900 flex items-center justify-center mb-2 shadow-blue-900/20 shadow-lg group-hover:scale-110 transition-transform">
+                                <ClipboardList className="h-7 w-7 text-white" />
                             </div>
                             <div>
                                 <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2 group-hover:text-blue-900 transition-colors">
@@ -69,6 +69,9 @@ export default function HomePage() {
                                 <p className="text-slate-500 text-sm leading-relaxed mb-6">
                                     Registro y seguimiento de actividades de producción y parámetros de calidad.
                                 </p>
+                            </div>
+                            <div className="mt-auto flex items-center text-blue-700 font-bold text-sm">
+                                Acceder al módulo <ArrowRight className="ml-2 h-4 w-4" />
                             </div>
                         </CardContent>
                     </Card>
@@ -81,8 +84,8 @@ export default function HomePage() {
                             <Badge className="absolute top-6 right-6 bg-slate-100 text-slate-500 border-none px-3 font-bold">
                                 ESTÁNDARES
                             </Badge>
-                            <div className="h-14 w-14 rounded-full bg-blue-50 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                                <Microscope className="h-7 w-7 text-blue-900" />
+                            <div className="h-14 w-14 rounded-full bg-blue-900 flex items-center justify-center mb-2 shadow-blue-900/20 shadow-lg group-hover:scale-110 transition-transform">
+                                <Microscope className="h-7 w-7 text-white" />
                             </div>
                             <div>
                                 <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2 group-hover:text-blue-900 transition-colors">
@@ -92,7 +95,9 @@ export default function HomePage() {
                                     Resumen de mediciones y cumplimiento de límites de control registrados en bitácora.
                                 </p>
                             </div>
-                            <div className="mt-auto w-12 h-1 bg-slate-200 rounded-full group-hover:bg-blue-900 transition-colors" />
+                            <div className="mt-auto flex items-center text-blue-700 font-bold text-sm">
+                                Acceder al tablero <ArrowRight className="ml-2 h-4 w-4" />
+                            </div>
                         </CardContent>
                     </Card>
                 </Link>
@@ -139,8 +144,8 @@ export default function HomePage() {
                 <Link href="/configuracion" className="group block">
                     <Card className="h-full border-none shadow-sm hover:shadow-md transition-all bg-[#FFFBF7] dark:bg-slate-900">
                         <CardContent className="p-8 flex flex-col items-start gap-4 h-full">
-                            <div className="h-14 w-14 rounded-full bg-blue-50 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                                <Settings className="h-7 w-7 text-blue-900" />
+                            <div className="h-14 w-14 rounded-full bg-blue-900 flex items-center justify-center mb-2 shadow-blue-900/20 shadow-lg group-hover:scale-110 transition-transform">
+                                <Settings className="h-7 w-7 text-white" />
                             </div>
                             <div>
                                 <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2 group-hover:text-blue-900 transition-colors">
@@ -149,6 +154,9 @@ export default function HomePage() {
                                 <p className="text-slate-500 text-sm leading-relaxed mb-6">
                                     Ajustes y configuración del sistema.
                                 </p>
+                            </div>
+                            <div className="mt-auto flex items-center text-blue-700 font-bold text-sm">
+                                Acceder a ajustes <ArrowRight className="ml-2 h-4 w-4" />
                             </div>
                         </CardContent>
                     </Card>

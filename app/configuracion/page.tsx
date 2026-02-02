@@ -131,18 +131,19 @@ export default function ConfigurationPage() {
         setSaveLoading(true)
 
         try {
-            // 1. Update Profile (Table) - NOT syncing email pending verification to avoid confusion
+            // 1. Update Profile (Table) - Using UPSERT to handle missing profile rows
             const { error: profileError } = await supabase
                 .from('profiles')
-                .update({
+                .upsert({
+                    id: user.id,
                     full_name: myProfileData.full_name,
                     position: myProfileData.position,
                     sucursal: myProfileData.sucursal,
                     area: myProfileData.area,
-                    // Email removed to avoid overwriting with unverified data
+                    // Email not included in profiles to avoid unverified changes showing up
                     updated_at: new Date().toISOString()
                 })
-                .eq('id', user.id)
+                .select()
 
             if (profileError) {
                 throw new Error("Error al actualizar perfil: " + profileError.message)
@@ -219,8 +220,11 @@ export default function ConfigurationPage() {
         if (!confirm("ADVERTENCIA: ¿Estás seguro de que deseas eliminar este perfil?\n\nEsta acción eliminará la información visible del usuario (Nombre, Puesto, Área). Sin embargo, por seguridad, los registros históricos creados por este usuario se mantendrán.\n\nNota: El usuario podría perder acceso a funciones, pero su cuenta de correo seguirá registrada en el sistema de autenticación.")) return
 
         try {
-            // Use RPC to bypass potential client-side RLS quirks
-            const { error } = await supabase.rpc('delete_user_profile_admin', { target_user_id: userId })
+            // Use V2 RPC to delete from auth.users as well
+            const { error } = await supabase.rpc('delete_user_completely_v2', {
+                target_user_id: userId,
+                initiating_admin_id: user?.id
+            })
 
             if (error) {
                 throw new Error(error.message)

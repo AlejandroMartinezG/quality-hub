@@ -53,8 +53,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     .single()
 
                 if (profileData) setProfile(profileData)
-            } else if (pathname !== '/login') {
-                router.push('/login')
+            } else {
+                // Check if we are on a public route or login page to avoid infinite redirect loop
+                // We access window.location.pathname directly or assume protected by middleware (if referenced)
+                // But for client-side protection:
+                if (window.location.pathname !== '/login') {
+                    router.push('/login')
+                }
             }
             setLoading(false)
         }
@@ -72,7 +77,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 if (profileData) setProfile(profileData)
             } else {
                 setProfile(null)
-                if (pathname !== '/login') {
+                if (window.location.pathname !== '/login') {
                     router.push('/login')
                 }
             }
@@ -84,7 +89,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return () => {
             listener.subscription.unsubscribe()
         }
-    }, [router, pathname])
+    }, [])
 
     const signOut = async () => {
         console.log("AuthProvider: Cerrando sesión...")
