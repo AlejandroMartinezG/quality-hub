@@ -39,77 +39,92 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const pathname = usePathname()
 
     useEffect(() => {
-        const setData = async () => {
-            const { data: { session }, error } = await supabase.auth.getSession()
-            if (session) {
-                setSession(session)
-                setUser(session.user)
+        let mounted = true
 
-                // Fetch profile
-                const { data: profileData } = await supabase
+        const fetchProfile = async (userId: string) => {
+            try {
+                const { data: profileData, error } = await supabase
                     .from('profiles')
-                    .select('full_name, area, position, is_admin, sucursal, email')
-                    .eq('id', session.user.id)
+                    .select('*')
+                    .eq('id', userId)
                     .single()
 
-                if (profileData) setProfile(profileData)
-            } else {
-                // Check if we are on a public route or login page to avoid infinite redirect loop
-                // We access window.location.pathname directly or assume protected by middleware (if referenced)
-                // But for client-side protection:
-                if (window.location.pathname !== '/login') {
-                    router.push('/login')
+                if (error) {
+                    console.error("Error fetching profile:", error)
                 }
+
+                if (mounted && profileData) {
+                    setProfile(profileData)
+                }
+            } catch (err) {
+                console.error("Exception fetching profile:", err)
             }
-            setLoading(false)
         }
 
-        const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+        const initializeAuth = async () => {
+            try {
+                // Check active session
+                const { data: { session }, error } = await supabase.auth.getSession()
+
+                if (error) throw error
+
+                if (mounted) {
+                    if (session) {
+                        setSession(session)
+                        setUser(session.user)
+                        // Fetch profile immediately if session exists
+                        await fetchProfile(session.user.id)
+                    }
+                }
+            } catch (error) {
+                console.error("Auth initialization error:", error)
+            } finally {
+                if (mounted) setLoading(false)
+            }
+        }
+
+        initializeAuth()
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log("Auth state change:", event)
+
+            if (!mounted) return
+
             setSession(session)
-            setUser(session?.user || null)
+            setUser(session?.user ?? null)
 
             if (session) {
-                const { data: profileData } = await supabase
-                    .from('profiles')
-                    .select('full_name, area, position, is_admin, sucursal, email')
-                    .eq('id', session.user.id)
-                    .single()
-                if (profileData) setProfile(profileData)
+                await fetchProfile(session.user.id)
             } else {
                 setProfile(null)
                 if (window.location.pathname !== '/login') {
                     router.push('/login')
                 }
             }
+
             setLoading(false)
         })
 
-        setData()
-
         return () => {
-            listener.subscription.unsubscribe()
+            mounted = false
+            subscription.unsubscribe()
         }
-    }, [])
+    }, [router])
 
     const signOut = async () => {
         console.log("AuthProvider: Cerrando sesión...")
         try {
             const { error } = await supabase.auth.signOut()
-            if (error) {
-                console.error("AuthProvider: Error al cerrar sesión en Supabase:", error)
-            }
+            if (error) throw error
         } catch (e) {
-            console.error("AuthProvider: Excepción al intentar cerrar sesión:", e)
+            console.error("AuthProvider: Error al cerrar sesión:", e)
+        } finally {
+            setUser(null)
+            setProfile(null)
+            setSession(null)
+            router.push('/login')
+            router.refresh()
         }
-
-        // Forzar limpieza de estado local
-        setUser(null)
-        setProfile(null)
-        setSession(null)
-
-        console.log("AuthProvider: Redirigiendo a login...")
-        router.push('/login')
-        router.refresh()
     }
 
     return (
