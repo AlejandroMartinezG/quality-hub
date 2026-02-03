@@ -123,22 +123,27 @@ export default function HomePage() {
                     </CardContent>
                 </Card>
 
-                {/* 5. Reportes (Disabled) */}
-                <Card className="h-full border-none shadow-sm bg-[#FFFBF7] dark:bg-slate-900 opacity-60">
-                    <CardContent className="p-8 flex flex-col items-start gap-4 h-full">
-                        <div className="h-14 w-14 rounded-full bg-blue-50 flex items-center justify-center mb-2">
-                            <BarChart3 className="h-7 w-7 text-blue-900" />
-                        </div>
-                        <div>
-                            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">
-                                Reportes
-                            </h3>
-                            <p className="text-slate-500 text-sm leading-relaxed mb-6">
-                                Generación de reportes y estadísticas.
-                            </p>
-                        </div>
-                    </CardContent>
-                </Card>
+                {/* 5. Reportes */}
+                <Link href="/reportes" className="group block">
+                    <Card className="h-full border-none shadow-sm hover:shadow-md transition-all bg-[#FFFBF7] dark:bg-slate-900">
+                        <CardContent className="p-8 flex flex-col items-start gap-4 h-full">
+                            <div className="h-14 w-14 rounded-full bg-blue-50 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                                <BarChart3 className="h-7 w-7 text-blue-900" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2 group-hover:text-blue-900 transition-colors">
+                                    Reportes
+                                </h3>
+                                <p className="text-slate-500 text-sm leading-relaxed mb-6">
+                                    Generación de reportes y estadísticas.
+                                </p>
+                            </div>
+                            <div className="mt-auto flex items-center text-blue-700 font-bold text-sm">
+                                Ver tablero <ArrowRight className="ml-2 h-4 w-4" />
+                            </div>
+                        </CardContent>
+                    </Card>
+                </Link>
 
                 {/* 6. Configuración */}
                 <Link href="/configuracion" className="group block">
