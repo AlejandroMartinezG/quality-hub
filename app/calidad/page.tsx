@@ -473,22 +473,22 @@ export default function CalidadPage() {
 
                                             return (
                                                 <TableRow key={record.id} className="hover:bg-muted/30 transition-colors">
-                                                    <TableCell className="font-mono font-bold text-sm text-slate-700">
+                                                    <TableCell className="font-mono font-bold text-sm text-slate-700 dark:text-slate-200">
                                                         {record.lote_producto}
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="flex flex-col">
-                                                            <span className="font-bold text-base text-slate-800">{record.codigo_producto}</span>
-                                                            <span className="text-xs text-muted-foreground uppercase tracking-wide">{record.sucursal}</span>
+                                                            <span className="font-bold text-base text-slate-800 dark:text-slate-100">{record.codigo_producto}</span>
+                                                            <span className="text-xs text-muted-foreground dark:text-slate-400 uppercase tracking-wide">{record.sucursal}</span>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="text-center">
                                                         <div className="flex flex-col items-center">
-                                                            <span className={record.ph !== null ? "font-bold text-sm" : "text-muted-foreground text-xs"}>
+                                                            <span className={record.ph !== null ? "font-bold text-sm dark:text-slate-200" : "text-muted-foreground text-xs"}>
                                                                 {record.ph ?? "N/A"}
                                                             </span>
                                                             {stdPH && (
-                                                                <span className="text-[10px] text-muted-foreground">
+                                                                <span className="text-[10px] text-muted-foreground dark:text-slate-400">
                                                                     Ref: {stdPH.min}-{stdPH.max}
                                                                 </span>
                                                             )}
@@ -496,15 +496,15 @@ export default function CalidadPage() {
                                                     </TableCell>
                                                     <TableCell className="text-center">
                                                         <div className="flex flex-col items-center">
-                                                            <span className={avgSolids !== null ? "font-bold text-base" : "text-muted-foreground text-xs"}>
+                                                            <span className={avgSolids !== null ? "font-bold text-base dark:text-slate-100" : "text-muted-foreground text-xs"}>
                                                                 {avgSolids !== null ? avgSolids.toFixed(2) + "%" : "N/A"}
                                                             </span>
                                                             {stdSolids && (
                                                                 <div className="flex flex-col items-center gap-0.5 mt-1">
-                                                                    <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                                                                    <span className="text-[10px] font-medium text-slate-500 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
                                                                         Std: {stdSolids.min}-{stdSolids.max}
                                                                     </span>
-                                                                    <span className="text-[10px] text-muted-foreground/80">
+                                                                    <span className="text-[10px] text-muted-foreground/80 dark:text-slate-400">
                                                                         Tol: {(stdSolids.min! * 0.95).toFixed(2)}-{(stdSolids.max! * 1.05).toFixed(2)}
                                                                     </span>
                                                                 </div>
@@ -528,19 +528,19 @@ export default function CalidadPage() {
                                                     </TableCell>
                                                     <TableCell className="text-center">
                                                         <div className="flex flex-col items-center">
-                                                            <span className="text-sm font-semibold">{record.apariencia || "N/A"}</span>
+                                                            <span className="text-sm font-semibold dark:text-slate-200">{record.apariencia || "N/A"}</span>
                                                             {stdApp && (
-                                                                <span className="text-[10px] text-muted-foreground">
+                                                                <span className="text-[10px] text-muted-foreground dark:text-slate-400">
                                                                     Esp: {stdApp}
                                                                 </span>
                                                             )}
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className="text-right text-sm text-muted-foreground">
+                                                    <TableCell className="text-right text-sm text-muted-foreground dark:text-slate-400">
                                                         {new Date(record.fecha_fabricacion).toLocaleDateString()}
                                                     </TableCell>
                                                     {profile?.is_admin && (
-                                                        <TableCell className="text-sm font-medium text-slate-700">
+                                                        <TableCell className="text-sm font-medium text-slate-700 dark:text-slate-300">
                                                             {record.nombre_preparador || "N/A"}
                                                         </TableCell>
                                                     )}

@@ -94,9 +94,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {/* Desktop Sidebar */}
             <aside className="hidden md:flex w-64 flex-col bg-[#FFFBF7] dark:bg-zinc-900 border-r h-screen sticky top-0 z-40 shadow-[1px_0_20px_0_rgba(0,0,0,0.02)]">
                 {/* Logo Area */}
-                <div className="p-6 pb-8">
-                    <Link href={`${basePath}/`} className="flex items-center gap-3">
-                        <img src={`${basePath}/logo.png`} alt="GINEZ" className="h-10 w-auto" />
+                <div className="p-4 pb-8 flex justify-center">
+                    <Link href={`${basePath}/`} className="w-full flex justify-center">
+                        <img
+                            src={`${basePath}/logo.png`}
+                            alt="GINEZ"
+                            className="h-16 w-full object-contain max-w-[220px]"
+                        />
                     </Link>
                 </div>
 
