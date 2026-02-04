@@ -1,7 +1,30 @@
 @tailwind base;
-
 @tailwind components;
 @tailwind utilities;
+
+@font-face {
+  font-family: 'Eurostile';
+  src: url('/fonts/EurostileLTStd.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'EurostileExtended';
+  src: url('/fonts/EurostileLTStd-Ex2.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'EurostileExtended';
+  src: url('/fonts/EurostileLTStd-BoldEx2.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
 
 @layer base {
   :root {

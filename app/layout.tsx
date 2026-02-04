@@ -1,13 +1,10 @@
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
 import "./globals.css"
 import { AppShell } from "@/components/AppShell"
 
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/AuthProvider"
 import { Toaster } from "sonner"
-
-const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
     title: "Quality Hub GINEZ",
@@ -21,7 +18,7 @@ export default function RootLayout({
 }) {
     return (
         <html lang="es" suppressHydrationWarning>
-            <body className={inter.className}>
+            <body className="font-sans antialiased">
                 <ThemeProvider
                     attribute="class"
                     defaultTheme="system"
