@@ -102,9 +102,10 @@ export default function CalidadPage() {
                 .select('*')
                 .order('created_at', { ascending: false })
 
-            if (profile && !profile.is_admin) {
-                query = query.eq('user_id', user?.id)
-            }
+            // Removed frontend filtering to rely on Supabase RLS policies
+            // if (profile && !profile.is_admin) {
+            //     query = query.eq('user_id', user?.id)
+            // }
 
             const { data, error } = await query.limit(100)
             if (error) throw error

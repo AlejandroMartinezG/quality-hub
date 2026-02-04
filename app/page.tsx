@@ -127,8 +127,8 @@ export default function HomePage() {
                 <Link href="/reportes" className="group block">
                     <Card className="h-full border-none shadow-sm hover:shadow-md transition-all bg-[#FFFBF7] dark:bg-slate-900">
                         <CardContent className="p-8 flex flex-col items-start gap-4 h-full">
-                            <div className="h-14 w-14 rounded-full bg-blue-50 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                                <BarChart3 className="h-7 w-7 text-blue-900" />
+                            <div className="h-14 w-14 rounded-full bg-blue-900 flex items-center justify-center mb-2 shadow-blue-900/20 shadow-lg group-hover:scale-110 transition-transform">
+                                <BarChart3 className="h-7 w-7 text-white" />
                             </div>
                             <div>
                                 <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2 group-hover:text-blue-900 transition-colors">
