@@ -331,14 +331,14 @@ export default function CalidadPage() {
                     <div className="absolute top-0 right-0 p-6 opacity-10">
                         <CheckCircle2 className="w-32 h-32 text-green-600" />
                     </div>
-                    <CardHeader className="pb-3 relative z-10">
+                    <CardHeader className="pb-4 pt-6 px-6 relative z-10">
                         <CardTitle className="text-lg font-extrabold text-green-700 dark:text-green-400 tracking-wide flex items-center gap-2">
                             <div className="h-2.5 w-2.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
                             Total Conformes
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="relative z-10">
-                        <div className="flex flex-col gap-2">
+                    <CardContent className="relative z-10 px-6 pb-6">
+                        <div className="flex flex-col gap-3">
                             <div className="flex items-baseline gap-2">
                                 <span className="text-6xl font-extrabold text-green-700 dark:text-green-400 tracking-tight">
                                     {filteredRecords.filter(r => getStatusInfo(r) === 'success').length}
@@ -361,14 +361,14 @@ export default function CalidadPage() {
                     <div className="absolute top-0 right-0 p-6 opacity-10">
                         <AlertCircle className="w-32 h-32 text-yellow-600" />
                     </div>
-                    <CardHeader className="pb-3 relative z-10">
+                    <CardHeader className="pb-4 pt-6 px-6 relative z-10">
                         <CardTitle className="text-lg font-extrabold text-yellow-700 dark:text-yellow-400 tracking-wide flex items-center gap-2">
                             <div className="h-2.5 w-2.5 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)]" />
                             Semi-Conformes
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="relative z-10">
-                        <div className="flex flex-col gap-2">
+                    <CardContent className="relative z-10 px-6 pb-6">
+                        <div className="flex flex-col gap-3">
                             <div className="flex items-baseline gap-2">
                                 <span className="text-6xl font-extrabold text-yellow-700 dark:text-yellow-400 tracking-tight">
                                     {filteredRecords.filter(r => getStatusInfo(r) === 'warning').length}
@@ -391,14 +391,14 @@ export default function CalidadPage() {
                     <div className="absolute top-0 right-0 p-6 opacity-10">
                         <XCircle className="w-32 h-32 text-[#C1272D]" />
                     </div>
-                    <CardHeader className="pb-3 relative z-10">
+                    <CardHeader className="pb-4 pt-6 px-6 relative z-10">
                         <CardTitle className="text-lg font-extrabold text-[#C1272D] dark:text-red-400 tracking-wide flex items-center gap-2">
                             <div className="h-2.5 w-2.5 rounded-full bg-[#C1272D] shadow-[0_0_8px_rgba(193,39,45,0.6)]" />
                             No Conformes
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="relative z-10">
-                        <div className="flex flex-col gap-2">
+                    <CardContent className="relative z-10 px-6 pb-6">
+                        <div className="flex flex-col gap-3">
                             <div className="flex items-baseline gap-2">
                                 <span className="text-6xl font-extrabold text-[#C1272D] dark:text-red-400 tracking-tight">
                                     {filteredRecords.filter(r => getStatusInfo(r) === 'error').length}
