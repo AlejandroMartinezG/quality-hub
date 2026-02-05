@@ -332,9 +332,9 @@ export default function CalidadPage() {
                         <CheckCircle2 className="w-32 h-32 text-green-600" />
                     </div>
                     <CardHeader className="pb-3 relative z-10">
-                        <CardTitle className="text-base font-bold text-green-700 dark:text-green-400 uppercase tracking-widest flex items-center gap-2">
+                        <CardTitle className="text-lg font-extrabold text-green-700 dark:text-green-400 tracking-wide flex items-center gap-2">
                             <div className="h-2.5 w-2.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
-                            Lotes Conformes
+                            Total Conformes
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="relative z-10">
@@ -345,11 +345,14 @@ export default function CalidadPage() {
                                 </span>
                                 <span className="text-base font-medium text-green-600/80 dark:text-green-400/80">registros</span>
                             </div>
-                            <span className="text-sm font-semibold text-green-700/70 dark:text-green-300/70">
-                                {filteredRecords.length > 0
-                                    ? ((filteredRecords.filter(r => getStatusInfo(r) === 'success').length / filteredRecords.length) * 100).toFixed(1)
-                                    : "0.0"}% del total analizado
-                            </span>
+                            <div className="flex items-baseline gap-1.5">
+                                <span className="text-2xl font-bold text-green-700 dark:text-green-400">
+                                    {filteredRecords.length > 0
+                                        ? ((filteredRecords.filter(r => getStatusInfo(r) === 'success').length / filteredRecords.length) * 100).toFixed(1)
+                                        : "0.0"}%
+                                </span>
+                                <span className="text-sm font-semibold text-green-700/70 dark:text-green-300/70">del total</span>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
@@ -359,7 +362,7 @@ export default function CalidadPage() {
                         <AlertCircle className="w-32 h-32 text-yellow-600" />
                     </div>
                     <CardHeader className="pb-3 relative z-10">
-                        <CardTitle className="text-base font-bold text-yellow-700 dark:text-yellow-400 uppercase tracking-widest flex items-center gap-2">
+                        <CardTitle className="text-lg font-extrabold text-yellow-700 dark:text-yellow-400 tracking-wide flex items-center gap-2">
                             <div className="h-2.5 w-2.5 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)]" />
                             Semi-Conformes
                         </CardTitle>
@@ -372,11 +375,14 @@ export default function CalidadPage() {
                                 </span>
                                 <span className="text-base font-medium text-yellow-600/80 dark:text-yellow-400/80">registros</span>
                             </div>
-                            <span className="text-sm font-semibold text-yellow-700/70 dark:text-yellow-300/70">
-                                {filteredRecords.length > 0
-                                    ? ((filteredRecords.filter(r => getStatusInfo(r) === 'warning').length / filteredRecords.length) * 100).toFixed(1)
-                                    : "0.0"}% del total analizado
-                            </span>
+                            <div className="flex items-baseline gap-1.5">
+                                <span className="text-2xl font-bold text-yellow-700 dark:text-yellow-400">
+                                    {filteredRecords.length > 0
+                                        ? ((filteredRecords.filter(r => getStatusInfo(r) === 'warning').length / filteredRecords.length) * 100).toFixed(1)
+                                        : "0.0"}%
+                                </span>
+                                <span className="text-sm font-semibold text-yellow-700/70 dark:text-yellow-300/70">del total</span>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
@@ -386,7 +392,7 @@ export default function CalidadPage() {
                         <XCircle className="w-32 h-32 text-[#C1272D]" />
                     </div>
                     <CardHeader className="pb-3 relative z-10">
-                        <CardTitle className="text-base font-bold text-[#C1272D] dark:text-red-400 uppercase tracking-widest flex items-center gap-2">
+                        <CardTitle className="text-lg font-extrabold text-[#C1272D] dark:text-red-400 tracking-wide flex items-center gap-2">
                             <div className="h-2.5 w-2.5 rounded-full bg-[#C1272D] shadow-[0_0_8px_rgba(193,39,45,0.6)]" />
                             No Conformes
                         </CardTitle>
@@ -399,11 +405,14 @@ export default function CalidadPage() {
                                 </span>
                                 <span className="text-base font-medium text-[#C1272D]/80 dark:text-red-400/80">registros</span>
                             </div>
-                            <span className="text-sm font-semibold text-[#C1272D]/70 dark:text-red-300/70">
-                                {filteredRecords.length > 0
-                                    ? ((filteredRecords.filter(r => getStatusInfo(r) === 'error').length / filteredRecords.length) * 100).toFixed(1)
-                                    : "0.0"}% del total analizado
-                            </span>
+                            <div className="flex items-baseline gap-1.5">
+                                <span className="text-2xl font-bold text-[#C1272D] dark:text-red-400">
+                                    {filteredRecords.length > 0
+                                        ? ((filteredRecords.filter(r => getStatusInfo(r) === 'error').length / filteredRecords.length) * 100).toFixed(1)
+                                        : "0.0"}%
+                                </span>
+                                <span className="text-sm font-semibold text-[#C1272D]/70 dark:text-red-300/70">del total</span>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
