@@ -102,28 +102,7 @@ export default function HomePage() {
                     </Card>
                 </Link>
 
-                {/* 4. Manual de Formulación (Disabled) */}
-                <Card className="h-full border-none shadow-sm bg-[#FFFBF7] dark:bg-slate-900 opacity-60">
-                    <CardContent className="p-8 flex flex-col items-start gap-4 h-full relative">
-                        <Badge className="absolute top-6 right-6 bg-slate-200 text-slate-600 border-none px-3 font-bold">
-                            DESARROLLO
-                        </Badge>
-                        <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center mb-2">
-                            <Beaker className="h-7 w-7 text-slate-400" />
-                        </div>
-                        <div>
-                            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">
-                                Manual de Formulación Ginez
-                            </h3>
-                            <p className="text-slate-500 text-sm leading-relaxed mb-6">
-                                Consulta de fórmulas y procedimientos técnicos de elaboración.
-                            </p>
-                        </div>
-                        <div className="mt-auto w-12 h-1 bg-slate-200 rounded-full" />
-                    </CardContent>
-                </Card>
-
-                {/* 5. Reportes */}
+                {/* 4. Reportes */}
                 <Link href="/reportes" className="group block">
                     <Card className="h-full border-none shadow-sm hover:shadow-md transition-all bg-[#FFFBF7] dark:bg-slate-900">
                         <CardContent className="p-8 flex flex-col items-start gap-4 h-full">
@@ -145,7 +124,7 @@ export default function HomePage() {
                     </Card>
                 </Link>
 
-                {/* 6. Configuración */}
+                {/* 5. Configuración */}
                 <Link href="/configuracion" className="group block">
                     <Card className="h-full border-none shadow-sm hover:shadow-md transition-all bg-[#FFFBF7] dark:bg-slate-900">
                         <CardContent className="p-8 flex flex-col items-start gap-4 h-full">
@@ -166,18 +145,31 @@ export default function HomePage() {
                         </CardContent>
                     </Card>
                 </Link>
+
+                {/* 6. Manual de Formulación (Disabled) */}
+                <Card className="h-full border-none shadow-sm bg-[#FFFBF7] dark:bg-slate-900 opacity-60">
+                    <CardContent className="p-8 flex flex-col items-start gap-4 h-full relative">
+                        <Badge className="absolute top-6 right-6 bg-slate-200 text-slate-600 border-none px-3 font-bold">
+                            DESARROLLO
+                        </Badge>
+                        <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center mb-2">
+                            <Beaker className="h-7 w-7 text-slate-400" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">
+                                Manual de Formulación Ginez
+                            </h3>
+                            <p className="text-slate-500 text-sm leading-relaxed mb-6">
+                                Consulta de fórmulas y procedimientos técnicos de elaboración.
+                            </p>
+                        </div>
+                        <div className="mt-auto w-12 h-1 bg-slate-200 rounded-full" />
+                    </CardContent>
+                </Card>
             </div>
 
-            <div className="flex justify-between items-center text-xs text-slate-400 pt-8 border-t mt-8">
-                <p>© 2026 GINEZ Corporate. División Industrial & Limpieza.</p>
-                <div className="flex gap-6">
-                    <div className="flex items-center gap-2 cursor-pointer hover:text-blue-900">
-                        <CheckCircle2 className="h-3 w-3" /> Cumplimiento
-                    </div>
-                    <div className="flex items-center gap-2 cursor-pointer hover:text-blue-900">
-                        <BookOpen className="h-3 w-3" /> Manual de Usuario
-                    </div>
-                </div>
+            <div className="flex justify-center items-center text-xs text-slate-400 pt-8 border-t mt-8">
+                <p>© 2026 Ginez. Laboratorio de Calidad y Desarrollo</p>
             </div>
         </div>
     )

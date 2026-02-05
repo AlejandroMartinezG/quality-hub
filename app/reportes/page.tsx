@@ -256,7 +256,7 @@ export default function ReportesPage() {
         const max = Math.max(...allValues)
 
         // Add 0.5 unit padding for pH as it is small scale
-        return [(min - 0.5).toFixed(1), (max + 0.5).toFixed(1)]
+        return [parseFloat((min - 0.5).toFixed(1)), parseFloat((max + 0.5).toFixed(1))]
 
     }, [controlChartData, selectedProduct, currentStandards])
 
@@ -474,7 +474,7 @@ export default function ReportesPage() {
                                         <LineChart data={controlChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                                             <XAxis dataKey="lote" fontSize={10} angle={-45} textAnchor="end" height={60} interval={0} tick={{ fill: '#64748b' }} />
-                                            <YAxis domain={canvasPH as any} fontSize={12} tickLine={false} axisLine={false} />
+                                            <YAxis domain={canvasPH as [number, number]} fontSize={12} tickLine={false} axisLine={false} />
                                             <Tooltip
                                                 contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                             />
@@ -484,8 +484,8 @@ export default function ReportesPage() {
                                             {/* Reference Lines for pH */}
                                             {selectedProduct !== "all" && currentStandards?.ph && (
                                                 <>
-                                                    <ReferenceLine y={currentStandards.ph.max} label={{ value: 'LCS', position: 'insideTopRight', fill: '#ef4444', fontSize: 10 }} stroke="#ef4444" strokeWidth={2} />
-                                                    <ReferenceLine y={currentStandards.ph.min} label={{ value: 'LCI', position: 'insideBottomRight', fill: '#ef4444', fontSize: 10 }} stroke="#ef4444" strokeWidth={2} />
+                                                    <ReferenceLine y={currentStandards.ph.max} label={{ value: 'LCS', position: 'insideTopRight', fill: '#ef4444', fontSize: 10 }} stroke="#ef4444" strokeWidth={2} isFront={true} />
+                                                    <ReferenceLine y={currentStandards.ph.min} label={{ value: 'LCI', position: 'insideBottomRight', fill: '#ef4444', fontSize: 10 }} stroke="#ef4444" strokeWidth={2} isFront={true} />
                                                 </>
                                             )}
                                         </LineChart>

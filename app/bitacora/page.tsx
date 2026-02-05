@@ -23,10 +23,13 @@ import {
     PRODUCT_STANDARDS,
     PH_STANDARDS,
     APPEARANCE_STANDARDS,
-    PARAMETER_APPLICABILITY
+    PARAMETER_APPLICABILITY,
+    PRODUCT_GROUPS
 } from "@/lib/production-constants"
+
+
 import { supabase } from "@/lib/supabase"
-import { Loader2, CheckCircle2, AlertCircle, Info, FlaskConical, Beaker, Eye, Droplets, ClipboardCheck, ArrowRight, ArrowLeft } from "lucide-react"
+import { Loader2, CheckCircle2, AlertCircle, Info, FlaskConical, Beaker, Eye, Droplets, ClipboardCheck, ArrowRight, ArrowLeft, ChevronDown } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
@@ -36,6 +39,7 @@ export default function BitacoraPage() {
     const { user, profile } = useAuth()
     const [step, setStep] = useState(1) // 1: Category, 2: Form
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+    const [expandedGroups, setExpandedGroups] = useState<string[]>([])
     const [loading, setLoading] = useState(false)
     const [formData, setFormData] = useState({
         sucursal: "",
@@ -73,6 +77,14 @@ export default function BitacoraPage() {
             setSelectedCategory(category.name)
             setStep(2)
         }
+    }
+
+    const toggleGroup = (title: string) => {
+        setExpandedGroups(prev =>
+            prev.includes(title)
+                ? prev.filter(t => t !== title)
+                : [...prev, title]
+        )
     }
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -310,33 +322,89 @@ export default function BitacoraPage() {
 
             <AnimatePresence mode="wait">
                 {step === 1 ? (
+
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
-                        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+                        className="space-y-8"
                     >
-                        {PRODUCT_CATEGORIES.map((cat) => (
-                            <Card
-                                key={cat.id}
-                                className="group cursor-pointer hover:shadow-xl hover:border-primary/50 transition-all duration-300 overflow-hidden bg-card/50 backdrop-blur-sm border-white/20"
-                                onClick={() => handleCategorySelect(cat.id)}
-                            >
-                                <div className="h-32 w-full overflow-hidden relative">
-                                    <img
-                                        src={cat.image}
-                                        alt={cat.name}
-                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                                </div>
-                                <CardHeader className="p-4">
-                                    <CardTitle className="text-sm font-semibold line-clamp-2 min-h-[2.5rem]">
-                                        {cat.name}
-                                    </CardTitle>
-                                </CardHeader>
-                            </Card>
-                        ))}
+                        <div className="space-y-6">
+                            {/* Accordion Groups */}
+                            {PRODUCT_GROUPS.map((group) => {
+                                const isExpanded = expandedGroups.includes(group.title)
+                                const groupCategories = PRODUCT_CATEGORIES.filter(c => group.ids.includes(c.id))
+
+                                // Skip empty groups
+                                if (groupCategories.length === 0) return null
+
+                                return (
+                                    <Card key={group.title} className="border-none shadow-sm bg-white/50 dark:bg-slate-900/50 overflow-hidden">
+                                        <div
+                                            onClick={() => toggleGroup(group.title)}
+                                            className={cn(
+                                                "w-full flex items-center justify-between p-4 cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 select-none",
+                                                isExpanded && "bg-slate-50 dark:bg-slate-800/50"
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-2xl">{group.icon}</span>
+                                                <h3 className={cn("text-lg font-bold", group.color)}>
+                                                    {group.title}
+                                                </h3>
+                                                <Badge variant="secondary" className="ml-2 text-xs font-normal text-muted-foreground">
+                                                    {groupCategories.length}
+                                                </Badge>
+                                            </div>
+                                            <motion.div
+                                                animate={{ rotate: isExpanded ? 180 : 0 }}
+                                                transition={{ duration: 0.2 }}
+                                            >
+                                                <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                                            </motion.div>
+                                        </div>
+
+                                        <AnimatePresence>
+                                            {isExpanded && (
+                                                <motion.div
+                                                    initial={{ height: 0, opacity: 0 }}
+                                                    animate={{ height: "auto", opacity: 1 }}
+                                                    exit={{ height: 0, opacity: 0 }}
+                                                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                                                >
+                                                    <div className="p-4 pt-0 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 border-t border-slate-100 dark:border-slate-800 mt-2">
+                                                        {groupCategories.map((cat) => (
+                                                            <Card
+                                                                key={cat.id}
+                                                                className="group cursor-pointer hover:shadow-xl hover:border-primary/50 transition-all duration-300 overflow-hidden bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation()
+                                                                    handleCategorySelect(cat.id)
+                                                                }}
+                                                            >
+                                                                <div className="h-32 w-full overflow-hidden relative">
+                                                                    <img
+                                                                        src={cat.image}
+                                                                        alt={cat.name}
+                                                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                                                    />
+                                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                                                                </div>
+                                                                <CardHeader className="p-4">
+                                                                    <CardTitle className="text-xs font-bold uppercase tracking-wide line-clamp-2 min-h-[2.5rem]">
+                                                                        {cat.name}
+                                                                    </CardTitle>
+                                                                </CardHeader>
+                                                            </Card>
+                                                        ))}
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </Card>
+                                )
+                            })}
+                        </div>
                     </motion.div>
                 ) : (
                     <motion.div
@@ -355,16 +423,24 @@ export default function BitacoraPage() {
                         </Button>
 
                         <form onSubmit={handleSubmit} className="space-y-8">
-                            <div className="flex justify-center gap-8 py-6 bg-white dark:bg-slate-900 rounded-2xl border shadow-sm">
-                                <div className="flex flex-col items-center">
-                                    <img src="https://i.imgur.com/AIqaFdy.jpeg" alt="Tiras de pH" className="h-20 w-auto rounded-lg shadow-sm mb-2" />
-                                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Tiras pH</span>
-                                </div>
-                                <div className="flex flex-col items-center">
-                                    <img src="https://i.imgur.com/jw10WEL.png" alt="Refractómetro" className="h-20 w-auto rounded-lg shadow-sm mb-2" />
-                                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Refractómetro</span>
-                                </div>
-                            </div>
+                            <Card className="border-primary/5 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800/50">
+                                <CardHeader className="pb-2">
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                        <FlaskConical className="h-4 w-4" />
+                                        <h3 className="font-semibold text-sm uppercase tracking-wide">Kit de medición de parametros</h3>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="flex justify-center gap-12 pb-6">
+                                    <div className="flex flex-col items-center group cursor-help transition-transform hover:scale-105">
+                                        <img src="https://i.imgur.com/AIqaFdy.jpeg" alt="Tiras de pH" className="h-24 w-auto rounded-xl shadow-md mb-3 group-hover:shadow-lg transition-shadow" />
+                                        <Badge variant="secondary" className="font-bold text-[10px]">TIRAS pH</Badge>
+                                    </div>
+                                    <div className="flex flex-col items-center group cursor-help transition-transform hover:scale-105">
+                                        <img src="https://i.imgur.com/jw10WEL.png" alt="Refractómetro" className="h-24 w-auto rounded-xl shadow-md mb-3 group-hover:shadow-lg transition-shadow" />
+                                        <Badge variant="secondary" className="font-bold text-[10px]">REFRACTÓMETRO</Badge>
+                                    </div>
+                                </CardContent>
+                            </Card>
 
                             {/* Información General */}
                             <Card className="border-primary/10 shadow-lg overflow-hidden">
@@ -465,7 +541,7 @@ export default function BitacoraPage() {
                                         </div>
                                         <div>
                                             <CardTitle>Parámetros Físico-Químicos</CardTitle>
-                                            <CardDescription>Mediciones registradas en laboratorio</CardDescription>
+                                            <CardDescription>Mediciones de los distintos parámetros de calidad internos.</CardDescription>
                                         </div>
                                     </div>
                                 </CardHeader>
@@ -473,9 +549,21 @@ export default function BitacoraPage() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                         {/* Sólidos Column */}
                                         <div className="space-y-4 p-4 rounded-xl bg-blue-50/30 dark:bg-blue-900/10 border border-blue-100/50 dark:border-blue-800/20">
-                                            <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 font-bold mb-2">
-                                                <Beaker className="h-5 w-5" />
-                                                % Sólidos (Brix)
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 font-bold">
+                                                    <Beaker className="h-5 w-5" />
+                                                    % Sólidos (Brix)
+                                                </div>
+                                                {currentEvaluations.find(e => e.type === "Sólidos") && (
+                                                    <Badge variant="outline" className={cn(
+                                                        "uppercase font-bold text-[10px] px-3 py-1 shadow-sm",
+                                                        currentEvaluations.find(e => e.type === "Sólidos")?.status === "success" && "bg-green-100 text-green-700 border-green-200",
+                                                        currentEvaluations.find(e => e.type === "Sólidos")?.status === "warning" && "bg-yellow-100 text-yellow-800 border-yellow-200",
+                                                        currentEvaluations.find(e => e.type === "Sólidos")?.status === "error" && "bg-red-100 text-red-700 border-red-200"
+                                                    )}>
+                                                        {currentEvaluations.find(e => e.type === "Sólidos")?.text}
+                                                    </Badge>
+                                                )}
                                             </div>
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="space-y-2">
@@ -527,13 +615,28 @@ export default function BitacoraPage() {
                                                     />
                                                 </div>
                                             </div>
+                                            <div className="p-3 bg-white/50 dark:bg-slate-900/50 rounded-lg border text-[11px] text-muted-foreground italic leading-tight">
+                                                Usar refractómetro digital de acuerdo a IO-DOP-OP-002
+                                            </div>
                                         </div>
 
                                         {/* pH Column */}
                                         <div className="space-y-4 p-4 rounded-xl bg-red-50/30 dark:bg-red-900/10 border border-red-100/50 dark:border-red-800/20">
-                                            <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-bold mb-2">
-                                                <Droplets className="h-5 w-5" />
-                                                Mediciones Adicionales
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-bold">
+                                                    <Droplets className="h-5 w-5" />
+                                                    Valor de pH
+                                                </div>
+                                                {currentEvaluations.find(e => e.type === "pH") && (
+                                                    <Badge variant="outline" className={cn(
+                                                        "uppercase font-bold text-[10px] px-3 py-1 shadow-sm",
+                                                        currentEvaluations.find(e => e.type === "pH")?.status === "success" && "bg-green-100 text-green-700 border-green-200",
+                                                        currentEvaluations.find(e => e.type === "pH")?.status === "warning" && "bg-yellow-100 text-yellow-800 border-yellow-200",
+                                                        currentEvaluations.find(e => e.type === "pH")?.status === "error" && "bg-red-100 text-red-700 border-red-200"
+                                                    )}>
+                                                        {currentEvaluations.find(e => e.type === "pH")?.text}
+                                                    </Badge>
+                                                )}
                                             </div>
                                             <div className="space-y-4">
                                                 <div className="space-y-2">
@@ -550,64 +653,70 @@ export default function BitacoraPage() {
                                                     />
                                                 </div>
                                                 <div className="p-3 bg-white/50 dark:bg-slate-900/50 rounded-lg border text-[11px] text-muted-foreground italic leading-tight">
-                                                    Usar tiras reactivas o potenciómetro según P-CC-04.
+                                                    Usar tiras reactivas de acuerdo a IO-DOP-OP-001
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Organoleptic Row */}
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-dashed">
-                                        <div className="space-y-2">
-                                            <Label className="flex items-center gap-2">
-                                                <Eye className="h-4 w-4" /> Apariencia
-                                            </Label>
-                                            <Select
-                                                value={formData.apariencia}
-                                                onValueChange={(val) => handleSelectChange("apariencia", val)}
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Selecciona" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="CRISTALINO">CRISTALINO</SelectItem>
-                                                    <SelectItem value="OPACO">OPACO</SelectItem>
-                                                    <SelectItem value="APERLADO">APERLADO</SelectItem>
-                                                    <SelectItem value="TURBIO">TURBIO</SelectItem>
-                                                    <SelectItem value="PARTICULAS SUSPENDIDAS">PARTICULAS SUSPENDIDAS</SelectItem>
-                                                    <SelectItem value="SEPARACION DE COMPONENTES">SEPARACION DE COMPONENTES</SelectItem>
-                                                </SelectContent>
-                                            </Select>
+                                    <div className="pt-4 border-t border-dashed space-y-6">
+                                        <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-bold">
+                                            <Droplets className="h-5 w-5" />
+                                            Mediciones Adicionales
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label>Color</Label>
-                                            <Select
-                                                value={formData.color}
-                                                onValueChange={(val) => handleSelectChange("color", val)}
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="CONFORME">CONFORME</SelectItem>
-                                                    <SelectItem value="NO CONFORME">NO CONFORME</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>Aroma</Label>
-                                            <Select
-                                                value={formData.aroma}
-                                                onValueChange={(val) => handleSelectChange("aroma", val)}
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="CONFORME">CONFORME</SelectItem>
-                                                    <SelectItem value="NO CONFORME">NO CONFORME</SelectItem>
-                                                </SelectContent>
-                                            </Select>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <div className="space-y-2">
+                                                <Label className="flex items-center gap-2">
+                                                    <Eye className="h-4 w-4" /> Apariencia
+                                                </Label>
+                                                <Select
+                                                    value={formData.apariencia}
+                                                    onValueChange={(val) => handleSelectChange("apariencia", val)}
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Selecciona" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="CRISTALINO">CRISTALINO</SelectItem>
+                                                        <SelectItem value="OPACO">OPACO</SelectItem>
+                                                        <SelectItem value="APERLADO">APERLADO</SelectItem>
+                                                        <SelectItem value="TURBIO">TURBIO</SelectItem>
+                                                        <SelectItem value="PARTICULAS SUSPENDIDAS">PARTICULAS SUSPENDIDAS</SelectItem>
+                                                        <SelectItem value="SEPARACION DE COMPONENTES">SEPARACION DE COMPONENTES</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Color</Label>
+                                                <Select
+                                                    value={formData.color}
+                                                    onValueChange={(val) => handleSelectChange("color", val)}
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="CONFORME">CONFORME</SelectItem>
+                                                        <SelectItem value="NO CONFORME">NO CONFORME</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Aroma</Label>
+                                                <Select
+                                                    value={formData.aroma}
+                                                    onValueChange={(val) => handleSelectChange("aroma", val)}
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="CONFORME">CONFORME</SelectItem>
+                                                        <SelectItem value="NO CONFORME">NO CONFORME</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -624,7 +733,7 @@ export default function BitacoraPage() {
                                     </div>
                                 </CardContent>
                                 <CardFooter className="bg-muted/30 border-t py-4 flex flex-col gap-4">
-                                    <div className="w-full flex flex-wrap gap-3">
+                                    <div className="w-full flex flex-wrap justify-center gap-3">
                                         {currentEvaluations.map((ev, i) => (
                                             <Badge
                                                 key={i}
@@ -659,6 +768,6 @@ export default function BitacoraPage() {
                     </motion.div>
                 )}
             </AnimatePresence>
-        </div>
+        </div >
     )
 }

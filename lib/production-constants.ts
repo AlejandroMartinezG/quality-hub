@@ -66,8 +66,8 @@ export const PRODUCT_CATEGORIES = [
     { id: "lim-mult", name: "Limpiador liquido multiusos", image: "https://i.imgur.com/f5SwpJ6.jpeg" },
     { id: "prod-interm", name: "Producto intermedio", image: "https://i.imgur.com/KjckUNn.jpeg" },
     { id: "refaro", name: "Reforzador de aromas(REFARO)", image: "https://i.imgur.com/MIJLRTO.png" },
-    { id: "shampoo", name: "Shampoo capilar", image: "https://i.imgur.com/NdvM2Zf.png" }, // Reusing crema as placeholder if needed
-    { id: "suavizante", name: "Suavizante de telas", image: "https://i.imgur.com/EE3YF65.jpeg" },
+    { id: "shampoo", name: "Shampoo capilar", image: "https://i.imgur.com/lbWy7oY.jpeg" },
+    { id: "suavizante", name: "Suavizante de telas", image: "https://i.imgur.com/UrZoUPG.jpeg" },
     { id: "especial", name: "Producto terminado especial", image: "https://i.imgur.com/epnUSfo.jpeg" },
     { id: "disoluciones", name: "Disoluciones intermedias", image: "https://i.imgur.com/RqcQxOB.jpeg" }
 ];
@@ -234,3 +234,42 @@ export const PARAMETER_APPLICABILITY: Record<string, { solidos: boolean, ph: boo
     "DETALC": { solidos: true, ph: true }, "EMU": { solidos: false, ph: false }, "FFLO": { solidos: false, ph: false }, "BSUA": { solidos: false, ph: false },
     "CITGIN": { solidos: true, ph: false }, "NAOH10": { solidos: true, ph: false }, "ESPSNT25": { solidos: true, ph: false }
 };
+
+export const PRODUCT_GROUPS = [
+    {
+        title: "Cuidado del Hogar",
+        color: "text-orange-600 dark:text-orange-400",
+        icon: "🏠",
+        ids: ["aro-amb", "esp-hogar", "lim-mult", "det-trastes", "bs-aro-amb", "bs-lim-mult"]
+    },
+    {
+        title: "Cuidado Personal",
+        color: "text-emerald-600 dark:text-emerald-400",
+        icon: "💆",
+        ids: ["crem-corp", "enj-cap", "jab-manos", "shampoo"]
+    },
+    {
+        title: "Lavandería",
+        color: "text-blue-600 dark:text-blue-400",
+        icon: "🧺",
+        ids: ["det-ropa", "suavizante", "esp-lavand", "refaro"]
+    },
+    {
+        title: "Línea Automotriz",
+        color: "text-slate-600 dark:text-slate-400",
+        icon: "🚗",
+        ids: ["automotriz"]
+    },
+    {
+        title: "Línea Antibacterial",
+        color: "text-cyan-600 dark:text-cyan-400",
+        icon: "🛡️",
+        ids: ["antibac"]
+    },
+    {
+        title: "Productos Intermedios / Industriales",
+        color: "text-indigo-600 dark:text-indigo-400",
+        icon: "🏭",
+        ids: ["prod-interm", "disoluciones", "especial"]
+    }
+];
