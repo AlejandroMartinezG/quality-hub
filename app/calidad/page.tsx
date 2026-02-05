@@ -299,77 +299,53 @@ export default function CalidadPage() {
                 </Card>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* 1. Total Analizado */}
                 <Card className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/20 dark:to-blue-900/10 border-blue-200 dark:border-blue-900/30">
-                    <div className="absolute top-0 right-0 p-4 opacity-10">
-                        <ClipboardList className="w-24 h-24 text-blue-600" />
+                    <div className="absolute top-0 right-0 p-6 opacity-10">
+                        <ClipboardList className="w-32 h-32 text-blue-600" />
                     </div>
-                    <CardHeader className="pb-2 relative z-10">
-                        <CardTitle className="text-sm font-bold text-blue-700 dark:text-blue-400 uppercase tracking-widest flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
+                    <CardHeader className="pb-3 relative z-10">
+                        <CardTitle className="text-base font-bold text-blue-700 dark:text-blue-400 uppercase tracking-widest flex items-center gap-2">
+                            <div className="h-2.5 w-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
                             Total
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="relative z-10">
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-2">
                             <div className="flex items-baseline gap-2">
-                                <span className="text-5xl font-extrabold text-blue-700 dark:text-blue-400 tracking-tight">
+                                <span className="text-6xl font-extrabold text-blue-700 dark:text-blue-400 tracking-tight">
                                     {filteredRecords.length}
                                 </span>
-                                <span className="text-sm font-medium text-blue-600/80 dark:text-blue-400/80">muestras</span>
+                                <span className="text-base font-medium text-blue-600/80 dark:text-blue-400/80">muestras</span>
                             </div>
-                            <span className="text-xs font-semibold text-blue-700/70 dark:text-blue-300/70">
+                            <span className="text-sm font-semibold text-blue-700/70 dark:text-blue-300/70">
                                 Total filtrado
                             </span>
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* 2. Productos Únicos */}
-                <Card className="relative overflow-hidden bg-gradient-to-br from-indigo-50 to-indigo-100/50 dark:from-indigo-950/20 dark:to-indigo-900/10 border-indigo-200 dark:border-indigo-900/30">
-                    <div className="absolute top-0 right-0 p-4 opacity-10">
-                        <Package className="w-24 h-24 text-indigo-600" />
-                    </div>
-                    <CardHeader className="pb-2 relative z-10">
-                        <CardTitle className="text-sm font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]" />
-                            Variedad
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="relative z-10">
-                        <div className="flex flex-col gap-1">
-                            <div className="flex items-baseline gap-2">
-                                <span className="text-5xl font-extrabold text-indigo-700 dark:text-indigo-400 tracking-tight">
-                                    {new Set(filteredRecords.map(r => r.codigo_producto)).size}
-                                </span>
-                                <span className="text-sm font-medium text-indigo-600/80 dark:text-indigo-400/80">productos</span>
-                            </div>
-                            <span className="text-xs font-semibold text-indigo-700/70 dark:text-indigo-300/70">
-                                Productos únicos
-                            </span>
-                        </div>
-                    </CardContent>
-                </Card>
+                {/* 2. Lotes Conformes */}
                 <Card className="relative overflow-hidden bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/20 dark:to-green-900/10 border-green-200 dark:border-green-900/30">
-                    <div className="absolute top-0 right-0 p-4 opacity-10">
-                        <CheckCircle2 className="w-24 h-24 text-green-600" />
+                    <div className="absolute top-0 right-0 p-6 opacity-10">
+                        <CheckCircle2 className="w-32 h-32 text-green-600" />
                     </div>
-                    <CardHeader className="pb-2 relative z-10">
-                        <CardTitle className="text-sm font-bold text-green-700 dark:text-green-400 uppercase tracking-widest flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+                    <CardHeader className="pb-3 relative z-10">
+                        <CardTitle className="text-base font-bold text-green-700 dark:text-green-400 uppercase tracking-widest flex items-center gap-2">
+                            <div className="h-2.5 w-2.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
                             Lotes Conformes
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="relative z-10">
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-2">
                             <div className="flex items-baseline gap-2">
-                                <span className="text-5xl font-extrabold text-green-700 dark:text-green-400 tracking-tight">
+                                <span className="text-6xl font-extrabold text-green-700 dark:text-green-400 tracking-tight">
                                     {filteredRecords.filter(r => getStatusInfo(r) === 'success').length}
                                 </span>
-                                <span className="text-sm font-medium text-green-600/80 dark:text-green-400/80">registros</span>
+                                <span className="text-base font-medium text-green-600/80 dark:text-green-400/80">registros</span>
                             </div>
-                            <span className="text-xs font-semibold text-green-700/70 dark:text-green-300/70">
+                            <span className="text-sm font-semibold text-green-700/70 dark:text-green-300/70">
                                 {filteredRecords.length > 0
                                     ? ((filteredRecords.filter(r => getStatusInfo(r) === 'success').length / filteredRecords.length) * 100).toFixed(1)
                                     : "0.0"}% del total analizado
@@ -379,24 +355,24 @@ export default function CalidadPage() {
                 </Card>
 
                 <Card className="relative overflow-hidden bg-gradient-to-br from-yellow-50 to-yellow-100/50 dark:from-yellow-950/20 dark:to-yellow-900/10 border-yellow-200 dark:border-yellow-900/30">
-                    <div className="absolute top-0 right-0 p-4 opacity-10">
-                        <AlertCircle className="w-24 h-24 text-yellow-600" />
+                    <div className="absolute top-0 right-0 p-6 opacity-10">
+                        <AlertCircle className="w-32 h-32 text-yellow-600" />
                     </div>
-                    <CardHeader className="pb-2 relative z-10">
-                        <CardTitle className="text-sm font-bold text-yellow-700 dark:text-yellow-400 uppercase tracking-widest flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)]" />
+                    <CardHeader className="pb-3 relative z-10">
+                        <CardTitle className="text-base font-bold text-yellow-700 dark:text-yellow-400 uppercase tracking-widest flex items-center gap-2">
+                            <div className="h-2.5 w-2.5 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)]" />
                             Semi-Conformes
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="relative z-10">
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-2">
                             <div className="flex items-baseline gap-2">
-                                <span className="text-5xl font-extrabold text-yellow-700 dark:text-yellow-400 tracking-tight">
+                                <span className="text-6xl font-extrabold text-yellow-700 dark:text-yellow-400 tracking-tight">
                                     {filteredRecords.filter(r => getStatusInfo(r) === 'warning').length}
                                 </span>
-                                <span className="text-sm font-medium text-yellow-600/80 dark:text-yellow-400/80">registros</span>
+                                <span className="text-base font-medium text-yellow-600/80 dark:text-yellow-400/80">registros</span>
                             </div>
-                            <span className="text-xs font-semibold text-yellow-700/70 dark:text-yellow-300/70">
+                            <span className="text-sm font-semibold text-yellow-700/70 dark:text-yellow-300/70">
                                 {filteredRecords.length > 0
                                     ? ((filteredRecords.filter(r => getStatusInfo(r) === 'warning').length / filteredRecords.length) * 100).toFixed(1)
                                     : "0.0"}% del total analizado
@@ -406,24 +382,24 @@ export default function CalidadPage() {
                 </Card>
 
                 <Card className="relative overflow-hidden bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/20 dark:to-red-900/10 border-[#C1272D]/20 dark:border-[#C1272D]/30">
-                    <div className="absolute top-0 right-0 p-4 opacity-10">
-                        <XCircle className="w-24 h-24 text-[#C1272D]" />
+                    <div className="absolute top-0 right-0 p-6 opacity-10">
+                        <XCircle className="w-32 h-32 text-[#C1272D]" />
                     </div>
-                    <CardHeader className="pb-2 relative z-10">
-                        <CardTitle className="text-sm font-bold text-[#C1272D] dark:text-red-400 uppercase tracking-widest flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-[#C1272D] shadow-[0_0_8px_rgba(193,39,45,0.6)]" />
+                    <CardHeader className="pb-3 relative z-10">
+                        <CardTitle className="text-base font-bold text-[#C1272D] dark:text-red-400 uppercase tracking-widest flex items-center gap-2">
+                            <div className="h-2.5 w-2.5 rounded-full bg-[#C1272D] shadow-[0_0_8px_rgba(193,39,45,0.6)]" />
                             No Conformes
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="relative z-10">
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-2">
                             <div className="flex items-baseline gap-2">
-                                <span className="text-5xl font-extrabold text-[#C1272D] dark:text-red-400 tracking-tight">
+                                <span className="text-6xl font-extrabold text-[#C1272D] dark:text-red-400 tracking-tight">
                                     {filteredRecords.filter(r => getStatusInfo(r) === 'error').length}
                                 </span>
-                                <span className="text-sm font-medium text-[#C1272D]/80 dark:text-red-400/80">registros</span>
+                                <span className="text-base font-medium text-[#C1272D]/80 dark:text-red-400/80">registros</span>
                             </div>
-                            <span className="text-xs font-semibold text-[#C1272D]/70 dark:text-red-300/70">
+                            <span className="text-sm font-semibold text-[#C1272D]/70 dark:text-red-300/70">
                                 {filteredRecords.length > 0
                                     ? ((filteredRecords.filter(r => getStatusInfo(r) === 'error').length / filteredRecords.length) * 100).toFixed(1)
                                     : "0.0"}% del total analizado
