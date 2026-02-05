@@ -657,16 +657,16 @@ export default function ReportesPage() {
                             </Card>
                         </div>
 
-                        {/* Row 1: Sucursales & Pareto */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {/* Sucursales Performance */}
+                        {/* Charts Section - Full Width Stacked */}
+                        <div className="grid grid-cols-1 gap-6">
+                            {/* Conformidad por Sucursal - Full Width */}
                             <Card className="border-none shadow-sm dark:bg-slate-900">
                                 <CardHeader>
                                     <CardTitle className="text-lg font-bold">Conformidad por Sucursal</CardTitle>
                                     <CardDescription>Volumen de producción conforme vs no conforme</CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="h-[300px] w-full">
+                                    <div className="h-[400px] w-full">
                                         <ResponsiveContainer width="100%" height="100%">
                                             <BarChart data={sucursalChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
@@ -686,14 +686,14 @@ export default function ReportesPage() {
                                 </CardContent>
                             </Card>
 
-                            {/* Pareto de Defectos */}
+                            {/* Pareto de Defectos - Full Width */}
                             <Card className="border-none shadow-sm dark:bg-slate-900">
                                 <CardHeader>
                                     <CardTitle className="text-lg font-bold">Pareto de Defectos</CardTitle>
                                     <CardDescription>Frecuencia de fallos por parámetro de calidad</CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="h-[300px] w-full">
+                                    <div className="h-[400px] w-full">
                                         <ResponsiveContainer width="100%" height="100%">
                                             <ComposedChart data={paretoData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
@@ -833,25 +833,25 @@ export default function ReportesPage() {
                                         {/* Unidades (Bases) - Bottom Section */}
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <p className="text-blue-300 text-xs font-medium mb-1 flex items-center gap-1">
-                                                    <Package className="h-3 w-3" />
+                                                <p className="text-blue-300 text-sm font-semibold mb-2 flex items-center gap-1.5">
+                                                    <Package className="h-4 w-4" />
                                                     Piezas (Bases)
                                                 </p>
-                                                <div className="text-2xl font-bold">
+                                                <div className="text-3xl font-bold">
                                                     {kpis.totalPieces.toLocaleString()}
-                                                    <span className="text-sm font-normal opacity-70 ml-1">pzas</span>
+                                                    <span className="text-base font-normal opacity-70 ml-1">pzas</span>
                                                 </div>
                                             </div>
                                             <div>
-                                                <p className="text-blue-300 text-xs font-medium mb-1 flex items-center gap-1">
-                                                    <Activity className="h-3 w-3" />
+                                                <p className="text-blue-300 text-sm font-semibold mb-2 flex items-center gap-1.5">
+                                                    <Activity className="h-4 w-4" />
                                                     Rendimiento PT
                                                 </p>
-                                                <div className="text-2xl font-bold">
+                                                <div className="text-3xl font-bold">
                                                     {(kpis.totalPieces * 20).toLocaleString()}
-                                                    <span className="text-sm font-normal opacity-70 ml-1">L</span>
+                                                    <span className="text-base font-normal opacity-70 ml-1">L</span>
                                                 </div>
-                                                <p className="text-[10px] text-blue-300 opacity-60 mt-0.5">
+                                                <p className="text-xs text-blue-300 opacity-60 mt-1">
                                                     (20L por pieza)
                                                 </p>
                                             </div>
