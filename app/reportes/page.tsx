@@ -539,83 +539,91 @@ export default function ReportesPage() {
 
                     <TabsContent value="calidad" className="space-y-6">
                         {/* KPI Section */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             {/* KPI 1: Total Registros + Volumen Total (Merged) - Enhanced */}
-                            <Card className="border-none shadow-md bg-gradient-to-br from-blue-900 to-blue-950 text-white dark:from-blue-950 dark:to-slate-900 md:col-span-2">
-                                <CardContent className="p-6 relative overflow-hidden">
+                            <Card className="border-none shadow-md bg-gradient-to-br from-blue-900 to-blue-950 text-white dark:from-blue-950 dark:to-slate-900">
+                                <CardContent className="p-8 relative overflow-hidden">
                                     <div className="relative z-10">
                                         {/* Total Registros - Top Section */}
-                                        <div className="mb-6">
-                                            <p className="text-blue-200 font-medium mb-2 flex items-center gap-2">
-                                                <Activity className="h-5 w-5" />
+                                        <div className="mb-8">
+                                            <p className="text-blue-200 font-semibold mb-3 flex items-center gap-2 text-base">
+                                                <Activity className="h-6 w-6" />
                                                 Total Registros
                                             </p>
-                                            <div className="text-5xl font-extrabold tracking-tight">
+                                            <div className="text-7xl font-extrabold tracking-tight leading-none">
                                                 {kpis.total}
-                                                <span className="text-2xl font-normal opacity-80 ml-2">lotes</span>
+                                                <span className="text-3xl font-semibold opacity-80 ml-3">lotes</span>
                                             </div>
-                                            <p className="text-sm text-blue-200 mt-2 opacity-80">
+                                            <p className="text-base text-blue-200 mt-3 opacity-80 font-medium">
                                                 Registros de calidad
                                             </p>
                                         </div>
 
                                         {/* Divider */}
-                                        <div className="border-t border-blue-700 opacity-30 my-4"></div>
+                                        <div className="border-t border-blue-700 opacity-30 my-6"></div>
 
                                         {/* Volumen Total - Bottom Section */}
                                         <div>
-                                            <p className="text-blue-300 text-xs font-medium mb-1 flex items-center gap-1">
-                                                <Factory className="h-3 w-3" />
+                                            <p className="text-blue-300 text-sm font-semibold mb-2 flex items-center gap-1.5">
+                                                <Factory className="h-4 w-4" />
                                                 Volumen Total Producido
                                             </p>
-                                            <div className="text-2xl font-bold">
+                                            <div className="text-3xl font-extrabold">
                                                 {kpis.totalVolume.toLocaleString()}
-                                                <span className="text-sm font-normal opacity-70 ml-1">L/Kg</span>
+                                                <span className="text-lg font-semibold opacity-70 ml-2">L/Kg</span>
                                             </div>
                                         </div>
                                     </div>
-                                    <Activity className="absolute -right-8 -bottom-8 h-40 w-40 text-white opacity-10 rotate-12" />
+                                    <Activity className="absolute -right-8 -bottom-8 h-48 w-48 text-white opacity-10 rotate-12" />
                                 </CardContent>
                             </Card>
 
                             {/* KPI 2: Total Conformes - Enhanced */}
-                            <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-slate-900 dark:to-slate-800">
+                            <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-slate-900 dark:to-slate-800 relative overflow-visible">
                                 <CardContent className="p-6 h-full flex flex-col justify-between">
                                     <div>
                                         <div className="flex justify-between items-start mb-4">
-                                            <div className="flex-1">
-                                                <h3 className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wider mb-2">Total Conformes</h3>
-                                                <div className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1 leading-tight">
+                                            <div className="flex-1 pr-12">
+                                                <h3 className="text-base font-extrabold text-green-700 dark:text-green-400 tracking-wide mb-2">TOTAL CONFORMES</h3>
+                                                <div className="text-5xl font-extrabold text-slate-900 dark:text-white mt-1 leading-none">
                                                     {kpis.conformes}
                                                 </div>
-                                                <p className="text-sm text-green-700 dark:text-green-400 font-bold mt-2">
-                                                    {kpis.percentConformidad}% del total
-                                                </p>
+                                                <p className="text-sm text-green-700 dark:text-green-400 font-medium mt-2">registros</p>
+                                                <div className="flex items-baseline gap-1.5 mt-3">
+                                                    <span className="text-3xl font-extrabold text-green-700 dark:text-green-400">
+                                                        {kpis.percentConformidad}%
+                                                    </span>
+                                                    <span className="text-base font-bold text-green-700/70 dark:text-green-400/70">del total</span>
+                                                </div>
                                             </div>
-                                            <div className="p-3 bg-green-100 dark:bg-green-900/50 rounded-xl">
-                                                <TrendingUp className="h-6 w-6 text-green-700 dark:text-green-400" />
+                                            <div className="absolute -top-3 -right-3 p-4 bg-green-100 dark:bg-green-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
+                                                <TrendingUp className="h-10 w-10 text-green-700 dark:text-green-400" />
                                             </div>
                                         </div>
                                     </div>
                                 </CardContent>
                             </Card>
 
-                            {/* KPI 3: Semi-Conformes - Enhanced (Small Card) */}
-                            <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-slate-900 dark:to-slate-800">
-                                <CardContent className="p-4 h-full flex flex-col justify-between">
+                            {/* KPI 3: Semi-Conformes - Enhanced */}
+                            <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-slate-900 dark:to-slate-800 relative overflow-visible">
+                                <CardContent className="p-6 h-full flex flex-col justify-between">
                                     <div>
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex-1">
-                                                <h3 className="text-[10px] font-semibold text-yellow-700 dark:text-yellow-400 uppercase tracking-wider mb-1">Semi-Conformes</h3>
-                                                <div className="text-2xl font-extrabold text-slate-900 dark:text-white leading-tight">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className="flex-1 pr-12">
+                                                <h3 className="text-base font-extrabold text-yellow-700 dark:text-yellow-400 tracking-wide mb-2">SEMI-CONFORMES</h3>
+                                                <div className="text-5xl font-extrabold text-slate-900 dark:text-white mt-1 leading-none">
                                                     {kpis.semiConformes}
                                                 </div>
-                                                <p className="text-xs text-yellow-700 dark:text-yellow-400 font-bold mt-1">
-                                                    {kpis.percentSemiConformidad}%
-                                                </p>
+                                                <p className="text-sm text-yellow-700 dark:text-yellow-400 font-medium mt-2">registros</p>
+                                                <div className="flex items-baseline gap-1.5 mt-3">
+                                                    <span className="text-3xl font-extrabold text-yellow-700 dark:text-yellow-400">
+                                                        {kpis.percentSemiConformidad}%
+                                                    </span>
+                                                    <span className="text-base font-bold text-yellow-700/70 dark:text-yellow-400/70">del total</span>
+                                                </div>
                                             </div>
-                                            <div className="p-2 bg-yellow-100 dark:bg-yellow-900/50 rounded-lg">
-                                                <AlertCircle className="h-4 w-4 text-yellow-700 dark:text-yellow-400" />
+                                            <div className="absolute -top-3 -right-3 p-4 bg-yellow-100 dark:bg-yellow-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
+                                                <AlertCircle className="h-10 w-10 text-yellow-700 dark:text-yellow-400" />
                                             </div>
                                         </div>
                                     </div>
@@ -623,21 +631,25 @@ export default function ReportesPage() {
                             </Card>
 
                             {/* KPI 4: Total No Conformes - Enhanced */}
-                            <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-red-50 to-red-100 dark:from-slate-900 dark:to-slate-800">
+                            <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-red-50 to-red-100 dark:from-slate-900 dark:to-slate-800 relative overflow-visible">
                                 <CardContent className="p-6 h-full flex flex-col justify-between">
                                     <div>
                                         <div className="flex justify-between items-start mb-4">
-                                            <div className="flex-1">
-                                                <h3 className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wider mb-2">No Conformes</h3>
-                                                <div className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1 leading-tight">
+                                            <div className="flex-1 pr-12">
+                                                <h3 className="text-base font-extrabold text-red-700 dark:text-red-400 tracking-wide mb-2">NO CONFORMES</h3>
+                                                <div className="text-5xl font-extrabold text-slate-900 dark:text-white mt-1 leading-none">
                                                     {kpis.noConformes}
                                                 </div>
-                                                <p className="text-sm text-red-700 dark:text-red-400 font-bold mt-2">
-                                                    {kpis.percentNoConformidad}% del total
-                                                </p>
+                                                <p className="text-sm text-red-700 dark:text-red-400 font-medium mt-2">registros</p>
+                                                <div className="flex items-baseline gap-1.5 mt-3">
+                                                    <span className="text-3xl font-extrabold text-red-700 dark:text-red-400">
+                                                        {kpis.percentNoConformidad}%
+                                                    </span>
+                                                    <span className="text-base font-bold text-red-700/70 dark:text-red-400/70">del total</span>
+                                                </div>
                                             </div>
-                                            <div className="p-3 bg-red-100 dark:bg-red-900/50 rounded-xl">
-                                                <Activity className="h-6 w-6 text-red-700 dark:text-red-400" />
+                                            <div className="absolute -top-3 -right-3 p-4 bg-red-100 dark:bg-red-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
+                                                <Activity className="h-10 w-10 text-red-700 dark:text-red-400" />
                                             </div>
                                         </div>
                                     </div>
@@ -850,11 +862,11 @@ export default function ReportesPage() {
                             </Card>
 
                             {/* KPI 3: Categoría Leader + Top 3 - Enhanced */}
-                            <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-red-50 to-red-100 dark:from-slate-900 dark:to-slate-800">
+                            <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-red-50 to-red-100 dark:from-slate-900 dark:to-slate-800 relative overflow-visible">
                                 <CardContent className="p-8 h-full flex flex-col justify-between">
                                     <div>
                                         <div className="flex justify-between items-start mb-6">
-                                            <div className="flex-1">
+                                            <div className="flex-1 pr-12">
                                                 <h3 className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wider mb-2">Categoría Más Producida</h3>
                                                 <div className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1 leading-tight">
                                                     {commercialData.top3Categories.length > 0 ? commercialData.top3Categories[0].name : '-'}
@@ -863,8 +875,8 @@ export default function ReportesPage() {
                                                     {commercialData.top3Categories.length > 0 ? `${commercialData.top3Categories[0].value.toLocaleString()} ${commercialData.top3Categories[0].type}` : ''}
                                                 </p>
                                             </div>
-                                            <div className="p-3 bg-red-100 dark:bg-red-900/50 rounded-xl">
-                                                <TrendingUp className="h-7 w-7 text-red-700 dark:text-red-400" />
+                                            <div className="absolute -top-3 -right-3 p-4 bg-red-100 dark:bg-red-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
+                                                <TrendingUp className="h-10 w-10 text-red-700 dark:text-red-400" />
                                             </div>
                                         </div>
 
@@ -882,11 +894,11 @@ export default function ReportesPage() {
                             </Card>
 
                             {/* KPI 4: Sucursal Leader + Top 3 - Enhanced */}
-                            <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-slate-900 dark:to-slate-800">
+                            <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-slate-900 dark:to-slate-800 relative overflow-visible">
                                 <CardContent className="p-8 h-full flex flex-col justify-between">
                                     <div>
                                         <div className="flex justify-between items-start mb-6">
-                                            <div className="flex-1">
+                                            <div className="flex-1 pr-12">
                                                 <h3 className="text-xs font-semibold text-blue-900 dark:text-blue-400 uppercase tracking-wider mb-2">Sucursal Líder</h3>
                                                 <div className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1 leading-tight">
                                                     {commercialData.top3Sucursales.length > 0 ? commercialData.top3Sucursales[0].name : '-'}
@@ -895,8 +907,8 @@ export default function ReportesPage() {
                                                     {commercialData.top3Sucursales.length > 0 ? `${commercialData.top3Sucursales[0].litros.toLocaleString()} L` : ''}
                                                 </p>
                                             </div>
-                                            <div className="p-3 bg-blue-100 dark:bg-blue-900/50 rounded-xl">
-                                                <Trophy className="h-7 w-7 text-blue-900 dark:text-blue-400" />
+                                            <div className="absolute -top-3 -right-3 p-4 bg-blue-100 dark:bg-blue-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
+                                                <Trophy className="h-10 w-10 text-blue-900 dark:text-blue-400" />
                                             </div>
                                         </div>
 
