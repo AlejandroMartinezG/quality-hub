@@ -80,6 +80,7 @@ export default function CalidadPage() {
     const [searchTerm, setSearchTerm] = useState("")
     const [sucursalFilter, setSucursalFilter] = useState("all")
     const [statusFilter, setStatusFilter] = useState("all")
+    const [timeRangeFilter, setTimeRangeFilter] = useState("all")
     const [editingRecord, setEditingRecord] = useState<BitacoraRecord | null>(null)
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
     const [isUpdating, setIsUpdating] = useState(false)
@@ -213,6 +214,7 @@ export default function CalidadPage() {
         return status
     }
 
+
     const filteredRecords = records.filter(r => {
         const matchesSearch =
             r.lote_producto?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -222,7 +224,25 @@ export default function CalidadPage() {
         const matchesSucursal = sucursalFilter === "all" || r.sucursal === sucursalFilter
         const matchesStatus = statusFilter === "all" || getStatusInfo(r) === statusFilter
 
-        return matchesSearch && matchesSucursal && matchesStatus
+        // Time range filter - using fecha_fabricacion for production date
+        let matchesTimeRange = true
+        if (timeRangeFilter !== "all") {
+            // Use fecha_fabricacion if available, otherwise fall back to created_at
+            const dateToUse = r.fecha_fabricacion || r.created_at
+            if (dateToUse) {
+                const recordDate = new Date(dateToUse)
+                const now = new Date()
+                const daysAgo = parseInt(timeRangeFilter)
+                const cutoffDate = new Date(now.getTime() - (daysAgo * 24 * 60 * 60 * 1000))
+
+                // Set cutoff to start of day for better comparison
+                cutoffDate.setHours(0, 0, 0, 0)
+
+                matchesTimeRange = recordDate >= cutoffDate
+            }
+        }
+
+        return matchesSearch && matchesSucursal && matchesStatus && matchesTimeRange
     })
 
     return (
@@ -263,6 +283,21 @@ export default function CalidadPage() {
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
+                        </div>
+
+                        <div className="w-full md:w-52">
+                            <Select value={timeRangeFilter} onValueChange={setTimeRangeFilter}>
+                                <SelectTrigger className="h-10">
+                                    <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
+                                    <SelectValue placeholder="Período" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Todo el historial</SelectItem>
+                                    <SelectItem value="7">Últimos 7 días</SelectItem>
+                                    <SelectItem value="30">Últimos 30 días</SelectItem>
+                                    <SelectItem value="90">Últimos 90 días</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         {profile?.is_admin && (
