@@ -405,25 +405,25 @@ export default function CalidadPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="relative overflow-hidden bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/20 dark:to-red-900/10 border-red-200 dark:border-red-900/30">
+                <Card className="relative overflow-hidden bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/20 dark:to-red-900/10 border-[#C1272D]/20 dark:border-[#C1272D]/30">
                     <div className="absolute top-0 right-0 p-4 opacity-10">
-                        <XCircle className="w-24 h-24 text-red-600" />
+                        <XCircle className="w-24 h-24 text-[#C1272D]" />
                     </div>
                     <CardHeader className="pb-2 relative z-10">
-                        <CardTitle className="text-sm font-bold text-red-700 dark:text-red-400 uppercase tracking-widest flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
+                        <CardTitle className="text-sm font-bold text-[#C1272D] dark:text-red-400 uppercase tracking-widest flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-[#C1272D] shadow-[0_0_8px_rgba(193,39,45,0.6)]" />
                             No Conformes
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="relative z-10">
                         <div className="flex flex-col gap-1">
                             <div className="flex items-baseline gap-2">
-                                <span className="text-5xl font-extrabold text-red-700 dark:text-red-400 tracking-tight">
+                                <span className="text-5xl font-extrabold text-[#C1272D] dark:text-red-400 tracking-tight">
                                     {filteredRecords.filter(r => getStatusInfo(r) === 'error').length}
                                 </span>
-                                <span className="text-sm font-medium text-red-600/80 dark:text-red-400/80">registros</span>
+                                <span className="text-sm font-medium text-[#C1272D]/80 dark:text-red-400/80">registros</span>
                             </div>
-                            <span className="text-xs font-semibold text-red-700/70 dark:text-red-300/70">
+                            <span className="text-xs font-semibold text-[#C1272D]/70 dark:text-red-300/70">
                                 {filteredRecords.length > 0
                                     ? ((filteredRecords.filter(r => getStatusInfo(r) === 'error').length / filteredRecords.length) * 100).toFixed(1)
                                     : "0.0"}% del total analizado
@@ -433,10 +433,10 @@ export default function CalidadPage() {
                 </Card>
             </div>
 
-            <Card className="shadow-lg border-primary/10">
-                <CardHeader>
-                    <CardTitle>Historial de Mediciones</CardTitle>
-                    <CardDescription>Últimos 50 registros comparados con límites de control.</CardDescription>
+            <Card className="border-none shadow-lg dark:bg-slate-900">
+                <CardHeader className="border-b border-slate-200 dark:border-slate-700">
+                    <CardTitle className="text-xl font-bold text-slate-900 dark:text-slate-100">Historial de Mediciones</CardTitle>
+                    <CardDescription className="text-slate-600 dark:text-slate-400">Últimos 50 registros comparados con límites de control.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {loading ? (
@@ -448,7 +448,7 @@ export default function CalidadPage() {
                         <div className="rounded-md border overflow-x-auto">
                             <Table>
                                 <TableHeader>
-                                    <TableRow className="bg-slate-900 hover:bg-slate-900/90 border-b-4 border-primary/20">
+                                    <TableRow className="bg-gradient-to-r from-blue-900 to-blue-950 hover:from-blue-900 hover:to-blue-950 border-none">
                                         <TableHead className="w-[150px] text-white font-bold text-sm">Lote</TableHead>
                                         <TableHead className="text-white font-bold text-sm">Producto/Sucursal</TableHead>
                                         <TableHead className="text-center text-white font-bold text-sm">pH</TableHead>
@@ -515,10 +515,10 @@ export default function CalidadPage() {
                                                     <TableCell>
                                                         <Badge
                                                             className={cn(
-                                                                "gap-1.5 shadow-none px-3 py-1 text-xs font-semibold uppercase tracking-wider rounded-full",
-                                                                status === 'success' && "bg-green-600 text-white hover:bg-green-700 border-none",
-                                                                status === 'warning' && "bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200",
-                                                                status === 'error' && "bg-red-600 text-white hover:bg-red-700 border-none"
+                                                                "gap-1.5 shadow-sm px-3 py-1 text-xs font-semibold uppercase tracking-wider rounded-full border-none",
+                                                                status === 'success' && "bg-green-600 text-white hover:bg-green-700",
+                                                                status === 'warning' && "bg-yellow-500 text-white hover:bg-yellow-600",
+                                                                status === 'error' && "bg-[#C1272D] text-white hover:bg-[#A01F25]"
                                                             )}
                                                         >
                                                             {status === 'success' && <CheckCircle2 className="h-3 w-3" />}
