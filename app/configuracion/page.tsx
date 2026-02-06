@@ -9,10 +9,11 @@ import { ColumnDef } from "@tanstack/react-table"
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { Badge } from "@/components/ui/badge"
-import { Shield, History, User as UserIcon, Loader2, Users as UsersIcon, Edit2, Save, X, Trash2 } from "lucide-react"
+import { Shield, History, User as UserIcon, Loader2, Users as UsersIcon, Edit2, Save, X, Trash2, Building2, Crown, Mail, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { AvatarUpload } from "@/components/AvatarUpload"
 import {
     Dialog,
     DialogContent,
@@ -37,6 +38,7 @@ interface DownloadLog {
     id: string
     full_name: string
     area: string
+    role?: string // Rol del usuario desde profiles
     file_name: string
     file_type: string
     downloaded_at: string
@@ -51,6 +53,8 @@ interface Profile {
     email: string
     is_admin: boolean
     sucursal?: string
+    role?: string
+    avatar_url?: string | null
 }
 
 export default function ConfigurationPage() {
@@ -60,6 +64,13 @@ export default function ConfigurationPage() {
     // Logs state
     const [logs, setLogs] = useState<DownloadLog[]>([])
     const [logsLoading, setLogsLoading] = useState(true)
+
+    // Filter states for audit logs
+    const [filterUser, setFilterUser] = useState("")
+    const [filterArea, setFilterArea] = useState("all")
+    const [filterAction, setFilterAction] = useState("all")
+    const [filterDateFrom, setFilterDateFrom] = useState("")
+    const [filterDateTo, setFilterDateTo] = useState("")
 
     // Users state (Admin)
     const [allUsers, setAllUsers] = useState<Profile[]>([])
@@ -94,15 +105,115 @@ export default function ConfigurationPage() {
     }, [profile, user])
 
     async function fetchLogs() {
-        const { data } = await supabase
-            .from('download_logs')
-            .select('*')
-            .order('downloaded_at', { ascending: false })
-            .limit(200)
+        try {
+            // Fetch logs
+            const { data: logsData, error: logsError } = await supabase
+                .from('download_logs')
+                .select('*')
+                .order('downloaded_at', { ascending: false })
+                .limit(500)
 
-        if (data) setLogs(data)
-        setLogsLoading(false)
+            if (logsError) {
+                console.error("Error fetching logs:", logsError)
+                setLogsLoading(false)
+                return
+            }
+
+            // Fetch all profiles to get roles
+            const { data: profilesData, error: profilesError } = await supabase
+                .from('profiles')
+                .select('id, role')
+
+            if (profilesError) {
+                console.error("Error fetching profiles:", profilesError)
+            }
+
+            // Create a map of user_id -> role
+            const roleMap = new Map<string, string>()
+            profilesData?.forEach(profile => {
+                if (profile.id && profile.role) {
+                    roleMap.set(profile.id, profile.role)
+                }
+            })
+
+            // Transform logs to include role
+            const transformedLogs = logsData?.map(log => ({
+                ...log,
+                role: log.user_id ? roleMap.get(log.user_id) || log.area : log.area
+            })) || []
+
+            setLogs(transformedLogs)
+        } catch (error) {
+            console.error("Exception fetching logs:", error)
+        } finally {
+            setLogsLoading(false)
+        }
     }
+
+    // Filtered logs based on filters
+    const filteredLogs = logs.filter(log => {
+        // Filter by user name
+        if (filterUser && !log.full_name.toLowerCase().includes(filterUser.toLowerCase())) {
+            return false
+        }
+
+        // Filter by role (using area as fallback)
+        if (filterArea !== "all") {
+            const logRole = log.role || log.area
+            if (logRole !== filterArea) {
+                return false
+            }
+        }
+
+        // Filter by action type
+        if (filterAction !== "all" && log.file_type !== filterAction) {
+            return false
+        }
+
+        // Filter by date range
+        if (filterDateFrom) {
+            const logDate = new Date(log.downloaded_at)
+            const fromDate = new Date(filterDateFrom)
+            if (logDate < fromDate) return false
+        }
+
+        if (filterDateTo) {
+            const logDate = new Date(log.downloaded_at)
+            const toDate = new Date(filterDateTo)
+            toDate.setHours(23, 59, 59, 999) // Include entire day
+            if (logDate > toDate) return false
+        }
+
+        return true
+    })
+
+    // Get unique roles from logs
+    const uniqueRoles = Array.from(new Set(logs.map(log => log.role || log.area))).filter(Boolean).sort()
+
+    // Role display names
+    const roleNames: Record<string, string> = {
+        'admin': 'Administrador',
+        'preparador': 'Preparador',
+        'gerente_sucursal': 'Gerente de Sucursal',
+        'director_operaciones': 'Director de Operaciones',
+        'gerente_calidad': 'Gerente de Calidad',
+        'mostrador': 'Mostrador',
+        'cajera': 'Cajera',
+        'director_compras': 'Director de Compras'
+    }
+
+    // Get unique action types from logs
+    const uniqueActions = Array.from(new Set(logs.map(log => log.file_type))).filter(Boolean).sort()
+
+    // Clear all filters
+    const clearFilters = () => {
+        setFilterUser("")
+        setFilterArea("all")
+        setFilterAction("all")
+        setFilterDateFrom("")
+        setFilterDateTo("")
+    }
+
 
     async function fetchAllUsers() {
         console.log("Fetching all users...")
@@ -173,18 +284,8 @@ export default function ConfigurationPage() {
                 alert("Perfil actualizado correctamente.")
             }
 
-            // Update local state to reflect changes immediately without reload
-            if (profile) {
-                setProfile({
-                    ...profile,
-                    full_name: myProfileData.full_name,
-                    position: myProfileData.position,
-                    sucursal: myProfileData.sucursal,
-                    area: myProfileData.area,
-                    email: myProfileData.email || profile.email
-                })
-            }
-            setIsMyProfileDialogOpen(false)
+            // Reload to reflect changes
+            window.location.reload()
 
         } catch (error: any) {
             console.error("Update error:", error)
@@ -251,9 +352,23 @@ export default function ConfigurationPage() {
             cell: ({ row }) => <span className="font-semibold">{row.getValue("full_name")}</span>,
         },
         {
-            accessorKey: "area",
-            header: "Área",
-            cell: ({ row }) => <Badge variant="outline">{row.getValue("area")}</Badge>,
+            accessorKey: "role",
+            header: "Rol",
+            cell: ({ row }) => {
+                const role = row.original.role || row.original.area
+                const roleNames: Record<string, string> = {
+                    'admin': 'Administrador',
+                    'preparador': 'Preparador',
+                    'gerente_sucursal': 'Gerente de Sucursal',
+                    'director_operaciones': 'Director de Operaciones',
+                    'gerente_calidad': 'Gerente de Calidad',
+                    'mostrador': 'Mostrador',
+                    'cajera': 'Cajera',
+                    'director_compras': 'Director de Compras'
+                }
+                const displayName = roleNames[role] || role
+                return <Badge variant="outline">{displayName}</Badge>
+            },
         },
         {
             accessorKey: "file_name",
@@ -364,41 +479,208 @@ export default function ConfigurationPage() {
                     </TabsList>
 
                     {/* Mi Perfil */}
-                    <TabsContent value="profile" className="space-y-4 mt-6">
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between">
-                                <div>
-                                    <CardTitle>Información del Usuario</CardTitle>
-                                    <CardDescription>Tus datos registrados en el sistema</CardDescription>
-                                </div>
-                                <Button variant="outline" size="sm" onClick={() => setIsMyProfileDialogOpen(true)} className="gap-2">
-                                    <Edit2 className="h-4 w-4" />
-                                    Editar Perfil
-                                </Button>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-1">
-                                        <p className="text-sm text-muted-foreground">Nombre Completo</p>
-                                        <p className="font-medium text-lg">{profile?.full_name}</p>
+                    <TabsContent value="profile" className="space-y-6 mt-6">
+                        {/* Profile Header Card with Avatar */}
+                        <Card className="overflow-hidden border-none shadow-md">
+                            <div className="h-56 relative bg-white dark:bg-slate-900 overflow-hidden">
+                                {/* Corporate Background Curves */}
+                                <svg
+                                    className="absolute inset-0 w-full h-full"
+                                    preserveAspectRatio="none"
+                                    viewBox="0 0 1440 400"
+                                >
+                                    {/* Red Layer (Background/Border) */}
+                                    <path
+                                        fill="#E62429"
+                                        d="M0,400 C600,390 1200,100 1440,110 L1440,400 Z"
+                                        className="opacity-90"
+                                    />
+                                    {/* Blue Layer (Foreground) */}
+                                    <path
+                                        fill="#001C71"
+                                        d="M0,400 C600,400 1200,150 1440,165 L1440,400 Z"
+                                    />
+                                </svg>
+
+
+
+
+
+                            </div>
+
+                            <CardContent className="relative -mt-24 pb-8 px-6 md:px-10">
+                                <div className="flex flex-col md:flex-row items-end gap-6 relative">
+                                    {/* Edit Button - Absolute Positioned */}
+                                    <div className="absolute top-0 right-0 hidden md:block">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setIsMyProfileDialogOpen(true)}
+                                            className="gap-2"
+                                        >
+                                            <Edit2 className="h-4 w-4" />
+                                            Editar
+                                        </Button>
                                     </div>
-                                    <div className="space-y-1">
-                                        <p className="text-sm text-muted-foreground">Correo electrónico</p>
-                                        <p className="font-medium text-lg">{profile?.email || user.email}</p>
+
+                                    {/* Avatar Section - Left Aligned */}
+                                    <div className="flex-shrink-0 relative z-10">
+                                        <div className="rounded-full p-1.5 bg-white shadow-2xl ring-1 ring-slate-100">
+                                            <AvatarUpload
+                                                userId={user.id}
+                                                currentAvatarUrl={profile?.avatar_url}
+                                                userName={profile?.full_name || 'Usuario'}
+                                                onUploadComplete={(url) => {
+                                                    // Refresh profile data
+                                                    window.location.reload()
+                                                }}
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="space-y-1">
-                                        <p className="text-sm text-muted-foreground">Área / Departamento</p>
-                                        <p className="font-medium text-lg">
-                                            <Badge variant="secondary" className="px-3 py-0.5 text-sm">{profile?.area}</Badge>
-                                        </p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-sm text-muted-foreground">Puesto</p>
-                                        <p className="font-medium text-lg">{profile?.position}</p>
+
+                                    {/* User Info - Side by Side */}
+                                    <div className="flex-1 space-y-3 text-left z-10 w-full mb-1">
+                                        <div className="space-y-1">
+                                            <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
+                                                {profile?.full_name}
+                                            </h2>
+                                            <p className="text-sm text-muted-foreground flex items-center justify-start gap-2">
+                                                <Mail className="h-4 w-4" />
+                                                {user?.email}
+                                            </p>
+                                        </div>
+
+                                        {/* Mobile Edit Button */}
+                                        <div className="md:hidden pt-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setIsMyProfileDialogOpen(true)}
+                                                className="gap-2 w-full"
+                                            >
+                                                <Edit2 className="h-4 w-4" />
+                                                Editar Perfil
+                                            </Button>
+                                        </div>
+
+                                        {/* Role and Sucursal Badges - Left Aligned */}
+                                        <div className="flex flex-wrap justify-start gap-2 pt-1">
+                                            {profile?.role && (
+                                                <Badge className="gap-1.5 px-3 py-1 text-xs md:text-sm">
+                                                    <Shield className="h-3.5 w-3.5" />
+                                                    {roleNames[profile.role] || profile.role}
+                                                </Badge>
+                                            )}
+                                            {profile?.sucursal && (
+                                                <Badge variant="secondary" className="gap-1.5 px-3 py-1 text-xs md:text-sm">
+                                                    <Building2 className="h-3.5 w-3.5" />
+                                                    {profile.sucursal}
+                                                </Badge>
+                                            )}
+                                            {profile?.is_admin && (
+                                                <Badge variant="destructive" className="gap-1.5 px-3 py-1 text-xs md:text-sm">
+                                                    <Crown className="h-3.5 w-3.5" />
+                                                    Administrador
+                                                </Badge>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </CardContent>
                         </Card>
+
+                        {/* Profile Details Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Personal Information Card */}
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2 text-lg">
+                                        <UserIcon className="h-5 w-5 text-primary" />
+                                        Información Personal
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="space-y-3">
+                                        <div className="flex items-start justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-900 border">
+                                            <div className="space-y-1">
+                                                <p className="text-xs text-muted-foreground">Nombre Completo</p>
+                                                <p className="font-semibold">{profile?.full_name}</p>
+                                            </div>
+                                            <UserIcon className="h-4 w-4 text-muted-foreground mt-1" />
+                                        </div>
+
+                                        <div className="flex items-start justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-900 border">
+                                            <div className="space-y-1">
+                                                <p className="text-xs text-muted-foreground">Correo Electrónico</p>
+                                                <p className="font-semibold text-sm">{user?.email}</p>
+                                            </div>
+                                            <Mail className="h-4 w-4 text-muted-foreground mt-1" />
+                                        </div>
+
+                                        {profile?.sucursal && (
+                                            <div className="flex items-start justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-900 border">
+                                                <div className="space-y-1">
+                                                    <p className="text-xs text-muted-foreground">Sucursal</p>
+                                                    <p className="font-semibold">{profile.sucursal}</p>
+                                                </div>
+                                                <Building2 className="h-4 w-4 text-muted-foreground mt-1" />
+                                            </div>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Role & Permissions Card */}
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2 text-lg">
+                                        <Shield className="h-5 w-5 text-primary" />
+                                        Rol y Permisos
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="space-y-3">
+                                        <div className="flex items-start justify-between p-3 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
+                                            <div className="space-y-1">
+                                                <p className="text-xs text-muted-foreground">Rol Actual</p>
+                                                <p className="font-bold text-primary">
+                                                    {profile?.role ? (roleNames[profile.role] || profile.role) : 'No asignado'}
+                                                </p>
+                                            </div>
+                                            <Shield className="h-4 w-4 text-primary mt-1" />
+                                        </div>
+
+                                        <div className="flex items-start justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-900 border">
+                                            <div className="space-y-1">
+                                                <p className="text-xs text-muted-foreground">Nivel de Acceso</p>
+                                                <p className="font-semibold">
+                                                    {profile?.is_admin ? 'Administrador del Sistema' : 'Usuario Estándar'}
+                                                </p>
+                                            </div>
+                                            {profile?.is_admin ? (
+                                                <Crown className="h-4 w-4 text-amber-500 mt-1" />
+                                            ) : (
+                                                <UserIcon className="h-4 w-4 text-muted-foreground mt-1" />
+                                            )}
+                                        </div>
+
+                                        {/* Permission Summary */}
+                                        <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+                                            <div className="flex items-start gap-2">
+                                                <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                                                <div className="text-xs text-blue-700 dark:text-blue-300">
+                                                    <p className="font-medium">Permisos del Rol</p>
+                                                    <p className="mt-1">
+                                                        Tus permisos se asignan automáticamente según tu rol.
+                                                        {profile?.is_admin ? ' Como administrador, tienes acceso completo al sistema.' : ' Contacta al administrador para cambios.'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
                     </TabsContent>
 
                     {/* Gestión de Usuarios (Admin) */}
@@ -407,11 +689,22 @@ export default function ConfigurationPage() {
                             <TabsContent value="users" className="space-y-4 mt-6">
                                 <Card>
                                     <CardHeader>
-                                        <CardTitle className="flex items-center gap-2">
-                                            <UsersIcon className="h-5 w-5" />
-                                            Gestión de Usuarios
-                                        </CardTitle>
-                                        <CardDescription>Administra los perfiles, áreas y permisos de los usuarios registrados.</CardDescription>
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <CardTitle className="flex items-center gap-2">
+                                                    <UsersIcon className="h-5 w-5" />
+                                                    Gestión de Usuarios
+                                                </CardTitle>
+                                                <CardDescription>Administra los perfiles, áreas y permisos de los usuarios registrados.</CardDescription>
+                                            </div>
+                                            <Button
+                                                onClick={() => window.location.href = '/configuracion/usuarios'}
+                                                className="gap-2"
+                                            >
+                                                <Shield className="h-4 w-4" />
+                                                Gestionar Permisos
+                                            </Button>
+                                        </div>
                                     </CardHeader>
                                     <CardContent>
                                         {usersLoading ? (
@@ -441,12 +734,112 @@ export default function ConfigurationPage() {
                                         </div>
                                     </CardHeader>
                                     <CardContent>
+                                        {/* Filters Section */}
+                                        <div className="mb-6 space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Filtros</h3>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={clearFilters}
+                                                    className="text-xs"
+                                                >
+                                                    <X className="h-3 w-3 mr-1" />
+                                                    Limpiar Filtros
+                                                </Button>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                                {/* Filter by User */}
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="filter-user" className="text-xs">Buscar Usuario</Label>
+                                                    <Input
+                                                        id="filter-user"
+                                                        placeholder="Nombre del usuario..."
+                                                        value={filterUser}
+                                                        onChange={(e) => setFilterUser(e.target.value)}
+                                                        className="h-9"
+                                                    />
+                                                </div>
+
+                                                {/* Filter by Role */}
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="filter-area" className="text-xs">Rol</Label>
+                                                    <Select value={filterArea} onValueChange={setFilterArea}>
+                                                        <SelectTrigger id="filter-area" className="h-9">
+                                                            <SelectValue placeholder="Todos los roles" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="all">Todos los roles</SelectItem>
+                                                            {uniqueRoles.map((role: string) => (
+                                                                <SelectItem key={role} value={role}>
+                                                                    {roleNames[role] || role}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+
+                                                {/* Filter by Action Type */}
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="filter-action" className="text-xs">Tipo de Acción</Label>
+                                                    <Select value={filterAction} onValueChange={setFilterAction}>
+                                                        <SelectTrigger id="filter-action" className="h-9">
+                                                            <SelectValue placeholder="Todas las acciones" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="all">Todas las acciones</SelectItem>
+                                                            {uniqueActions.map(action => (
+                                                                <SelectItem key={action} value={action}>
+                                                                    {action}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+
+                                                {/* Date Range - From */}
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="filter-date-from" className="text-xs">Fecha Desde</Label>
+                                                    <Input
+                                                        id="filter-date-from"
+                                                        type="date"
+                                                        value={filterDateFrom}
+                                                        onChange={(e) => setFilterDateFrom(e.target.value)}
+                                                        className="h-9"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Second row for Date To */}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="filter-date-to" className="text-xs">Fecha Hasta</Label>
+                                                    <Input
+                                                        id="filter-date-to"
+                                                        type="date"
+                                                        value={filterDateTo}
+                                                        onChange={(e) => setFilterDateTo(e.target.value)}
+                                                        className="h-9"
+                                                    />
+                                                </div>
+
+                                                {/* Results counter */}
+                                                <div className="flex items-end">
+                                                    <div className="text-sm text-muted-foreground">
+                                                        Mostrando <span className="font-semibold text-foreground">{filteredLogs.length}</span> de <span className="font-semibold text-foreground">{logs.length}</span> registros
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Data Table */}
                                         {logsLoading ? (
                                             <div className="flex justify-center p-8">
                                                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                                             </div>
                                         ) : (
-                                            <DataTable columns={logColumns} data={logs} />
+                                            <DataTable columns={logColumns} data={filteredLogs} />
                                         )}
                                     </CardContent>
                                 </Card>
@@ -454,98 +847,172 @@ export default function ConfigurationPage() {
                         </>
                     )}
                 </Tabs>
-            </div>
+            </div >
 
             {/* Dialog Edit My Profile */}
-            <Dialog open={isMyProfileDialogOpen} onOpenChange={setIsMyProfileDialogOpen}>
-                <DialogContent>
+            < Dialog open={isMyProfileDialogOpen} onOpenChange={setIsMyProfileDialogOpen} >
+                <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
-                        <DialogTitle>Editar Mi Perfil</DialogTitle>
-                        <DialogDescription>Actualiza tu información personal básica.</DialogDescription>
+                        <DialogTitle className="flex items-center gap-2 text-xl">
+                            <UserIcon className="h-5 w-5 text-primary" />
+                            Editar Mi Perfil
+                        </DialogTitle>
+                        <DialogDescription>
+                            Actualiza tu información personal. Los cambios se guardarán inmediatamente.
+                        </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="my-name">Nombre Completo</Label>
-                            <Input
-                                id="my-name"
-                                value={myProfileData.full_name}
-                                onChange={(e) => setMyProfileData({ ...myProfileData, full_name: e.target.value })}
-                            />
+
+                    <div className="space-y-6 py-4">
+                        {/* Profile Info Section */}
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                <UserIcon className="h-4 w-4" />
+                                Información Personal
+                            </div>
+
+                            {/* Full Name */}
+                            <div className="space-y-2">
+                                <Label htmlFor="my-name" className="text-sm font-medium">
+                                    Nombre Completo
+                                </Label>
+                                <Input
+                                    id="my-name"
+                                    value={myProfileData.full_name}
+                                    onChange={(e) => setMyProfileData({ ...myProfileData, full_name: e.target.value })}
+                                    placeholder="Tu nombre completo"
+                                    className="h-10"
+                                />
+                            </div>
+
+                            {/* Role Display (Read-only) */}
+                            <div className="space-y-2">
+                                <Label className="text-sm font-medium">Rol Actual</Label>
+                                <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border">
+                                    <Shield className="h-4 w-4 text-primary" />
+                                    <span className="font-semibold text-sm">
+                                        {profile?.role ? (
+                                            roleNames[profile.role] || profile.role
+                                        ) : (
+                                            'No asignado'
+                                        )}
+                                    </span>
+                                    <Badge variant="outline" className="ml-auto">
+                                        {profile?.is_admin ? 'Administrador' : 'Usuario'}
+                                    </Badge>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Para cambiar tu rol, contacta al administrador del sistema.
+                                </p>
+                            </div>
+
+                            {/* Sucursal */}
+                            <div className="space-y-2">
+                                <Label htmlFor="my-sucursal" className="text-sm font-medium">
+                                    Sucursal
+                                </Label>
+                                <Select
+                                    value={myProfileData.sucursal}
+                                    onValueChange={(value) => setMyProfileData({ ...myProfileData, sucursal: value })}
+                                >
+                                    <SelectTrigger id="my-sucursal" className="h-10">
+                                        <SelectValue placeholder="Selecciona tu sucursal" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {SUCURSALES.map((s) => (
+                                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="my-area">Área / Departamento</Label>
-                            <Input
-                                id="my-area"
-                                value={myProfileData.area}
-                                onChange={(e) => setMyProfileData({ ...myProfileData, area: e.target.value })}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="my-position">Puesto</Label>
-                            <Input
-                                id="my-position"
-                                value={myProfileData.position}
-                                onChange={(e) => setMyProfileData({ ...myProfileData, position: e.target.value })}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="my-sucursal">Sucursal</Label>
-                            <Select
-                                value={myProfileData.sucursal}
-                                onValueChange={(value) => setMyProfileData({ ...myProfileData, sucursal: value })}
-                            >
-                                <SelectTrigger id="my-sucursal">
-                                    <SelectValue placeholder="Selecciona una sucursal" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {SUCURSALES.map((s) => (
-                                        <SelectItem key={s} value={s}>{s}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+
+                        {/* Account Security Section (Admin only) */}
                         {profile?.is_admin && (
-                            <>
+                            <div className="space-y-4 pt-4 border-t">
+                                <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                    <Shield className="h-4 w-4" />
+                                    Seguridad de la Cuenta
+                                </div>
+
+                                {/* Email */}
                                 <div className="space-y-2">
-                                    <Label htmlFor="my-email">Correo Electrónico</Label>
+                                    <Label htmlFor="my-email" className="text-sm font-medium">
+                                        Correo Electrónico
+                                    </Label>
                                     <Input
                                         id="my-email"
                                         type="email"
                                         value={myProfileData.email}
                                         onChange={(e) => setMyProfileData({ ...myProfileData, email: e.target.value })}
+                                        placeholder="tu@email.com"
+                                        className="h-10"
                                     />
                                 </div>
+
+                                {/* Password */}
                                 <div className="space-y-2">
-                                    <Label htmlFor="my-password">Nueva Contraseña (Opcional)</Label>
+                                    <Label htmlFor="my-password" className="text-sm font-medium">
+                                        Nueva Contraseña
+                                    </Label>
                                     <Input
                                         id="my-password"
                                         type="password"
-                                        placeholder="Dejar vacía para no cambiar"
+                                        placeholder="Dejar vacío para no cambiar"
                                         value={myProfileData.password}
                                         onChange={(e) => setMyProfileData({ ...myProfileData, password: e.target.value })}
+                                        className="h-10"
                                     />
+                                    <p className="text-xs text-muted-foreground">
+                                        Solo completa este campo si deseas cambiar tu contraseña.
+                                    </p>
                                 </div>
-                            </>
+                            </div>
                         )}
 
+                        {/* Non-admin note */}
                         {!profile?.is_admin && (
-                            <p className="text-xs text-muted-foreground bg-muted p-2 rounded">
-                                Nota: Para cambiar tu Correo, contacta al administrador.
-                            </p>
+                            <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                                <Shield className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5" />
+                                <div className="text-xs text-blue-700 dark:text-blue-300">
+                                    <p className="font-medium">Cambios de seguridad</p>
+                                    <p className="mt-1">Para cambiar tu correo o contraseña, contacta al administrador del sistema.</p>
+                                </div>
+                            </div>
                         )}
                     </div>
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => setIsMyProfileDialogOpen(false)}>Cancelar</Button>
-                        <Button onClick={handleUpdateMyProfile} disabled={saveLoading}>
-                            {saveLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Guardar Cambios
+
+                    <DialogFooter className="gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsMyProfileDialogOpen(false)}
+                            disabled={saveLoading}
+                        >
+                            <X className="h-4 w-4 mr-2" />
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={handleUpdateMyProfile}
+                            disabled={saveLoading}
+                            className="min-w-[120px]"
+                        >
+                            {saveLoading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Guardando...
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="mr-2 h-4 w-4" />
+                                    Guardar Cambios
+                                </>
+                            )}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
-            </Dialog>
+            </Dialog >
 
             {/* Dialog Edit Other User (Admin) */}
-            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            < Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Editar Usuario</DialogTitle>
@@ -613,7 +1080,7 @@ export default function ConfigurationPage() {
                         </Button>
                     </DialogFooter>
                 </DialogContent>
-            </Dialog>
-        </div>
+            </Dialog >
+        </div >
     )
 }
