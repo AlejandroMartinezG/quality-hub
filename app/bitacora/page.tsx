@@ -29,7 +29,7 @@ import {
 
 
 import { supabase } from "@/lib/supabase"
-import { Loader2, CheckCircle2, AlertCircle, Info, FlaskConical, Beaker, Eye, Droplets, ClipboardCheck, ArrowRight, ArrowLeft, ChevronDown } from "lucide-react"
+import { Loader2, CheckCircle2, AlertCircle, Info, FlaskConical, Beaker, Eye, Droplets, ClipboardCheck, ArrowRight, ArrowLeft, ChevronDown, WashingMachine, Home, Sparkles, Car, ShieldCheck, Factory } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
@@ -374,7 +374,18 @@ export default function BitacoraPage() {
                                             )}
                                         >
                                             <div className="flex items-center gap-3">
-                                                <span className="text-2xl">{group.icon}</span>
+                                                {(() => {
+                                                    const iconProps = { className: cn("h-6 w-6", group.color.split(" ")[0]) }
+                                                    switch (group.title) {
+                                                        case "Cuidado del Hogar": return <Home {...iconProps} />
+                                                        case "Cuidado Personal": return <Sparkles {...iconProps} />
+                                                        case "Lavandería": return <WashingMachine {...iconProps} />
+                                                        case "Línea Automotriz": return <Car {...iconProps} />
+                                                        case "Línea Antibacterial": return <ShieldCheck {...iconProps} />
+                                                        case "Productos Intermedios / Industriales": return <Factory {...iconProps} />
+                                                        default: return <span className="text-2xl">{group.icon}</span>
+                                                    }
+                                                })()}
                                                 <h3 className={cn("text-lg font-bold", group.color)}>
                                                     {group.title}
                                                 </h3>

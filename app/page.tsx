@@ -13,6 +13,8 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
 
+import { DashboardBanner } from "@/components/DashboardBanner"
+
 export default function HomePage() {
     return (
         <div className="space-y-8 pb-12">
@@ -27,6 +29,9 @@ export default function HomePage() {
                     </h1>
                 </div>
             </div>
+
+            {/* Dashboard Banner */}
+            <DashboardBanner />
 
             {/* Modules Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

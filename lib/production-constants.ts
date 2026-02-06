@@ -6,7 +6,8 @@ export const SUCURSALES = [
     "PACHUCA 1", "PACHUCA 2", "PLAYA DEL CARMEN", "PUEBLA 1", "PUEBLA 2",
     "PUEBLA 3", "QUERETARO 1", "QUERETARO 2", "QUERETARO 3", "TEHUACAN",
     "TEZIUTLAN", "TIZAYUCA", "TULANCINGO 1", "TULANCINGO 2", "VERACRUZ",
-    "VILLAHERMOSA", "ZUMPANGO 1", "ZUMPANGO 2"
+    "VILLAHERMOSA", "ZUMPANGO 1", "ZUMPANGO 2",
+    "CEDIS", "CORPORATIVO"
 ];
 
 export const SUCURSAL_ACRONYMS: Record<string, string> = {
@@ -47,7 +48,9 @@ export const SUCURSAL_ACRONYMS: Record<string, string> = {
     "VERACRUZ": "VER",
     "VILLAHERMOSA": "VHM",
     "ZUMPANGO 1": "ZUM1",
-    "ZUMPANGO 2": "ZUM2"
+    "ZUMPANGO 2": "ZUM2",
+    "CEDIS": "CEDIS",
+    "CORPORATIVO": "CORP"
 };
 
 export const PRODUCT_CATEGORIES = [
