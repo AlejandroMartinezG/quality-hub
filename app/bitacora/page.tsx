@@ -89,6 +89,23 @@ export default function BitacoraPage() {
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target
+
+        // pH validation: only integers 0-14
+        if (name === "ph") {
+            // Allow empty string for clearing
+            if (value === "") {
+                setFormData(prev => ({ ...prev, [name]: value }))
+                return
+            }
+
+            const numValue = parseInt(value)
+            // Only accept integers between 0-14
+            if (!isNaN(numValue) && numValue >= 0 && numValue <= 14 && value === numValue.toString()) {
+                setFormData(prev => ({ ...prev, [name]: value }))
+            }
+            return
+        }
+
         setFormData(prev => ({ ...prev, [name]: value }))
     }
 
@@ -160,6 +177,15 @@ export default function BitacoraPage() {
             if (!formData.ph) {
                 toast.error("Falta medición de pH", {
                     description: "Para este producto, el pH es obligatorio."
+                })
+                return
+            }
+
+            // Validate pH range (0-14, integers only)
+            const phValue = parseInt(formData.ph)
+            if (isNaN(phValue) || phValue < 0 || phValue > 14) {
+                toast.error("pH fuera de rango", {
+                    description: "El pH debe ser un número entero entre 0 y 14."
                 })
                 return
             }
@@ -644,8 +670,10 @@ export default function BitacoraPage() {
                                                     <Input
                                                         name="ph"
                                                         type="number"
-                                                        step="0.01"
-                                                        placeholder="Ej: 7.20"
+                                                        min="0"
+                                                        max="14"
+                                                        step="1"
+                                                        placeholder="Ej: 7"
                                                         value={formData.ph}
                                                         onChange={handleInputChange}
                                                         disabled={!PARAMETER_APPLICABILITY[formData.codigo_producto]?.ph}

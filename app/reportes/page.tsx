@@ -66,6 +66,7 @@ export default function ReportesPage() {
     const [selectedSucursal, setSelectedSucursal] = useState("all")
     const [selectedBranch, setSelectedBranch] = useState<string>("all")
     const [selectedProduct, setSelectedProduct] = useState<string>("all")
+    const [selectedCategory, setSelectedCategory] = useState<string>("all") // NEW: Category filter
     const [dateRange, setDateRange] = useState<string>("all")
     const [showAllProducts, setShowAllProducts] = useState(false)
     const [rankingCategoryFilter, setRankingCategoryFilter] = useState<string>("all")
@@ -139,6 +140,9 @@ export default function ReportesPage() {
             // Filter by sucursal
             if (selectedSucursal !== "all" && r.sucursal !== selectedSucursal) return false
 
+            // Filter by category
+            if (selectedCategory !== "all" && r.familia_producto !== selectedCategory) return false
+
             // Filter by product
             if (selectedProduct !== "all" && r.codigo_producto !== selectedProduct) return false
 
@@ -150,7 +154,7 @@ export default function ReportesPage() {
 
             return true
         })
-    }, [records, selectedSucursal, selectedProduct, selectedDateRange])
+    }, [records, selectedSucursal, selectedCategory, selectedProduct, selectedDateRange])
 
     // 2. KPIs
     const kpis = useMemo(() => {
@@ -418,10 +422,40 @@ export default function ReportesPage() {
                 return b.total - a.total
             })
             .map(f => {
-                const chartData = Object.entries(f.categories)
-                    .map(([name, value]) => ({ name, value }))
-                    .sort((a, b) => b.value - a.value)
-                return { ...f, chartData }
+                // Special handling for Automotriz and Antibacterial: show products instead of categories
+                if (f.name === "Línea Automotriz" || f.name === "Línea Antibacterial") {
+                    // Get all products from this family
+                    const productsInFamily = filteredRecords
+                        .filter(r => {
+                            const rAny = r as any
+                            const catName = (rAny.categoria_producto || r.familia_producto || "Otros") as string
+                            let famName = categoryToFamilyMap[catName]
+                            if (!famName) {
+                                const group = PRODUCT_GROUPS.find(g => g.title === catName)
+                                if (group) famName = group.title
+                            }
+                            if (!famName) famName = "Otros"
+                            return famName === f.name
+                        })
+                        .reduce((acc, r) => {
+                            const prod = r.codigo_producto
+                            if (!acc[prod]) acc[prod] = 0
+                            acc[prod] += (r.tamano_lote || 0)
+                            return acc
+                        }, {} as Record<string, number>)
+
+                    const chartData = Object.entries(productsInFamily)
+                        .map(([name, value]) => ({ name, value }))
+                        .sort((a, b) => b.value - a.value)
+
+                    return { ...f, chartData }
+                } else {
+                    // Normal category breakdown for other families
+                    const chartData = Object.entries(f.categories)
+                        .map(([name, value]) => ({ name, value }))
+                        .sort((a, b) => b.value - a.value)
+                    return { ...f, chartData }
+                }
             })
 
 
@@ -490,6 +524,18 @@ export default function ReportesPage() {
                             <SelectItem value="all">Todas las sucursales</SelectItem>
                             {SUCURSALES.map((sucursal: string) => (
                                 <SelectItem key={sucursal} value={sucursal}>{sucursal}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Todas las categorías" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Todas las categorías</SelectItem>
+                            {PRODUCT_CATEGORIES.map((cat) => (
+                                <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
@@ -712,6 +758,90 @@ export default function ReportesPage() {
                                 </CardContent>
                             </Card>
                         </div>
+
+                        {/* Secondary Filters - Compact Design for Control Charts */}
+                        <Card className="border-none shadow-sm bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-950/30">
+                            <CardContent className="p-4">
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <Filter className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Filtros Rápidos:</span>
+                                    </div>
+
+                                    {/* Sucursal Filter */}
+                                    <div className="flex flex-col gap-0.5">
+                                        <Select value={selectedSucursal} onValueChange={setSelectedSucursal}>
+                                            <SelectTrigger className="h-9 w-[160px] bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700">
+                                                <SelectValue placeholder="Sucursal" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">Todas</SelectItem>
+                                                {SUCURSALES.map((suc: string) => (
+                                                    <SelectItem key={suc} value={suc}>{suc}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 px-1">Ubicación</span>
+                                    </div>
+
+                                    {/* Category Filter */}
+                                    <div className="flex flex-col gap-0.5">
+                                        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                                            <SelectTrigger className="h-9 w-[160px] bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700">
+                                                <SelectValue placeholder="Categoría" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">Todas</SelectItem>
+                                                {PRODUCT_CATEGORIES.map((cat) => (
+                                                    <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 px-1">Familia</span>
+                                    </div>
+
+                                    {/* Product Filter */}
+                                    <div className="flex flex-col gap-0.5">
+                                        <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+                                            <SelectTrigger className="h-9 w-[160px] bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700">
+                                                <SelectValue placeholder="Producto" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">Todos</SelectItem>
+                                                {uniqueProducts.map((p) => (
+                                                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 px-1">Código</span>
+                                    </div>
+
+                                    {/* Date Filter */}
+                                    <div className="flex flex-col gap-0.5">
+                                        <Select value={selectedDateRange} onValueChange={setSelectedDateRange}>
+                                            <SelectTrigger className="h-9 w-[160px] bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700">
+                                                <SelectValue placeholder="Fecha" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">Todo</SelectItem>
+                                                <SelectItem value="7d">7 días</SelectItem>
+                                                <SelectItem value="30d">30 días</SelectItem>
+                                                <SelectItem value="3m">3 meses</SelectItem>
+                                                <SelectItem value="6m">6 meses</SelectItem>
+                                                <SelectItem value="1y">1 año</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 px-1">Período</span>
+                                    </div>
+
+                                    <div className="ml-auto flex items-center gap-2">
+                                        <span className="text-xs text-slate-500 dark:text-slate-400">
+                                            {filteredRecords.length} registros
+                                        </span>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
 
                         {/* Row 2: Control Charts (Solids & pH) */}
                         <div className="grid grid-cols-1 gap-6">

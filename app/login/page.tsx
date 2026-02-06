@@ -6,8 +6,21 @@ import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ShieldCheck, UserPlus, LogIn, Loader2, Mail, Lock, User, Building2, Briefcase, CheckCircle2, Sparkles, TrendingUp, BarChart3 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { SUCURSALES } from "@/lib/production-constants"
+
+// Roles disponibles para registro
+const ROLES = [
+    { key: 'preparador', name: 'Preparador' },
+    { key: 'gerente_sucursal', name: 'Gerente de Sucursal' },
+    { key: 'director_operaciones', name: 'Director de Operaciones' },
+    { key: 'gerente_calidad', name: 'Gerente de Calidad y Desarrollo' },
+    { key: 'mostrador', name: 'Mostrador' },
+    { key: 'cajera', name: 'Cajera' },
+    { key: 'director_compras', name: 'Director de Compras' },
+]
 
 export default function LoginPage() {
     const [isLogin, setIsLogin] = useState(true)
@@ -19,8 +32,8 @@ export default function LoginPage() {
         email: "",
         password: "",
         full_name: "",
-        area: "",
-        position: "",
+        role: "preparador",
+        sucursal: "",
     })
 
     const handleAuth = async (e: React.FormEvent) => {
@@ -37,18 +50,29 @@ export default function LoginPage() {
                 if (error) throw error
                 router.push('/')
             } else {
-                const { error } = await supabase.auth.signUp({
+                // Primero crear el usuario
+                const { data: authData, error: authError } = await supabase.auth.signUp({
                     email: formData.email,
                     password: formData.password,
-                    options: {
-                        data: {
-                            full_name: formData.full_name,
-                            area: formData.area,
-                            position: formData.position,
-                        }
-                    }
                 })
-                if (error) throw error
+
+                if (authError) throw authError
+
+                // Luego actualizar el perfil con rol y sucursal
+                if (authData.user) {
+                    const { error: profileError } = await supabase
+                        .from('profiles')
+                        .upsert({
+                            id: authData.user.id,
+                            full_name: formData.full_name,
+                            role: formData.role,
+                            sucursal: formData.sucursal,
+                            updated_at: new Date().toISOString()
+                        })
+
+                    if (profileError) throw profileError
+                }
+
                 setError("Registro exitoso. Revisa tu correo para verificar tu cuenta.")
                 setIsLogin(true)
             }
@@ -177,39 +201,49 @@ export default function LoginPage() {
                                         />
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="area" className="text-slate-700 dark:text-slate-300 font-medium">
-                                            Área
-                                        </Label>
-                                        <div className="relative">
-                                            <Building2 className="absolute left-3 top-3.5 h-5 w-5 text-slate-400" />
-                                            <Input
-                                                id="area"
-                                                placeholder="Calidad"
-                                                className="pl-11 h-12 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500"
-                                                value={formData.area}
-                                                onChange={(e) => setFormData({ ...formData, area: e.target.value })}
-                                                required
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="position" className="text-slate-700 dark:text-slate-300 font-medium">
-                                            Puesto
-                                        </Label>
-                                        <div className="relative">
-                                            <Briefcase className="absolute left-3 top-3.5 h-5 w-5 text-slate-400" />
-                                            <Input
-                                                id="position"
-                                                placeholder="Analista"
-                                                className="pl-11 h-12 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500"
-                                                value={formData.position}
-                                                onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                                                required
-                                            />
-                                        </div>
-                                    </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="role" className="text-slate-700 dark:text-slate-300 font-medium">
+                                        Rol / Puesto
+                                    </Label>
+                                    <Select
+                                        value={formData.role}
+                                        onValueChange={(value) => setFormData({ ...formData, role: value })}
+                                    >
+                                        <SelectTrigger id="role" className="h-12 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700">
+                                            <Briefcase className="h-5 w-5 text-slate-400 mr-2" />
+                                            <SelectValue placeholder="Selecciona tu rol" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {ROLES.map((role) => (
+                                                <SelectItem key={role.key} value={role.key}>
+                                                    {role.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="sucursal" className="text-slate-700 dark:text-slate-300 font-medium">
+                                        Sucursal
+                                    </Label>
+                                    <Select
+                                        value={formData.sucursal}
+                                        onValueChange={(value) => setFormData({ ...formData, sucursal: value })}
+                                    >
+                                        <SelectTrigger id="sucursal" className="h-12 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700">
+                                            <Building2 className="h-5 w-5 text-slate-400 mr-2" />
+                                            <SelectValue placeholder="Selecciona tu sucursal" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {SUCURSALES.map((sucursal) => (
+                                                <SelectItem key={sucursal} value={sucursal}>
+                                                    {sucursal}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             </>
                         )}

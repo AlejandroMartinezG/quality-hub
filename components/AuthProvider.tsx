@@ -9,6 +9,7 @@ interface Profile {
     full_name: string
     area: string
     position: string
+    role: string
     is_admin: boolean
     sucursal?: string
     avatar_url?: string
