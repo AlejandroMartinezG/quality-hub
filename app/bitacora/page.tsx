@@ -338,7 +338,7 @@ export default function BitacoraPage() {
             <Breadcrumbs items={[{ label: "Bitácora de Producción" }]} />
 
             <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-700 to-red-600 bg-clip-text text-transparent">
+                <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-[#0e0c9b] to-[#c41f1a] bg-clip-text text-transparent">
                     Bitácora de Producción y Calidad
                 </h1>
                 <p className="text-muted-foreground">
@@ -365,7 +365,7 @@ export default function BitacoraPage() {
                                 if (groupCategories.length === 0) return null
 
                                 return (
-                                    <Card key={group.title} className="border-none shadow-sm bg-white/50 dark:bg-slate-900/50 overflow-hidden">
+                                    <Card key={group.title} className="border-none shadow-sm bg-white/50 dark:bg-slate-900/50 overflow-hidden rounded-[2.5rem]">
                                         <div
                                             onClick={() => toggleGroup(group.title)}
                                             className={cn(
@@ -373,25 +373,29 @@ export default function BitacoraPage() {
                                                 isExpanded && "bg-slate-50 dark:bg-slate-800/50"
                                             )}
                                         >
-                                            <div className="flex items-center gap-3">
-                                                {(() => {
-                                                    const iconProps = { className: cn("h-6 w-6", group.color.split(" ")[0]) }
-                                                    switch (group.title) {
-                                                        case "Cuidado del Hogar": return <Home {...iconProps} />
-                                                        case "Cuidado Personal": return <Sparkles {...iconProps} />
-                                                        case "Lavandería": return <WashingMachine {...iconProps} />
-                                                        case "Línea Automotriz": return <Car {...iconProps} />
-                                                        case "Línea Antibacterial": return <ShieldCheck {...iconProps} />
-                                                        case "Productos Intermedios / Industriales": return <Factory {...iconProps} />
-                                                        default: return <span className="text-2xl">{group.icon}</span>
-                                                    }
-                                                })()}
-                                                <h3 className={cn("text-lg font-bold", group.color)}>
-                                                    {group.title}
-                                                </h3>
-                                                <Badge variant="secondary" className="ml-2 text-xs font-normal text-muted-foreground">
-                                                    {groupCategories.length}
-                                                </Badge>
+                                            <div className="flex items-center gap-4">
+                                                <div className={cn("p-3 rounded-2xl bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700")}>
+                                                    {(() => {
+                                                        const iconProps = { className: cn("h-6 w-6", group.color.split(" ")[0]) }
+                                                        switch (group.title) {
+                                                            case "Cuidado del Hogar": return <Home {...iconProps} />
+                                                            case "Cuidado Personal": return <Sparkles {...iconProps} />
+                                                            case "Lavandería": return <WashingMachine {...iconProps} />
+                                                            case "Línea Automotriz": return <Car {...iconProps} />
+                                                            case "Línea Antibacterial": return <ShieldCheck {...iconProps} />
+                                                            case "Productos Intermedios / Industriales": return <Factory {...iconProps} />
+                                                            default: return <span className="text-2xl">{group.icon}</span>
+                                                        }
+                                                    })()}
+                                                </div>
+                                                <div className="flex flex-col gap-0.5">
+                                                    <h3 className={cn("text-lg font-bold", group.color)}>
+                                                        {group.title}
+                                                    </h3>
+                                                    <span className="text-xs text-muted-foreground ml-0.5">
+                                                        {groupCategories.length} {groupCategories.length === 1 ? 'Categoría' : 'Categorías'}
+                                                    </span>
+                                                </div>
                                             </div>
                                             <motion.div
                                                 animate={{ rotate: isExpanded ? 180 : 0 }}
@@ -413,13 +417,13 @@ export default function BitacoraPage() {
                                                         {groupCategories.map((cat) => (
                                                             <Card
                                                                 key={cat.id}
-                                                                className="group cursor-pointer hover:shadow-xl hover:border-primary/50 transition-all duration-300 overflow-hidden bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                                                className="group cursor-pointer hover:shadow-xl hover:border-primary/50 transition-all duration-300 overflow-hidden bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-[2rem]"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation()
                                                                     handleCategorySelect(cat.id)
                                                                 }}
                                                             >
-                                                                <div className="h-32 w-full overflow-hidden relative">
+                                                                <div className="h-40 w-full overflow-hidden relative">
                                                                     <img
                                                                         src={cat.image}
                                                                         alt={cat.name}
@@ -460,7 +464,7 @@ export default function BitacoraPage() {
                         </Button>
 
                         <form onSubmit={handleSubmit} className="space-y-8">
-                            <Card className="border-primary/5 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800/50">
+                            <Card className="border-primary/5 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800/50 rounded-[2rem]">
                                 <CardHeader className="pb-2">
                                     <div className="flex items-center gap-2 text-muted-foreground">
                                         <FlaskConical className="h-4 w-4" />
@@ -480,15 +484,15 @@ export default function BitacoraPage() {
                             </Card>
 
                             {/* Información General */}
-                            <Card className="border-primary/10 shadow-lg overflow-hidden">
-                                <CardHeader className="bg-gradient-to-r from-blue-50 to-red-50 dark:from-blue-950/20 dark:to-red-950/20 border-b">
+                            <Card className="border-primary/10 shadow-lg overflow-hidden rounded-[2rem]">
+                                <CardHeader className="bg-gradient-to-r from-[#0e0c9b] to-[#2a28b5] border-b border-blue-900">
                                     <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-blue-600 rounded-lg text-white">
+                                        <div className="p-2 bg-white/10 rounded-xl text-white backdrop-blur-sm">
                                             <Info className="h-5 w-5" />
                                         </div>
                                         <div>
-                                            <CardTitle>Información General</CardTitle>
-                                            <CardDescription>Datos básicos del lote y sucursal</CardDescription>
+                                            <CardTitle className="text-white">Información General</CardTitle>
+                                            <CardDescription className="text-blue-200">Datos básicos del lote y sucursal</CardDescription>
                                         </div>
                                     </div>
                                 </CardHeader>
@@ -500,7 +504,7 @@ export default function BitacoraPage() {
                                             onValueChange={(val) => handleSelectChange("sucursal", val)}
                                             required
                                         >
-                                            <SelectTrigger id="sucursal" className={!formData.sucursal ? "border-red-500" : ""}>
+                                            <SelectTrigger id="sucursal" className={cn("rounded-full", !formData.sucursal ? "border-red-500" : "")}>
                                                 <SelectValue placeholder="Selecciona sucursal" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -518,7 +522,7 @@ export default function BitacoraPage() {
                                             value={formData.nombre_preparador}
                                             onChange={handleInputChange}
                                             required
-                                            className={!formData.nombre_preparador ? "border-red-500" : "font-semibold"}
+                                            className={cn("rounded-full", !formData.nombre_preparador ? "border-red-500" : "font-semibold")}
                                             placeholder="Nombre del preparador"
                                         />
                                     </div>
@@ -540,7 +544,7 @@ export default function BitacoraPage() {
                                             onValueChange={(val) => handleSelectChange("codigo_producto", val)}
                                             required
                                         >
-                                            <SelectTrigger id="codigo_producto" className={!formData.codigo_producto ? "border-red-500" : ""}>
+                                            <SelectTrigger id="codigo_producto" className={cn("rounded-full", !formData.codigo_producto ? "border-red-500" : "")}>
                                                 <SelectValue placeholder="Selecciona el producto" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -563,29 +567,29 @@ export default function BitacoraPage() {
                                             value={formData.tamano_lote}
                                             onChange={handleInputChange}
                                             required
-                                            className={!formData.tamano_lote ? "border-red-500" : ""}
+                                            className={cn("rounded-full", !formData.tamano_lote ? "border-red-500" : "")}
                                         />
                                     </div>
                                 </CardContent>
                             </Card>
 
                             {/* Parámetros de Calidad */}
-                            <Card className="border-primary/10 shadow-lg overflow-hidden">
-                                <CardHeader className="bg-gradient-to-r from-blue-50 to-red-50 dark:from-blue-950/20 dark:to-red-950/20 border-b">
+                            <Card className="border-primary/10 shadow-lg overflow-hidden rounded-[2rem]">
+                                <CardHeader className="bg-gradient-to-r from-[#0e0c9b] to-[#2a28b5] border-b border-blue-900">
                                     <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-red-600 rounded-lg text-white">
+                                        <div className="p-2 bg-white/10 rounded-xl text-white backdrop-blur-sm">
                                             <FlaskConical className="h-5 w-5" />
                                         </div>
                                         <div>
-                                            <CardTitle>Parámetros Físico-Químicos</CardTitle>
-                                            <CardDescription>Mediciones de los distintos parámetros de calidad internos.</CardDescription>
+                                            <CardTitle className="text-white">Parámetros Físico-Químicos</CardTitle>
+                                            <CardDescription className="text-blue-200">Mediciones de los distintos parámetros de calidad internos.</CardDescription>
                                         </div>
                                     </div>
                                 </CardHeader>
                                 <CardContent className="space-y-8 pt-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                         {/* Sólidos Column */}
-                                        <div className="space-y-4 p-4 rounded-xl bg-blue-50/30 dark:bg-blue-900/10 border border-blue-100/50 dark:border-blue-800/20">
+                                        <div className="space-y-4 p-6 rounded-[2rem] bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/20">
                                             <div className="flex items-center justify-between mb-2">
                                                 <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 font-bold">
                                                     <Beaker className="h-5 w-5" />
@@ -612,7 +616,7 @@ export default function BitacoraPage() {
                                                         value={formData.solidos_medicion_1}
                                                         onChange={handleInputChange}
                                                         disabled={!PARAMETER_APPLICABILITY[formData.codigo_producto]?.solidos}
-                                                        className="bg-white/50 dark:bg-slate-900/50"
+                                                        className="bg-white/50 dark:bg-slate-900/50 rounded-full"
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
@@ -624,7 +628,7 @@ export default function BitacoraPage() {
                                                         value={formData.temp_med1}
                                                         onChange={handleInputChange}
                                                         disabled={!PARAMETER_APPLICABILITY[formData.codigo_producto]?.solidos}
-                                                        className="bg-white/50 dark:bg-slate-900/50"
+                                                        className="bg-white/50 dark:bg-slate-900/50 rounded-full"
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
@@ -636,7 +640,7 @@ export default function BitacoraPage() {
                                                         value={formData.solidos_medicion_2}
                                                         onChange={handleInputChange}
                                                         disabled={!PARAMETER_APPLICABILITY[formData.codigo_producto]?.solidos}
-                                                        className="bg-white/50 dark:bg-slate-900/50"
+                                                        className="bg-white/50 dark:bg-slate-900/50 rounded-full"
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
@@ -648,7 +652,7 @@ export default function BitacoraPage() {
                                                         value={formData.temp_med2}
                                                         onChange={handleInputChange}
                                                         disabled={!PARAMETER_APPLICABILITY[formData.codigo_producto]?.solidos}
-                                                        className="bg-white/50 dark:bg-slate-900/50"
+                                                        className="bg-white/50 dark:bg-slate-900/50 rounded-full"
                                                     />
                                                 </div>
                                             </div>
@@ -658,7 +662,7 @@ export default function BitacoraPage() {
                                         </div>
 
                                         {/* pH Column */}
-                                        <div className="space-y-4 p-4 rounded-xl bg-red-50/30 dark:bg-red-900/10 border border-red-100/50 dark:border-red-800/20">
+                                        <div className="space-y-4 p-6 rounded-[2rem] bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-800/20">
                                             <div className="flex items-center justify-between mb-2">
                                                 <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-bold">
                                                     <Droplets className="h-5 w-5" />
@@ -688,7 +692,7 @@ export default function BitacoraPage() {
                                                         value={formData.ph}
                                                         onChange={handleInputChange}
                                                         disabled={!PARAMETER_APPLICABILITY[formData.codigo_producto]?.ph}
-                                                        className="bg-white/50 dark:bg-slate-900/50 font-bold text-lg"
+                                                        className="bg-white/50 dark:bg-slate-900/50 font-bold text-lg rounded-full"
                                                     />
                                                 </div>
                                                 <div className="p-3 bg-white/50 dark:bg-slate-900/50 rounded-lg border text-[11px] text-muted-foreground italic leading-tight">
@@ -713,7 +717,7 @@ export default function BitacoraPage() {
                                                     value={formData.apariencia}
                                                     onValueChange={(val) => handleSelectChange("apariencia", val)}
                                                 >
-                                                    <SelectTrigger>
+                                                    <SelectTrigger className="rounded-full">
                                                         <SelectValue placeholder="Selecciona" />
                                                     </SelectTrigger>
                                                     <SelectContent>
@@ -732,7 +736,7 @@ export default function BitacoraPage() {
                                                     value={formData.color}
                                                     onValueChange={(val) => handleSelectChange("color", val)}
                                                 >
-                                                    <SelectTrigger>
+                                                    <SelectTrigger className="rounded-full">
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent>
@@ -747,7 +751,7 @@ export default function BitacoraPage() {
                                                     value={formData.aroma}
                                                     onValueChange={(val) => handleSelectChange("aroma", val)}
                                                 >
-                                                    <SelectTrigger>
+                                                    <SelectTrigger className="rounded-full">
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent>
@@ -767,7 +771,7 @@ export default function BitacoraPage() {
                                             placeholder="Cualquier desviación o nota relevante..."
                                             value={formData.observaciones}
                                             onChange={handleInputChange}
-                                            className="min-h-[100px]"
+                                            className="min-h-[100px] rounded-[1.5rem]"
                                         />
                                     </div>
                                 </CardContent>
@@ -795,7 +799,7 @@ export default function BitacoraPage() {
                                     </div>
                                     <Button
                                         type="submit"
-                                        className="w-full md:w-auto md:min-w-[200px] h-12 text-lg font-bold gap-2"
+                                        className="w-full md:w-auto md:min-w-[200px] h-12 text-lg font-bold gap-2 rounded-full"
                                         disabled={loading || !formData.codigo_producto}
                                     >
                                         {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ClipboardCheck className="h-5 w-5" />}

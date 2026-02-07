@@ -273,7 +273,7 @@ export default function CalidadPage() {
                 </div>
 
                 {/* Filtros */}
-                <Card className="border-primary/5 bg-muted/20">
+                <Card className="border-primary/5 bg-muted/20 rounded-[2rem]">
                     <CardContent className="p-4 flex flex-col md:flex-row gap-4">
                         <div className="flex-1 relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -336,7 +336,7 @@ export default function CalidadPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* 1. Total Analizado */}
-                <Card className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/20 dark:to-blue-900/10 border-blue-200 dark:border-blue-900/30">
+                <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/20 dark:to-blue-900/10 border-blue-200 dark:border-blue-900/30">
                     <div className="absolute top-0 right-0 p-6 opacity-10">
                         <ClipboardList className="w-32 h-32 text-blue-600" />
                     </div>
@@ -362,7 +362,7 @@ export default function CalidadPage() {
                 </Card>
 
                 {/* 2. Lotes Conformes */}
-                <Card className="relative overflow-hidden bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/20 dark:to-green-900/10 border-green-200 dark:border-green-900/30">
+                <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/20 dark:to-green-900/10 border-green-200 dark:border-green-900/30">
                     <div className="absolute top-0 right-0 p-6 opacity-10">
                         <CheckCircle2 className="w-32 h-32 text-green-600" />
                     </div>
@@ -392,7 +392,7 @@ export default function CalidadPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="relative overflow-hidden bg-gradient-to-br from-yellow-50 to-yellow-100/50 dark:from-yellow-950/20 dark:to-yellow-900/10 border-yellow-200 dark:border-yellow-900/30">
+                <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-yellow-50 to-yellow-100/50 dark:from-yellow-950/20 dark:to-yellow-900/10 border-yellow-200 dark:border-yellow-900/30">
                     <div className="absolute top-0 right-0 p-6 opacity-10">
                         <AlertCircle className="w-32 h-32 text-yellow-600" />
                     </div>
@@ -422,7 +422,7 @@ export default function CalidadPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="relative overflow-hidden bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/20 dark:to-red-900/10 border-[#C1272D]/20 dark:border-[#C1272D]/30">
+                <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/20 dark:to-red-900/10 border-[#C1272D]/20 dark:border-[#C1272D]/30">
                     <div className="absolute top-0 right-0 p-6 opacity-10">
                         <XCircle className="w-32 h-32 text-[#C1272D]" />
                     </div>
@@ -453,7 +453,7 @@ export default function CalidadPage() {
                 </Card>
             </div>
 
-            <Card className="border-none shadow-lg dark:bg-slate-900">
+            <Card className="border-none shadow-lg dark:bg-slate-900 rounded-[2rem] overflow-hidden">
                 <CardHeader className="border-b border-slate-200 dark:border-slate-700">
                     <CardTitle className="text-xl font-bold text-slate-900 dark:text-slate-100">Historial de Mediciones</CardTitle>
                     <CardDescription className="text-slate-600 dark:text-slate-400">Últimos 50 registros comparados con límites de control.</CardDescription>
@@ -468,7 +468,7 @@ export default function CalidadPage() {
                         <div className="rounded-md border overflow-x-auto">
                             <Table>
                                 <TableHeader>
-                                    <TableRow className="bg-gradient-to-r from-blue-900 to-blue-950 hover:from-blue-900 hover:to-blue-950 border-none">
+                                    <TableRow className="bg-gradient-to-r from-[#0e0c9b] to-[#2a28b5] hover:from-[#0e0c9b] hover:to-[#2a28b5] border-none">
                                         <TableHead className="w-[150px] text-white font-bold text-sm">Lote</TableHead>
                                         <TableHead className="text-white font-bold text-sm">Producto/Sucursal</TableHead>
                                         <TableHead className="text-center text-white font-bold text-sm">pH</TableHead>
@@ -616,7 +616,7 @@ export default function CalidadPage() {
 
             {/* Modal de Edición */}
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-[425px] sm:rounded-[2rem]">
                     <DialogHeader>
                         <DialogTitle>Editar Registro de Calidad</DialogTitle>
                         <DialogDescription>

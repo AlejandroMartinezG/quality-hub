@@ -2,8 +2,9 @@
 
 import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Breadcrumbs } from "@/components/Breadcrumbs"
-import { ModuleCard } from "@/components/ModuleCard"
+import { Card, CardContent } from "@/components/ui/card"
 import {
     Home,
     Shirt,
@@ -111,7 +112,9 @@ export default function FinishedProductsPage() {
             />
 
             <div className="text-center space-y-4">
-                <h1 className="text-4xl font-bold tracking-tight text-foreground">Productos Terminados</h1>
+                <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-700 to-red-600 bg-clip-text text-transparent">
+                    Productos Terminados
+                </h1>
                 <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
                     Explora nuestro catálogo por familias o usa el buscador rápido para saltar directamente a un producto.
                 </p>
@@ -119,7 +122,7 @@ export default function FinishedProductsPage() {
 
             {/* Quick Search Bar */}
             <div className="max-w-4xl mx-auto w-full">
-                <div className="p-2 bg-card border rounded-2xl shadow-xl space-y-4 md:space-y-0 md:flex items-center gap-2">
+                <div className="p-3 bg-card border rounded-[2rem] shadow-xl space-y-4 md:space-y-0 md:flex items-center gap-3">
                     {/* Family Selector */}
                     <div className="flex-1">
                         <Popover>
@@ -127,7 +130,7 @@ export default function FinishedProductsPage() {
                                 <Button
                                     variant="ghost"
                                     className={cn(
-                                        "w-full justify-start h-12 text-left font-normal border-none hover:bg-muted/50 rounded-xl px-4",
+                                        "w-full justify-start h-14 text-left font-normal border-none hover:bg-muted/50 rounded-[1.5rem] px-6",
                                         !selectedFamily && "text-muted-foreground"
                                     )}
                                 >
@@ -177,7 +180,7 @@ export default function FinishedProductsPage() {
                                 <Button
                                     variant="ghost"
                                     className={cn(
-                                        "w-full justify-start h-12 text-left font-normal border-none hover:bg-muted/50 rounded-xl px-4 disabled:opacity-30",
+                                        "w-full justify-start h-14 text-left font-normal border-none hover:bg-muted/50 rounded-[1.5rem] px-6 disabled:opacity-30",
                                         !selectedCategory && "text-muted-foreground"
                                     )}
                                 >
@@ -228,7 +231,7 @@ export default function FinishedProductsPage() {
                                 <Button
                                     variant="ghost"
                                     className={cn(
-                                        "w-full justify-start h-12 text-left font-normal border-none hover:bg-muted/50 rounded-xl px-4 disabled:opacity-30",
+                                        "w-full justify-start h-14 text-left font-normal border-none hover:bg-muted/50 rounded-[1.5rem] px-6 disabled:opacity-30",
                                         !selectedProduct && "text-muted-foreground"
                                     )}
                                 >
@@ -285,7 +288,7 @@ export default function FinishedProductsPage() {
                         <Button
                             disabled={!selectedProduct}
                             onClick={goToProduct}
-                            className="h-12 px-6 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:grayscale"
+                            className="h-14 px-8 rounded-[1.5rem] bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:grayscale"
                         >
                             <span className="mr-2">Ir</span>
                             <ArrowRight className="h-4 w-4" />
@@ -299,7 +302,7 @@ export default function FinishedProductsPage() {
                 <div className="flex items-center justify-between">
                     <h2 className="text-xl font-semibold px-1">Navegar por Familia</h2>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="flex flex-wrap justify-center gap-6">
                     {data.families.map((family) => {
                         const Icon = familyIcons[family.slug] || Home
                         const iconColor = familyColors[family.slug]
@@ -311,14 +314,48 @@ export default function FinishedProductsPage() {
                         const categoryCount = family.categories.length || (family.products && family.products.length > 0 ? 1 : 0)
 
                         return (
-                            <ModuleCard
+                            <Link
                                 key={family.slug}
-                                title={family.name}
-                                description={`${categoryCount} categoría${categoryCount !== 1 ? 's' : ''} · ${productCount} producto${productCount !== 1 ? 's' : ''}`}
-                                icon={Icon}
-                                iconColor={iconColor}
-                                href={`/catalog/finished-products/${family.slug}`}
-                            />
+                                href={`${basePath}/catalog/finished-products/${family.slug}`}
+                                className="group block h-full w-full md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)]"
+                            >
+                                <Card className="h-full border-2 border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-sm hover:shadow-lg hover:border-primary/50 transition-all bg-white dark:bg-slate-900 group-hover:-translate-y-1">
+                                    <CardContent className="p-8 flex flex-col items-center text-center h-full relative overflow-hidden">
+                                        {/* Decorative Background Element - Dynamic Color */}
+                                        <div
+                                            className="absolute top-0 right-0 w-32 h-32 rounded-bl-[100%] z-0 opacity-10"
+                                            style={{ backgroundColor: iconColor }}
+                                        />
+
+                                        <div className="relative z-10 flex flex-col items-center h-full w-full">
+                                            <div
+                                                className="h-20 w-20 rounded-full flex items-center justify-center mb-6 shadow-sm border border-slate-100 dark:border-slate-800 group-hover:scale-110 transition-transform duration-300"
+                                                style={{ backgroundColor: `${iconColor}20` }} // 20 hex = 12% opacity roughly
+                                            >
+                                                <Icon
+                                                    className="h-10 w-10"
+                                                    style={{ color: iconColor }}
+                                                />
+                                            </div>
+
+                                            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2 group-hover:text-primary transition-colors">
+                                                {family.name}
+                                            </h3>
+
+                                            <p className="text-slate-500 text-sm leading-relaxed mb-6">
+                                                {categoryCount} categoría{categoryCount !== 1 ? 's' : ''} · {productCount} producto{productCount !== 1 ? 's' : ''}
+                                            </p>
+
+                                            <div className="mt-auto w-full pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                                                <Badge variant="secondary" className="bg-slate-100 text-slate-700 hover:bg-slate-200 border-none px-3 py-1">
+                                                    Explorar
+                                                </Badge>
+                                                <ArrowRight className="h-4 w-4 text-primary transition-transform group-hover:translate-x-1" />
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </Link>
                         )
                     })}
                 </div>

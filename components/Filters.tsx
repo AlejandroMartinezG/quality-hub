@@ -54,14 +54,14 @@ export function Filters({
                                 variant="outline"
                                 size="sm"
                                 className={cn(
-                                    "h-9",
-                                    hasActive && "border-primary bg-primary/5"
+                                    "h-9 rounded-full border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all",
+                                    hasActive && "border-transparent bg-[#0e0c9b]/10 text-[#0e0c9b] hover:bg-[#0e0c9b]/20 dark:text-[#c41f1a] dark:bg-[#c41f1a]/10 dark:hover:bg-[#c41f1a]/20 font-medium"
                                 )}
                             >
-                                <Filter className="h-4 w-4 mr-2" />
+                                <Filter className={cn("h-3.5 w-3.5 mr-2", hasActive ? "text-[#0e0c9b] dark:text-[#c41f1a]" : "text-slate-500")} />
                                 {filter.label}
                                 {hasActive && (
-                                    <Badge variant="secondary" className="ml-2 h-5 px-1.5">
+                                    <Badge variant="secondary" className="ml-2 h-5 px-1.5 bg-[#0e0c9b] text-white hover:bg-[#0e0c9b]/90 dark:bg-[#c41f1a] dark:hover:bg-[#c41f1a]/90 border-0 rounded-full text-[10px]">
                                         {activeValues.length}
                                     </Badge>
                                 )}
@@ -122,7 +122,7 @@ export function Filters({
                     variant="ghost"
                     size="sm"
                     onClick={onClearAll}
-                    className="h-9 text-muted-foreground hover:text-foreground"
+                    className="h-9 rounded-full text-muted-foreground hover:text-[#c41f1a] hover:bg-[#c41f1a]/5"
                 >
                     <X className="h-4 w-4 mr-1" />
                     Limpiar todo ({totalActiveFilters})

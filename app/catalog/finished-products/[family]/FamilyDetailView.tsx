@@ -9,8 +9,32 @@ import { DataTable } from "@/components/DataTable"
 import { SimpleSearchInput } from "@/components/SearchInput"
 import { Filters, FilterConfig } from "@/components/Filters"
 import { Badge } from "@/components/ui/badge"
+import { Card, CardContent } from "@/components/ui/card"
 import { ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown, Package, Eye, Download, FileText, ShieldAlert, BadgeCheck, Sparkles } from "lucide-react"
+import {
+    ArrowUpDown,
+    Package,
+    Eye,
+    Download,
+    FileText,
+    ShieldAlert,
+    BadgeCheck,
+    Sparkles,
+    SprayCan as Spray, // Using SprayCan as Spray might not be exported directly in all versions, checking generic 'Spray'
+    Droplets,
+    Wind,
+    FlaskConical,
+    FlaskRound,
+    Star,
+    Waves,
+    Feather,
+    Flower2,
+    Hand,
+    Droplet,
+    Smile,
+    ArrowRight
+} from "lucide-react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { FinishedProduct, FamilyGroup } from "@/lib/types"
 import { getBasePath, cn } from "@/lib/utils"
@@ -231,6 +255,28 @@ const familyColors: Record<string, string> = {
     "cuidado-personal": "#00b050",
 }
 
+const categoryIcons: Record<string, any> = {
+    // Cuidado del Hogar
+    "limpiadores-liquidos-multiusos": Spray,
+    "detergentes-liquidos-para-trastes": Droplets,
+    "aromatizantes-ambientales": Wind,
+    "bases-limpiadores-liquidos-multiusos": FlaskConical,
+    "bases-aromatizantes-ambientales": FlaskRound,
+    "especialidades-cuidado-del-hogar": Star,
+
+    // Lavandería
+    "detergentes-liquidos-para-ropa": Waves,
+    "suavizantes-liquidos-para-telas": Feather,
+    "reforzadores-de-aroma": Flower2,
+    "especialidades-lavanderia": Star,
+
+    // Cuidado Personal
+    "jabones-liquidos-para-manos": Hand,
+    "shampoos-capilares": Droplet,
+    "enjuagues-capilares": Waves,
+    "cremas-corporales": Smile,
+}
+
 export function FamilyDetailView({ family }: FamilyDetailViewProps) {
     const router = useRouter()
     const basePath = getBasePath()
@@ -350,17 +396,55 @@ export function FamilyDetailView({ family }: FamilyDetailViewProps) {
             </div>
 
             {hasCategories ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {family.categories.map((category) => (
-                        <ModuleCard
-                            key={category.slug}
-                            title={category.name}
-                            description={`${category.products.length} producto(s)`}
-                            icon={Package}
-                            iconColor={iconColor}
-                            href={`/catalog/finished-products/${family.slug}/${category.slug}`}
-                        />
-                    ))}
+                <div className="flex flex-wrap justify-center gap-6">
+                    {
+                        family.categories.map((category) => {
+                            const Icon = categoryIcons[category.slug] || Package
+
+                            return (
+                                <Link
+                                    key={category.slug}
+                                    href={`${basePath}/catalog/finished-products/${family.slug}/${category.slug}`}
+                                    className="group block h-full w-full md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)]"
+                                >
+                                    <Card className="h-full border-2 border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-sm hover:shadow-lg hover:border-primary/50 transition-all bg-white dark:bg-slate-900 group-hover:-translate-y-1">
+                                        <CardContent className="p-8 flex flex-col items-center text-center h-full relative overflow-hidden">
+                                            {/* Decorative Background Element */}
+                                            <div
+                                                className="absolute top-0 right-0 w-24 h-24 rounded-bl-[100%] z-0 opacity-10"
+                                                style={{ backgroundColor: iconColor }}
+                                            />
+
+                                            <div className="relative z-10 flex flex-col items-center h-full w-full">
+                                                <div
+                                                    className="h-16 w-16 rounded-full flex items-center justify-center mb-4 shadow-sm border border-slate-100 dark:border-slate-800 group-hover:scale-110 transition-transform duration-300"
+                                                    style={{ backgroundColor: `${iconColor}20` }}
+                                                >
+                                                    <Icon
+                                                        className="h-8 w-8"
+                                                        style={{ color: iconColor }}
+                                                    />
+                                                </div>
+
+                                                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2 group-hover:text-primary transition-colors">
+                                                    {category.name}
+                                                </h3>
+
+                                                <p className="text-slate-500 text-sm leading-relaxed mb-6">
+                                                    {category.products.length} producto{category.products.length !== 1 ? 's' : ''}
+                                                </p>
+
+                                                <div className="mt-auto w-full pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                                                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ver productos</span>
+                                                    <ArrowRight className="h-4 w-4 text-primary transition-transform group-hover:translate-x-1" />
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </Link>
+                            )
+                        })
+                    }
                 </div>
             ) : products.length > 0 ? (
                 <div className="space-y-6">
@@ -395,7 +479,8 @@ export function FamilyDetailView({ family }: FamilyDetailViewProps) {
                         No hay productos disponibles en esta familia actualmente.
                     </p>
                 </div>
-            )}
-        </div>
+            )
+            }
+        </div >
     )
 }

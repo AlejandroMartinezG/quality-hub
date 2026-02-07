@@ -20,6 +20,24 @@ import rawMaterialsData from "@/data/raw-materials.json"
 
 const data: RawMaterial[] = rawMaterialsData as RawMaterial[]
 
+// Helper function for Functional Category colors
+const getFunctionalCategoryColor = (category: string) => {
+    const normalized = category.toLowerCase();
+    if (normalized.includes("activo")) return "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 border-blue-200 dark:border-blue-800";
+    if (normalized.includes("funcional")) return "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800";
+    if (normalized.includes("control")) return "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400 border-orange-200 dark:border-orange-800";
+    if (normalized.includes("proceso")) return "bg-slate-100 text-slate-700 dark:bg-slate-500/20 dark:text-slate-400 border-slate-200 dark:border-slate-800";
+    return "bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-400 border-violet-200 dark:border-violet-800";
+};
+
+// Helper function for Disposition colors
+const getDispositionColor = (disposition: string) => {
+    const normalized = disposition.toLowerCase();
+    if (normalized.includes("general")) return "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400 border-green-200 dark:border-green-800";
+    if (normalized.includes("restringido")) return "bg-[#c41f1a]/10 text-[#c41f1a] dark:bg-[#c41f1a]/20 dark:text-[#ff4d4d] border-[#c41f1a]/20 dark:border-[#c41f1a]/40";
+    return "bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-gray-400 border-gray-200 dark:border-gray-800";
+};
+
 const columns: ColumnDef<RawMaterial>[] = [
     {
         accessorKey: "code",
@@ -28,15 +46,14 @@ const columns: ColumnDef<RawMaterial>[] = [
                 <Button
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                    className="hover:bg-white/10 hover:text-white -ml-4"
                 >
                     Código
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             )
         },
-        cell: ({ row }) => (
-            <span className="font-mono font-medium">{row.getValue("code")}</span>
-        ),
+        cell: ({ row }) => <div className="font-medium">{row.getValue("code")}</div>,
     },
     {
         accessorKey: "name",
@@ -45,39 +62,55 @@ const columns: ColumnDef<RawMaterial>[] = [
                 <Button
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                    className="hover:bg-white/10 hover:text-white -ml-4"
                 >
                     Nombre
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             )
         },
-        cell: ({ row }) => (
-            <span className="font-bold">{row.getValue("name")}</span>
-        ),
+        cell: ({ row }) => <div className="font-medium max-w-[250px]">{row.getValue("name")}</div>,
     },
     {
         accessorKey: "transport_name",
         header: "Nombre de Transporte",
+        cell: ({ row }) => <div className="text-muted-foreground">{row.getValue("transport_name")}</div>,
     },
     {
         accessorKey: "functional_category",
         header: "Categoría Funcional",
-        cell: ({ row }) => (
-            <Badge variant="secondary">{row.getValue("functional_category")}</Badge>
-        ),
+        cell: ({ row }) => {
+            const val = row.getValue("functional_category") as string;
+            return (
+                <Badge
+                    variant="outline"
+                    className={cn("rounded-md font-normal text-nowrap max-w-[150px] truncate block", getFunctionalCategoryColor(val))}
+                    title={val}
+                >
+                    {val}
+                </Badge>
+            )
+        },
     },
     {
         accessorKey: "chemical_family",
         header: "Familia Química",
+        cell: ({ row }) => <div className="text-muted-foreground">{row.getValue("chemical_family")}</div>,
     },
     {
         accessorKey: "disposition",
         header: "Disposición",
         cell: ({ row }) => {
-            const disposition = row.getValue("disposition") as string
-            const variant = disposition === "Aprobado" ? "success" :
-                disposition === "Rechazado" ? "destructive" : "warning"
-            return <Badge variant={variant}>{disposition}</Badge>
+            const val = row.getValue("disposition") as string;
+            return (
+                <Badge
+                    variant="outline"
+                    className={cn("rounded-md font-normal text-nowrap max-w-[150px] truncate block", getDispositionColor(val))}
+                    title={val}
+                >
+                    {val}
+                </Badge>
+            )
         },
     },
     {
@@ -280,7 +313,9 @@ export default function RawMaterialsPage() {
             />
 
             <div className="space-y-2">
-                <h1 className="text-3xl font-bold text-foreground">Materias Primas</h1>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-[#0e0c9b] to-[#c41f1a] bg-clip-text text-transparent">
+                    Materias Primas
+                </h1>
                 <p className="text-muted-foreground">
                     Consulta la documentación técnica y de seguridad de las materias primas.
                 </p>

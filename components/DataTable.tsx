@@ -67,13 +67,13 @@ export function DataTable<TData, TValue>({
 
     return (
         <div className="space-y-4">
-            <div className="rounded-md border bg-card transition-colors duration-300">
+            <div className="rounded-[2.5rem] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-sm transition-all duration-300 hover:shadow-md">
                 <Table>
-                    <TableHeader>
+                    <TableHeader className="bg-[#0e0c9b]">
                         {table.getHeaderGroups().map((headerGroup) => (
-                            <TableRow key={headerGroup.id}>
+                            <TableRow key={headerGroup.id} className="hover:bg-[#0e0c9b]/90 border-b-0">
                                 {headerGroup.headers.map((header) => (
-                                    <TableHead key={header.id} className="bg-muted/50 text-foreground font-semibold">
+                                    <TableHead key={header.id} className="text-white font-bold h-12 first:pl-6 last:pr-6 text-nowrap">
                                         {header.isPlaceholder
                                             ? null
                                             : flexRender(
@@ -92,13 +92,13 @@ export function DataTable<TData, TValue>({
                                     key={row.id}
                                     data-state={row.getIsSelected() && "selected"}
                                     className={cn(
-                                        "transition-colors",
-                                        onRowClick && "cursor-pointer hover:bg-muted/80"
+                                        "transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 border-slate-100 dark:border-slate-800",
+                                        onRowClick && "cursor-pointer"
                                     )}
                                     onClick={() => onRowClick?.(row.original)}
                                 >
                                     {row.getVisibleCells().map((cell) => (
-                                        <TableCell key={cell.id}>
+                                        <TableCell key={cell.id} className="first:pl-6 last:pr-6 py-4">
                                             {flexRender(
                                                 cell.column.columnDef.cell,
                                                 cell.getContext()
@@ -111,7 +111,7 @@ export function DataTable<TData, TValue>({
                             <TableRow>
                                 <TableCell
                                     colSpan={columns.length}
-                                    className="h-24 text-center"
+                                    className="h-24 text-center text-muted-foreground"
                                 >
                                     No se encontraron resultados.
                                 </TableCell>

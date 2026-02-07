@@ -37,12 +37,12 @@ export default function HomePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* 1. Catálogo */}
                 <Link href="/catalog" className="group block">
-                    <Card className="h-full border-none shadow-sm hover:shadow-md transition-all bg-[#FFFBF7] dark:bg-slate-900">
+                    <Card className="h-full border-2 border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-sm hover:shadow-md hover:border-blue-500/50 transition-all bg-[#FFFBF7] dark:bg-slate-900">
                         <CardContent className="p-8 flex flex-col items-start gap-4 h-full relative">
-                            <Badge className="absolute top-6 right-6 bg-blue-100 text-blue-700 hover:bg-blue-200 border-none px-3 font-bold">
+                            <Badge className="absolute top-6 right-6 bg-blue-100 text-blue-700 hover:bg-blue-200 border-none px-3 font-bold rounded-full">
                                 ACTIVO
                             </Badge>
-                            <div className="h-14 w-14 rounded-full bg-blue-900 flex items-center justify-center mb-2 shadow-blue-900/20 shadow-lg group-hover:scale-110 transition-transform">
+                            <div className="h-14 w-14 rounded-2xl bg-[#0e0c9b] flex items-center justify-center mb-2 shadow-blue-900/20 shadow-lg group-hover:scale-110 transition-transform">
                                 <BookOpen className="h-7 w-7 text-white" />
                             </div>
                             <div>
@@ -62,9 +62,9 @@ export default function HomePage() {
 
                 {/* 2. Bitácora */}
                 <Link href="/bitacora" className="group block">
-                    <Card className="h-full border-none shadow-sm hover:shadow-md transition-all bg-[#FFFBF7] dark:bg-slate-900">
+                    <Card className="h-full border-2 border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-sm hover:shadow-md hover:border-blue-500/50 transition-all bg-[#FFFBF7] dark:bg-slate-900">
                         <CardContent className="p-8 flex flex-col items-start gap-4 h-full">
-                            <div className="h-14 w-14 rounded-full bg-blue-900 flex items-center justify-center mb-2 shadow-blue-900/20 shadow-lg group-hover:scale-110 transition-transform">
+                            <div className="h-14 w-14 rounded-2xl bg-[#0e0c9b] flex items-center justify-center mb-2 shadow-blue-900/20 shadow-lg group-hover:scale-110 transition-transform">
                                 <ClipboardList className="h-7 w-7 text-white" />
                             </div>
                             <div>
@@ -84,12 +84,12 @@ export default function HomePage() {
 
                 {/* 3. Control de Calidad */}
                 <Link href="/calidad" className="group block">
-                    <Card className="h-full border-none shadow-sm hover:shadow-md transition-all bg-[#FFFBF7] dark:bg-slate-900">
+                    <Card className="h-full border-2 border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-sm hover:shadow-md hover:border-blue-500/50 transition-all bg-[#FFFBF7] dark:bg-slate-900">
                         <CardContent className="p-8 flex flex-col items-start gap-4 h-full relative">
-                            <Badge className="absolute top-6 right-6 bg-slate-100 text-slate-500 border-none px-3 font-bold">
+                            <Badge className="absolute top-6 right-6 bg-slate-100 text-slate-500 border-none px-3 font-bold rounded-full">
                                 ESTÁNDARES
                             </Badge>
-                            <div className="h-14 w-14 rounded-full bg-blue-900 flex items-center justify-center mb-2 shadow-blue-900/20 shadow-lg group-hover:scale-110 transition-transform">
+                            <div className="h-14 w-14 rounded-2xl bg-[#0e0c9b] flex items-center justify-center mb-2 shadow-blue-900/20 shadow-lg group-hover:scale-110 transition-transform">
                                 <Microscope className="h-7 w-7 text-white" />
                             </div>
                             <div>
@@ -109,9 +109,9 @@ export default function HomePage() {
 
                 {/* 4. Reportes */}
                 <Link href="/reportes" className="group block">
-                    <Card className="h-full border-none shadow-sm hover:shadow-md transition-all bg-[#FFFBF7] dark:bg-slate-900">
+                    <Card className="h-full border-2 border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-sm hover:shadow-md hover:border-blue-500/50 transition-all bg-[#FFFBF7] dark:bg-slate-900">
                         <CardContent className="p-8 flex flex-col items-start gap-4 h-full">
-                            <div className="h-14 w-14 rounded-full bg-blue-900 flex items-center justify-center mb-2 shadow-blue-900/20 shadow-lg group-hover:scale-110 transition-transform">
+                            <div className="h-14 w-14 rounded-2xl bg-[#0e0c9b] flex items-center justify-center mb-2 shadow-blue-900/20 shadow-lg group-hover:scale-110 transition-transform">
                                 <BarChart3 className="h-7 w-7 text-white" />
                             </div>
                             <div>
@@ -131,9 +131,9 @@ export default function HomePage() {
 
                 {/* 5. Configuración */}
                 <Link href="/configuracion" className="group block">
-                    <Card className="h-full border-none shadow-sm hover:shadow-md transition-all bg-[#FFFBF7] dark:bg-slate-900">
+                    <Card className="h-full border-2 border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-sm hover:shadow-md hover:border-blue-500/50 transition-all bg-[#FFFBF7] dark:bg-slate-900">
                         <CardContent className="p-8 flex flex-col items-start gap-4 h-full">
-                            <div className="h-14 w-14 rounded-full bg-blue-900 flex items-center justify-center mb-2 shadow-blue-900/20 shadow-lg group-hover:scale-110 transition-transform">
+                            <div className="h-14 w-14 rounded-2xl bg-[#0e0c9b] flex items-center justify-center mb-2 shadow-blue-900/20 shadow-lg group-hover:scale-110 transition-transform">
                                 <Settings className="h-7 w-7 text-white" />
                             </div>
                             <div>
@@ -152,12 +152,12 @@ export default function HomePage() {
                 </Link>
 
                 {/* 6. Manual de Formulación (Disabled) */}
-                <Card className="h-full border-none shadow-sm bg-[#FFFBF7] dark:bg-slate-900 opacity-60">
+                <Card className="h-full border-2 border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-sm bg-[#FFFBF7] dark:bg-slate-900 opacity-60">
                     <CardContent className="p-8 flex flex-col items-start gap-4 h-full relative">
-                        <Badge className="absolute top-6 right-6 bg-slate-200 text-slate-600 border-none px-3 font-bold">
+                        <Badge className="absolute top-6 right-6 bg-slate-200 text-slate-600 border-none px-3 font-bold rounded-full">
                             DESARROLLO
                         </Badge>
-                        <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center mb-2">
+                        <div className="h-14 w-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-2">
                             <Beaker className="h-7 w-7 text-slate-400" />
                         </div>
                         <div>

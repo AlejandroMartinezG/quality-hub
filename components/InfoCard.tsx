@@ -20,19 +20,23 @@ export function InfoCard({ title, icon: Icon, items }: InfoCardProps) {
     }
 
     return (
-        <Card>
-            <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center gap-2">
-                    {Icon && <Icon className="h-5 w-5 text-primary" />}
+        <Card className="overflow-hidden rounded-[2rem] border-slate-200 dark:border-slate-800 shadow-sm transition-all duration-300 hover:shadow-md">
+            <CardHeader className="pb-4 bg-muted/30 border-b border-border/50">
+                <CardTitle className="text-lg font-bold flex items-center gap-3">
+                    {Icon && (
+                        <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-[#0e0c9b] dark:text-blue-400">
+                            <Icon className="h-5 w-5" />
+                        </div>
+                    )}
                     {title}
                 </CardTitle>
             </CardHeader>
-            <CardContent>
-                <dl className="grid gap-2">
+            <CardContent className="pt-6">
+                <dl className="grid gap-4">
                     {validItems.map((item, index) => (
-                        <div key={index} className="flex justify-between items-center py-1.5 border-b last:border-0">
-                            <dt className="text-sm text-muted-foreground">{item.label}</dt>
-                            <dd className="text-sm font-medium">{item.value}</dd>
+                        <div key={index} className="flex justify-between items-center py-1 border-b border-border/50 last:border-0 last:pb-0">
+                            <dt className="text-sm font-medium text-muted-foreground">{item.label}</dt>
+                            <dd className="text-sm font-semibold text-right">{item.value}</dd>
                         </div>
                     ))}
                 </dl>
