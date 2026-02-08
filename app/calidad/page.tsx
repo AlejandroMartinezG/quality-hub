@@ -189,26 +189,31 @@ export default function CalidadPage() {
     const getStatusInfo = (record: BitacoraRecord) => {
         let status: 'success' | 'warning' | 'error' = 'success'
 
-        // Check Solids (Primary driver for Status as per request)
+        // ========== CONTROL CHART LOGIC FOR SÓLIDOS ==========
+        // Red lines (specification limits): min and max from PRODUCT_STANDARDS
+        // Yellow lines (tolerance limits): min*0.95 and max*1.05 (5% relative error)
         const standardSolids = PRODUCT_STANDARDS[record.codigo_producto]
         if (standardSolids && record.solidos_medicion_1 !== null && record.solidos_medicion_2 !== null) {
             const avg = (record.solidos_medicion_1 + record.solidos_medicion_2) / 2
-            const min = standardSolids.min || 0
-            const max = standardSolids.max || 0
-            const minTol = min * 0.95
-            const maxTol = max * 1.05
+            const specMin = standardSolids.min || 0  // Red line (lower)
+            const specMax = standardSolids.max || 0  // Red line (upper)
+            const warnMin = specMin * 0.95           // Yellow line (lower) - 5% tolerance
+            const warnMax = specMax * 1.05           // Yellow line (upper) - 5% tolerance
 
-            if (avg < min || avg > max) {
-                if (avg >= minTol && avg <= maxTol) {
-                    status = 'warning'
-                } else {
-                    status = 'error'
-                }
+            if (avg >= specMin && avg <= specMax) {
+                // Between red lines = CONFORME (success)
+                status = 'success'
+            } else if ((avg >= warnMin && avg < specMin) || (avg > specMax && avg <= warnMax)) {
+                // Between red and yellow lines = SEMI-CONFORME (warning)
+                status = 'warning'
+            } else {
+                // Outside yellow lines = NO CONFORME (error)
+                status = 'error'
             }
         } else if (!standardSolids) {
-            // If no standard exists, we can't judge concormity based on solids. 
-            // Defaulting to success or maybe handle as N/A? 
-            // For now keeping usage of 'success' if no standard to avoid red errors on everything.
+            // If no standard exists, we can't judge conformity based on solids
+            // Defaulting to success to avoid red errors on everything
+            status = 'success'
         }
 
         return status
