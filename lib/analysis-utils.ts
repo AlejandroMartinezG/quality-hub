@@ -3,12 +3,15 @@
 import { PRODUCT_STANDARDS, PH_STANDARDS, APPEARANCE_STANDARDS } from "@/lib/production-constants"
 
 // Definir tipos para los resultados de análisis
+export type ConformityLevel = 'conforme' | 'semi-conforme' | 'no-conforme' | 'na'
+
 export type AnalysisResult = {
     isConform: boolean
     failedParams: string[] // 'ph', 'solidos', 'apariencia', 'color', 'aroma'
-    phStatus: 'ok' | 'fail' | 'na'
-    solidsStatus: 'ok' | 'fail' | 'na'
-    appearanceStatus: 'ok' | 'fail' | 'na'
+    phStatus: ConformityLevel
+    solidsStatus: ConformityLevel
+    appearanceStatus: ConformityLevel
+    overallStatus: ConformityLevel
 }
 
 export type EnrichedRecord = {
@@ -44,64 +47,74 @@ export const analyzeRecord = (record: any): EnrichedRecord => {
 
     const failedParams: string[] = []
 
-    // 1. Analyze pH
-    let phStatus: 'ok' | 'fail' | 'na' = 'na'
-    if (record.ph !== null && stdPH) {
-        if (record.ph >= stdPH.min && record.ph <= stdPH.max) {
-            phStatus = 'ok'
-        } else {
-            phStatus = 'fail'
-            failedParams.push('ph')
-        }
-    }
-
-    // 2. Analyze Solids (using tolerance limits same as Quality Table)
-    let solidsStatus: 'ok' | 'fail' | 'na' = 'na'
+    // ========== CONTROL CHART LOGIC FOR SÓLIDOS ==========
+    // Red lines (specification limits): min and max from PRODUCT_STANDARDS
+    // Yellow lines (tolerance limits): min*0.95 and max*1.05 (5% relative error)
+    let solidsStatus: ConformityLevel = 'na'
     if (avgSolids !== null && stdSolids && stdSolids.min !== undefined && stdSolids.max !== undefined) {
-        const minTol = stdSolids.min * 0.95
-        const maxTol = stdSolids.max * 1.05
-        if (avgSolids >= minTol && avgSolids <= maxTol) {
-            solidsStatus = 'ok'
+        const specMin = stdSolids.min  // Red line (lower)
+        const specMax = stdSolids.max  // Red line (upper)
+        const warnMin = specMin * 0.95 // Yellow line (lower) - 5% tolerance
+        const warnMax = specMax * 1.05 // Yellow line (upper) - 5% tolerance
+
+        if (avgSolids >= specMin && avgSolids <= specMax) {
+            // Between red lines = CONFORME
+            solidsStatus = 'conforme'
+        } else if ((avgSolids >= warnMin && avgSolids < specMin) || (avgSolids > specMax && avgSolids <= warnMax)) {
+            // Between red and yellow lines = SEMI-CONFORME
+            solidsStatus = 'semi-conforme'
+            failedParams.push('solidos')
         } else {
-            solidsStatus = 'fail'
+            // Outside yellow lines = NO CONFORME
+            solidsStatus = 'no-conforme'
             failedParams.push('solidos')
         }
     }
 
-    // 3. Analyze Appearance
-    let appearanceStatus: 'ok' | 'fail' | 'na' = 'na'
+    // ========== pH ANALYSIS (keeping simple pass/fail for now) ==========
+    let phStatus: ConformityLevel = 'na'
+    if (record.ph !== null && stdPH) {
+        if (record.ph >= stdPH.min && record.ph <= stdPH.max) {
+            phStatus = 'conforme'
+        } else {
+            phStatus = 'no-conforme'
+            failedParams.push('ph')
+        }
+    }
+
+    // ========== APPEARANCE ANALYSIS (keeping simple pass/fail) ==========
+    let appearanceStatus: ConformityLevel = 'na'
     if (record.apariencia && stdApp) {
         // Simple string includes check, ignoring case
         if (record.apariencia.toLowerCase().includes(stdApp.toLowerCase()) || stdApp.toLowerCase().includes(record.apariencia.toLowerCase())) {
-            appearanceStatus = 'ok'
+            appearanceStatus = 'conforme'
         } else {
             // Check for specific synonyms if needed, otherwise fail
-            // Assuming strict match isn't required but logical match is. 
-            // For now, if the recorded appearance name matches the standard name roughly
-            if (record.apariencia === stdApp) {
-                appearanceStatus = 'ok'
+            if (record.apariencia.toUpperCase() === stdApp.toUpperCase()) {
+                appearanceStatus = 'conforme'
             } else {
-                // Creating a lenient check based on current data patterns
-                // e.g., Standard "CRISTALINO" vs Record "CRISTALINO"
-                if (record.apariencia.toUpperCase() === stdApp.toUpperCase()) {
-                    appearanceStatus = 'ok'
-                } else {
-                    appearanceStatus = 'fail'
-                    failedParams.push('apariencia')
-                }
+                appearanceStatus = 'no-conforme'
+                failedParams.push('apariencia')
             }
         }
     }
 
-    // Assuming Color and Aroma are always OK if present for now unless we have standards
-    // The user mentioned "Pareto por defectos", including color and aroma.
-    // If we don't have standards for them, we can filter by specific "No Conforme" flags if they existed in DB, 
-    // but looking at the table structure, we only have the values.
-    // We will assume "characteristic" values are passed as OK.
+    // ========== OVERALL CONFORMITY ==========
+    // For now, focusing only on sólidos as per user request
+    // Overall status is determined by the worst status among all checked parameters
+    const getWorstStatus = (statuses: ConformityLevel[]): ConformityLevel => {
+        const activeStatuses = statuses.filter(s => s !== 'na')
+        if (activeStatuses.length === 0) return 'na'
+        if (activeStatuses.includes('no-conforme')) return 'no-conforme'
+        if (activeStatuses.includes('semi-conforme')) return 'semi-conforme'
+        return 'conforme'
+    }
 
-    // Final Conformity
-    // Success if NO failures in checked params
-    const isConform = failedParams.length === 0
+    // For now, only considering sólidos for overall status
+    const overallStatus = solidsStatus
+
+    // Legacy isConform for backward compatibility
+    const isConform = overallStatus === 'conforme'
 
     return {
         ...record,
@@ -112,7 +125,8 @@ export const analyzeRecord = (record: any): EnrichedRecord => {
             failedParams,
             phStatus,
             solidsStatus,
-            appearanceStatus
+            appearanceStatus,
+            overallStatus
         }
     }
 }

@@ -182,10 +182,10 @@ export default function ReportesPage() {
             return sum
         }, 0)
 
-        // Classify records: Conforme (0 fails), Semi-Conforme (1 fail), No Conforme (2+ fails)
-        const conformes = filteredRecords.filter(r => r.analysis.isConform).length
-        const semiConformes = filteredRecords.filter(r => !r.analysis.isConform && r.analysis.failedParams.length === 1).length
-        const noConformes = filteredRecords.filter(r => !r.analysis.isConform && r.analysis.failedParams.length > 1).length
+        // Classify records using new control chart-based conformity levels
+        const conformes = filteredRecords.filter(r => r.analysis.overallStatus === 'conforme').length
+        const semiConformes = filteredRecords.filter(r => r.analysis.overallStatus === 'semi-conforme').length
+        const noConformes = filteredRecords.filter(r => r.analysis.overallStatus === 'no-conforme').length
 
         const percentConformidad = total > 0 ? ((conformes / total) * 100).toFixed(1) : "0.0"
         const percentSemiConformidad = total > 0 ? ((semiConformes / total) * 100).toFixed(1) : "0.0"
@@ -203,13 +203,15 @@ export default function ReportesPage() {
             if (!grouped[suc]) {
                 grouped[suc] = { name: suc, conformes: 0, semiConformes: 0, noConformes: 0 }
             }
-            if (r.analysis.isConform) {
+            // Use new control chart-based conformity levels
+            if (r.analysis.overallStatus === 'conforme') {
                 grouped[suc].conformes++
-            } else if (r.analysis.failedParams.length === 1) {
+            } else if (r.analysis.overallStatus === 'semi-conforme') {
                 grouped[suc].semiConformes++
-            } else {
+            } else if (r.analysis.overallStatus === 'no-conforme') {
                 grouped[suc].noConformes++
             }
+            // 'na' status is not counted
         })
 
         return Object.values(grouped).sort((a, b) => (b.conformes + b.semiConformes + b.noConformes) - (a.conformes + a.semiConformes + a.noConformes))
