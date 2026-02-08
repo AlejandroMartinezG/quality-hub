@@ -38,10 +38,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         setMounted(true)
     }, [])
 
-    const isLoginPage = pathname === "/login"
+    const isLoginPage = pathname === "/login" || pathname === "/login/"
 
     if (isLoginPage) {
-        return <div className="min-h-screen bg-background">{children}</div>
+        return (
+            <div className="min-h-screen bg-background relative">
+                <div className="absolute top-4 right-4 z-50">
+                    <button
+                        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                        className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors text-slate-500"
+                        title="Cambiar tema"
+                    >
+                        {mounted && theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                    </button>
+                </div>
+                {children}
+            </div>
+        )
     }
 
     const NavItem = ({ href, icon: Icon, label, disabled = false }: { href: string, icon: any, label: string, disabled?: boolean }) => {

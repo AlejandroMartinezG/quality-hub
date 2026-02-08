@@ -6,7 +6,8 @@ import { supabase } from "@/lib/supabase"
 import { analyzeRecord, EnrichedRecord } from "@/lib/analysis-utils"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Loader2, RefreshCcw, Filter, Download, Factory, Trophy, TrendingUp, Package, Activity, AlertCircle } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Loader2, RefreshCcw, Filter, Download, Factory, Trophy, TrendingUp, Package, Activity, AlertCircle, ChevronRight } from "lucide-react"
 import {
     Select,
     SelectContent,
@@ -39,7 +40,7 @@ import { SUCURSALES, PRODUCT_STANDARDS, PH_STANDARDS, CATEGORY_PRODUCTS, PRODUCT
 // --- Components ---
 
 const KPICard = ({ title, value, subtitle, icon: Icon, colorClass }: any) => (
-    <Card className="border-none shadow-sm bg-white dark:bg-slate-900">
+    <Card className="border-none shadow-sm bg-white dark:bg-slate-900 rounded-[2rem]">
         <CardContent className="p-6">
             <div className="flex justify-between items-start">
                 <div>
@@ -71,6 +72,9 @@ export default function ReportesPage() {
     const [showAllProducts, setShowAllProducts] = useState(false)
     const [rankingCategoryFilter, setRankingCategoryFilter] = useState<string>("all")
     const [selectedDateRange, setSelectedDateRange] = useState("all") // Date range filter
+
+    // Drill-down modal state
+    const [drillDownFamily, setDrillDownFamily] = useState<string | null>(null)
 
     useEffect(() => {
         if (user) {
@@ -488,6 +492,61 @@ export default function ReportesPage() {
         const uniqueCategories = Array.from(new Set(topProducts.map(p => p.category))).filter(c => c !== "Otros").sort()
         uniqueCategories.push("Otros") // Add "Otros" at the end
 
+        // --- 5. Category Breakdown for Drill-Down (Cuidado del Hogar, Lavandería, Cuidado Personal) ---
+        const getCategoryProductBreakdown = (familyName: string) => {
+            // Get all categories in this family
+            const familyGroup = PRODUCT_GROUPS.find(g => g.title === familyName)
+            if (!familyGroup) return []
+
+            const categoryBreakdowns: Array<{ categoryName: string, products: Array<{ name: string, value: number }>, total: number }> = []
+
+            familyGroup.ids.forEach(catId => {
+                const catObj = PRODUCT_CATEGORIES.find(c => c.id === catId)
+                if (!catObj) return
+
+                // Get all products in this category
+                const productsInCategory = filteredRecords
+                    .filter(r => {
+                        const rAny = r as any
+                        const catName = (rAny.categoria_producto || r.familia_producto || "") as string
+                        return catName === catObj.name
+                    })
+                    .reduce((acc, r) => {
+                        const prod = r.codigo_producto
+                        if (!acc[prod]) acc[prod] = 0
+                        acc[prod] += (r.tamano_lote || 0)
+                        return acc
+                    }, {} as Record<string, number>)
+
+                const products = Object.entries(productsInCategory)
+                    .map(([name, value]) => ({ name, value }))
+                    .sort((a, b) => b.value - a.value)
+
+                const total = products.reduce((sum, p) => sum + p.value, 0)
+
+                if (total > 0) {
+                    categoryBreakdowns.push({
+                        categoryName: catObj.name,
+                        products,
+                        total
+                    })
+                }
+            })
+
+            return categoryBreakdowns.sort((a, b) => b.total - a.total)
+        }
+
+        const categoryBreakdowns = {
+            "Cuidado del Hogar": getCategoryProductBreakdown("Cuidado del Hogar"),
+            "Lavandería": getCategoryProductBreakdown("Lavandería"),
+            "Cuidado Personal": getCategoryProductBreakdown("Cuidado Personal")
+        }
+
+        // --- 6. Product Variants Data (All Products Aggregated) ---
+        const productVariantsData = Object.values(byProduct)
+            .sort((a, b) => b.value - a.value)
+            .map(p => ({ name: p.name, value: p.value, type: p.type }))
+
         return {
             sucursalData,
             top3Sucursales,
@@ -496,7 +555,9 @@ export default function ReportesPage() {
             familyCharts,
             topProducts,
             maxProductVal,
-            uniqueCategories
+            uniqueCategories,
+            categoryBreakdowns,
+            productVariantsData
         }
     }, [filteredRecords])
 
@@ -587,7 +648,7 @@ export default function ReportesPage() {
                         {/* KPI Section */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             {/* KPI 1: Total Registros + Volumen Total (Merged) - Enhanced */}
-                            <Card className="border-none shadow-md bg-gradient-to-br from-blue-900 to-blue-950 text-white dark:from-blue-950 dark:to-slate-900">
+                            <Card className="border-none shadow-md bg-gradient-to-br from-blue-900 to-blue-950 text-white dark:from-blue-950 dark:to-slate-900 rounded-[2rem]">
                                 <CardContent className="p-8 relative overflow-hidden">
                                     <div className="relative z-10">
                                         {/* Total Registros - Top Section */}
@@ -625,7 +686,7 @@ export default function ReportesPage() {
                             </Card>
 
                             {/* KPI 2: Total Conformes - Enhanced */}
-                            <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-slate-900 dark:to-slate-800 relative overflow-visible">
+                            <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-slate-900 dark:to-slate-800 relative overflow-visible rounded-[2rem]">
                                 <CardContent className="p-6 h-full flex flex-col justify-between">
                                     <div>
                                         <div className="flex justify-between items-start mb-4">
@@ -651,7 +712,7 @@ export default function ReportesPage() {
                             </Card>
 
                             {/* KPI 3: Semi-Conformes - Enhanced */}
-                            <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-slate-900 dark:to-slate-800 relative overflow-visible">
+                            <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-slate-900 dark:to-slate-800 relative overflow-visible rounded-[2rem]">
                                 <CardContent className="p-6 h-full flex flex-col justify-between">
                                     <div>
                                         <div className="flex justify-between items-start mb-4">
@@ -677,7 +738,7 @@ export default function ReportesPage() {
                             </Card>
 
                             {/* KPI 4: Total No Conformes - Enhanced */}
-                            <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-red-50 to-red-100 dark:from-slate-900 dark:to-slate-800 relative overflow-visible">
+                            <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-red-50 to-red-100 dark:from-slate-900 dark:to-slate-800 relative overflow-visible rounded-[2rem]">
                                 <CardContent className="p-6 h-full flex flex-col justify-between">
                                     <div>
                                         <div className="flex justify-between items-start mb-4">
@@ -706,7 +767,7 @@ export default function ReportesPage() {
                         {/* Charts Section - Full Width Stacked */}
                         <div className="grid grid-cols-1 gap-6">
                             {/* Conformidad por Sucursal - Full Width */}
-                            <Card className="border-none shadow-sm dark:bg-slate-900">
+                            <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
                                 <CardHeader>
                                     <CardTitle className="text-lg font-bold">Conformidad por Sucursal</CardTitle>
                                     <CardDescription>Volumen de producción conforme vs no conforme</CardDescription>
@@ -733,7 +794,7 @@ export default function ReportesPage() {
                             </Card>
 
                             {/* Pareto de Defectos - Full Width */}
-                            <Card className="border-none shadow-sm dark:bg-slate-900">
+                            <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
                                 <CardHeader>
                                     <CardTitle className="text-lg font-bold">Pareto de Defectos</CardTitle>
                                     <CardDescription>Frecuencia de fallos por parámetro de calidad</CardDescription>
@@ -760,7 +821,7 @@ export default function ReportesPage() {
                         </div>
 
                         {/* Secondary Filters - Compact Design for Control Charts */}
-                        <Card className="border-none shadow-sm bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-950/30">
+                        <Card className="border-none shadow-sm bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-950/30 rounded-[2rem]">
                             <CardContent className="p-4">
                                 <div className="flex flex-wrap items-center gap-3">
                                     <div className="flex items-center gap-2">
@@ -846,7 +907,7 @@ export default function ReportesPage() {
                         {/* Row 2: Control Charts (Solids & pH) */}
                         <div className="grid grid-cols-1 gap-6">
                             {/* 1. Gráfico de Sólidos (Primero) */}
-                            <Card className="border-none shadow-sm dark:bg-slate-900">
+                            <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
                                 <CardHeader>
                                     <div className="flex justify-between items-center">
                                         <div>
@@ -893,7 +954,7 @@ export default function ReportesPage() {
                             </Card>
 
                             {/* 2. Gráfico de pH (Segundo) */}
-                            <Card className="border-none shadow-sm dark:bg-slate-900">
+                            <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
                                 <CardHeader>
                                     <div className="flex justify-between items-center">
                                         <div>
@@ -939,7 +1000,7 @@ export default function ReportesPage() {
                         {/* Commercial KPIs */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             {/* KPI 1: Volumen Total + Unidades (Merged) - Enhanced */}
-                            <Card className="border-none shadow-md bg-gradient-to-br from-blue-900 to-blue-950 text-white dark:from-blue-950 dark:to-slate-900 md:col-span-2">
+                            <Card className="border-none shadow-md bg-gradient-to-br from-blue-900 to-blue-950 text-white dark:from-blue-950 dark:to-slate-900 md:col-span-2 rounded-[2rem]">
                                 <CardContent className="p-6 relative overflow-hidden">
                                     <div className="relative z-10">
                                         {/* Volumen Total - Top Section */}
@@ -992,7 +1053,7 @@ export default function ReportesPage() {
                             </Card>
 
                             {/* KPI 3: Categoría Leader + Top 3 - Enhanced */}
-                            <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-red-50 to-red-100 dark:from-slate-900 dark:to-slate-800 relative overflow-visible">
+                            <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-red-50 to-red-100 dark:from-slate-900 dark:to-slate-800 relative overflow-visible rounded-[2rem]">
                                 <CardContent className="p-8 h-full flex flex-col justify-between">
                                     <div>
                                         <div className="flex justify-between items-start mb-6">
@@ -1024,7 +1085,7 @@ export default function ReportesPage() {
                             </Card>
 
                             {/* KPI 4: Sucursal Leader + Top 3 - Enhanced */}
-                            <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-slate-900 dark:to-slate-800 relative overflow-visible">
+                            <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-slate-900 dark:to-slate-800 relative overflow-visible rounded-[2rem]">
                                 <CardContent className="p-8 h-full flex flex-col justify-between">
                                     <div>
                                         <div className="flex justify-between items-start mb-6">
@@ -1057,7 +1118,7 @@ export default function ReportesPage() {
                         </div>
 
                         {/* Chart 1: Production by Sucursal (Full Width) */}
-                        <Card className="border-none shadow-sm dark:bg-slate-900">
+                        <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
                             <CardHeader>
                                 <CardTitle className="text-lg font-bold">Producción Total por Sucursal (Litros)</CardTitle>
                                 <CardDescription>Comparativa de volumen de producción entre todas las sucursales</CardDescription>
@@ -1084,10 +1145,69 @@ export default function ReportesPage() {
                             </CardContent>
                         </Card>
 
+                        {/* Product Variants Donut Chart */}
+                        <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
+                            <CardHeader>
+                                <CardTitle className="text-lg font-bold">Distribución de Productos por Variante</CardTitle>
+                                <CardDescription>Proporción de todos los productos por SKU/Código</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="h-[400px] w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={commercialData.productVariantsData.slice(0, 20)}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={80}
+                                                outerRadius={140}
+                                                paddingAngle={2}
+                                                dataKey="value"
+                                                stroke="none"
+                                                label={(entry) => {
+                                                    const total = commercialData.productVariantsData.slice(0, 20).reduce((sum, p) => sum + p.value, 0)
+                                                    const percent = ((entry.value / total) * 100).toFixed(1)
+                                                    return parseFloat(percent) > 3 ? `${entry.name}` : ''
+                                                }}
+                                                labelLine={true}
+                                            >
+                                                {commercialData.productVariantsData.slice(0, 20).map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip
+                                                formatter={(value: any, name: any, props: any) => {
+                                                    const total = commercialData.productVariantsData.slice(0, 20).reduce((sum, p) => sum + p.value, 0)
+                                                    const percent = ((value / total) * 100).toFixed(1)
+                                                    const type = props.payload.type === 'litros' ? 'L' : 'Pzas'
+                                                    return [`${value.toLocaleString()} ${type} (${percent}%)`, name]
+                                                }}
+                                            />
+                                            <Legend
+                                                layout="vertical"
+                                                align="right"
+                                                verticalAlign="middle"
+                                                iconType="circle"
+                                                formatter={(value, entry: any) => {
+                                                    const total = commercialData.productVariantsData.slice(0, 20).reduce((sum, p) => sum + p.value, 0)
+                                                    const percent = ((entry.payload.value / total) * 100).toFixed(1)
+                                                    return `${value}: ${percent}%`
+                                                }}
+                                                wrapperStyle={{ fontSize: '11px', maxHeight: '380px', overflowY: 'auto' }}
+                                            />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div className="mt-4 text-center text-xs text-slate-500">
+                                    Mostrando los top 20 productos más producidos
+                                </div>
+                            </CardContent>
+                        </Card>
+
                         {/* Top Products & Family Distribution Grid */}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                            <Card className="border-none shadow-sm dark:bg-slate-900 col-span-1 lg:col-span-1 flex flex-col">
+                            <Card className="border-none shadow-sm dark:bg-slate-900 col-span-1 lg:col-span-1 flex flex-col rounded-[2rem]">
                                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                                     <div className="space-y-1">
                                         <CardTitle className="text-lg font-bold">Ranking de Productos</CardTitle>
@@ -1154,7 +1274,7 @@ export default function ReportesPage() {
                             {/* Right Column: Family Breakdowns (Donut Charts Grid) */}
                             <div className="col-span-1 lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {commercialData.familyCharts.map((family, idx) => (
-                                    <Card key={family.name} className="border-none shadow-sm dark:bg-slate-900">
+                                    <Card key={family.name} className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
                                         <CardHeader className="pb-2">
                                             <CardTitle className="text-base font-bold truncate" title={family.name}>
                                                 {family.name}
@@ -1216,6 +1336,20 @@ export default function ReportesPage() {
                                                     )
                                                 })}
                                             </div>
+
+                                            {/* Ver Categorías Button (Only for specific families) */}
+                                            {(family.name === "Cuidado del Hogar" || family.name === "Lavandería" || family.name === "Cuidado Personal") && (
+                                                <div className="mt-4">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => setDrillDownFamily(family.name)}
+                                                        className="w-full text-xs flex items-center justify-center gap-1"
+                                                    >
+                                                        Ver Categorías <ChevronRight className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
+                                            )}
                                         </CardContent>
                                     </Card>
                                 ))}
@@ -1224,6 +1358,99 @@ export default function ReportesPage() {
                     </TabsContent>
                 </Tabs>
             )}
+
+            {/* Drill-Down Modal for Category Breakdowns */}
+            <Dialog open={drillDownFamily !== null} onOpenChange={(open) => !open && setDrillDownFamily(null)}>
+                <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl font-bold">{drillDownFamily} - Desglose por Categorías</DialogTitle>
+                        <DialogDescription>
+                            Productos individuales dentro de cada categoría de {drillDownFamily}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                        {drillDownFamily && commercialData.categoryBreakdowns[drillDownFamily as keyof typeof commercialData.categoryBreakdowns]?.map((category, idx) => (
+                            <Card key={category.categoryName} className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-base font-bold">{category.categoryName}</CardTitle>
+                                    <CardDescription className="text-xs">
+                                        Total: {category.total.toLocaleString()}
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="h-[250px] w-full relative">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie
+                                                    data={category.products}
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    innerRadius={50}
+                                                    outerRadius={80}
+                                                    paddingAngle={2}
+                                                    dataKey="value"
+                                                    stroke="none"
+                                                    label={(entry) => {
+                                                        const percent = ((entry.value / category.total) * 100).toFixed(1)
+                                                        return parseFloat(percent) > 5 ? `${percent}%` : ''
+                                                    }}
+                                                    labelLine={false}
+                                                >
+                                                    {category.products.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip
+                                                    formatter={(value: any, name: any) => {
+                                                        const percent = ((value / category.total) * 100).toFixed(1)
+                                                        return [`${value.toLocaleString()} (${percent}%)`, name]
+                                                    }}
+                                                />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                        {/* Center Label for Top Product */}
+                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                            <div className="text-center">
+                                                <span className="block text-xs text-slate-500">Top</span>
+                                                <span className="block text-xs font-bold text-slate-800 dark:text-slate-200 truncate max-w-[80px]">
+                                                    {category.products.length > 0 ? category.products[0].name : '-'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {/* Legend */}
+                                    <div className="mt-3 space-y-1">
+                                        {category.products.slice(0, 5).map((item, i) => {
+                                            const percent = ((item.value / category.total) * 100).toFixed(1)
+                                            return (
+                                                <div key={i} className="flex items-center justify-between text-xs">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }}></span>
+                                                        <span className="text-slate-700 dark:text-slate-300 truncate">{item.name}</span>
+                                                    </div>
+                                                    <span className="font-semibold text-slate-800 dark:text-slate-200">{percent}%</span>
+                                                </div>
+                                            )
+                                        })}
+                                        {category.products.length > 5 && (
+                                            <div className="text-xs text-slate-500 text-center pt-2">
+                                                +{category.products.length - 5} productos más
+                                            </div>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+
+                    {drillDownFamily && commercialData.categoryBreakdowns[drillDownFamily as keyof typeof commercialData.categoryBreakdowns]?.length === 0 && (
+                        <div className="text-center py-12 text-slate-500">
+                            No hay datos disponibles para esta familia
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

@@ -86,25 +86,24 @@ export default function LoginPage() {
     return (
         <div className="min-h-screen w-full flex">
             {/* Left Panel - Branding & Information */}
-            <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 relative overflow-hidden">
+            <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-900 via-blue-800 to-[#c41f1a] relative overflow-hidden">
                 {/* Background Pattern */}
                 <div className="absolute inset-0 opacity-10">
                     <div className="absolute top-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
-                    <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-300 rounded-full blur-3xl translate-x-1/2 translate-y-1/2"></div>
+                    <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#c41f1a] rounded-full blur-3xl translate-x-1/2 translate-y-1/2"></div>
                 </div>
 
                 {/* Content */}
                 <div className="relative z-10 flex flex-col justify-between p-12 text-white w-full">
                     {/* Logo & Brand */}
                     <div className="space-y-2">
-                        <div className="flex items-center gap-3 mb-8">
-                            <div className="p-3 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20">
-                                <ShieldCheck className="w-8 h-8 text-white" />
-                            </div>
-                            <div>
-                                <h1 className="text-3xl font-bold tracking-tight">GINEZ</h1>
-                                <p className="text-blue-200 text-sm font-medium">Quality Hub System</p>
-                            </div>
+                        <div className="flex flex-col items-start gap-2 mb-8">
+                            <img
+                                src="/logo.png"
+                                alt="GINEZ"
+                                className="h-20 w-auto brightness-0 invert opacity-100"
+                            />
+                            <p className="text-blue-200 text-sm font-medium ml-1">Quality Hub System</p>
                         </div>
 
                         <div className="space-y-6 mt-16">
