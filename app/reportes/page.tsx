@@ -679,7 +679,7 @@ export default function ReportesPage() {
                                             </p>
                                             <div className="text-3xl font-extrabold">
                                                 {kpis.totalVolume.toLocaleString()}
-                                                <span className="text-lg font-semibold opacity-70 ml-2">L/Kg</span>
+                                                <span className="text-lg font-semibold opacity-70 ml-2">L</span>
                                             </div>
                                         </div>
                                     </div>

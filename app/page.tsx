@@ -21,8 +21,8 @@ export default function HomePage() {
             {/* Header Section */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b pb-6">
                 <div className="-mt-2">
-                    <h2 className="text-xl font-bold text-blue-900 uppercase tracking-wide mb-1">
-                        SISTEMA DE CONTROL DE CALIDAD GINEZ
+                    <h2 className="text-xl font-bold text-blue-900 tracking-wide mb-1">
+                        Plataforma de Control de Calidad GINEZ® (PCC-GINEZ®)
                     </h2>
                     <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">
                         Módulos de Operación

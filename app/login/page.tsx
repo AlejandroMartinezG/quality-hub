@@ -108,7 +108,7 @@ export default function LoginPage() {
 
                         <div className="space-y-6 mt-16">
                             <h2 className="text-4xl font-bold leading-tight">
-                                Sistema de Control<br />de Calidad Ginez
+                                Plataforma de Control de Calidad GINEZ® (PCC-GINEZ®)
                             </h2>
                             <p className="text-blue-100 text-lg leading-relaxed max-w-md">
                                 Plataforma corporativa para la gestión, análisis y control de calidad en procesos de producción.

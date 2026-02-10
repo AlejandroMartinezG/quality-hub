@@ -270,7 +270,7 @@ export const PRODUCT_GROUPS = [
         ids: ["antibac"]
     },
     {
-        title: "Productos Intermedios / Industriales",
+        title: "Productos Intermedios",
         color: "text-indigo-600 dark:text-indigo-400",
         icon: "🏭",
         ids: ["prod-interm", "disoluciones", "especial"]

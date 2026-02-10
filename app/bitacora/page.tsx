@@ -29,7 +29,7 @@ import {
 
 
 import { supabase } from "@/lib/supabase"
-import { Loader2, CheckCircle2, AlertCircle, Info, FlaskConical, Beaker, Eye, Droplets, ClipboardCheck, ArrowRight, ArrowLeft, ChevronDown, WashingMachine, Home, Sparkles, Car, ShieldCheck, Factory } from "lucide-react"
+import { Loader2, CheckCircle2, AlertCircle, Info, FlaskConical, Beaker, Eye, Droplets, ClipboardCheck, ArrowRight, ArrowLeft, ChevronDown, WashingMachine, Home, Sparkles, Car, ShieldCheck, Factory, Wind, FlaskRound, SprayCan, Star, Waves, Feather, Flower2, Hand, Droplet, Smile, Package, Shield } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
@@ -331,7 +331,29 @@ export default function BitacoraPage() {
         return evaluations
     }
 
-    const currentEvaluations = getEvaluation()
+
+    // Iconos por categoría (Matching Catalog style)
+    const CATEGORY_ICONS: Record<string, any> = {
+        "aro-amb": Wind,
+        "antibac": Shield,
+        "bs-aro-amb": FlaskRound,
+        "bs-lim-mult": FlaskConical,
+        "crem-corp": Smile,
+        "det-trastes": Droplets,
+        "det-ropa": Waves,
+        "enj-cap": Waves,
+        "esp-hogar": Star,
+        "esp-lavand": Star,
+        "jab-manos": Hand,
+        "automotriz": Car,
+        "lim-mult": SprayCan,
+        "prod-interm": Factory,
+        "refaro": Flower2,
+        "shampoo": Droplet,
+        "suavizante": Feather,
+        "especial": Star,
+        "disoluciones": FlaskConical
+    }
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto pb-12">
@@ -383,7 +405,7 @@ export default function BitacoraPage() {
                                                             case "Lavandería": return <WashingMachine {...iconProps} />
                                                             case "Línea Automotriz": return <Car {...iconProps} />
                                                             case "Línea Antibacterial": return <ShieldCheck {...iconProps} />
-                                                            case "Productos Intermedios / Industriales": return <Factory {...iconProps} />
+                                                            case "Productos Intermedios": return <Factory {...iconProps} />
                                                             default: return <span className="text-2xl">{group.icon}</span>
                                                         }
                                                     })()}
@@ -414,30 +436,34 @@ export default function BitacoraPage() {
                                                     transition={{ duration: 0.3, ease: "easeInOut" }}
                                                 >
                                                     <div className="p-4 pt-0 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 border-t border-slate-100 dark:border-slate-800 mt-2">
-                                                        {groupCategories.map((cat) => (
-                                                            <Card
-                                                                key={cat.id}
-                                                                className="group cursor-pointer hover:shadow-xl hover:border-primary/50 transition-all duration-300 overflow-hidden bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-[2rem]"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation()
-                                                                    handleCategorySelect(cat.id)
-                                                                }}
-                                                            >
-                                                                <div className="h-40 w-full overflow-hidden relative">
-                                                                    <img
-                                                                        src={cat.image}
-                                                                        alt={cat.name}
-                                                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                                                    />
-                                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                                                                </div>
-                                                                <CardHeader className="p-4">
-                                                                    <CardTitle className="text-xs font-bold uppercase tracking-wide line-clamp-2 min-h-[2.5rem]">
-                                                                        {cat.name}
-                                                                    </CardTitle>
-                                                                </CardHeader>
-                                                            </Card>
-                                                        ))}
+                                                        {groupCategories.map((cat) => {
+                                                            const Icon = CATEGORY_ICONS[cat.id] || Package
+                                                            return (
+                                                                <Card
+                                                                    key={cat.id}
+                                                                    className="group cursor-pointer hover:shadow-xl hover:border-primary/50 transition-all duration-300 overflow-hidden bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-[2rem]"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation()
+                                                                        handleCategorySelect(cat.id)
+                                                                    }}
+                                                                >
+                                                                    <CardContent className="p-4 flex flex-col items-center text-center gap-3">
+                                                                        <div className={cn(
+                                                                            "h-16 w-16 rounded-full flex items-center justify-center mb-1 shadow-sm border transition-transform duration-300 group-hover:scale-110",
+                                                                            formData.categoria === cat.name ? "bg-white border-blue-200" : "bg-slate-50 border-slate-100 dark:bg-slate-800 dark:border-slate-700"
+                                                                        )}>
+                                                                            <Icon className={cn(
+                                                                                "h-8 w-8",
+                                                                                group.color.split(" ")[0] // Use group color for icon
+                                                                            )} />
+                                                                        </div>
+                                                                        <CardTitle className="text-xs font-bold uppercase tracking-wide line-clamp-2 min-h-[2.5rem] flex items-center justify-center">
+                                                                            {cat.name}
+                                                                        </CardTitle>
+                                                                    </CardContent>
+                                                                </Card>
+                                                            )
+                                                        })}
                                                     </div>
                                                 </motion.div>
                                             )}
@@ -595,16 +621,7 @@ export default function BitacoraPage() {
                                                     <Beaker className="h-5 w-5" />
                                                     % Sólidos (Brix)
                                                 </div>
-                                                {currentEvaluations.find(e => e.type === "Sólidos") && (
-                                                    <Badge variant="outline" className={cn(
-                                                        "uppercase font-bold text-[10px] px-3 py-1 shadow-sm",
-                                                        currentEvaluations.find(e => e.type === "Sólidos")?.status === "success" && "bg-green-100 text-green-700 border-green-200",
-                                                        currentEvaluations.find(e => e.type === "Sólidos")?.status === "warning" && "bg-yellow-100 text-yellow-800 border-yellow-200",
-                                                        currentEvaluations.find(e => e.type === "Sólidos")?.status === "error" && "bg-red-100 text-red-700 border-red-200"
-                                                    )}>
-                                                        {currentEvaluations.find(e => e.type === "Sólidos")?.text}
-                                                    </Badge>
-                                                )}
+                                                {/* Badge removed */}
                                             </div>
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="space-y-2">
@@ -668,16 +685,7 @@ export default function BitacoraPage() {
                                                     <Droplets className="h-5 w-5" />
                                                     Valor de pH
                                                 </div>
-                                                {currentEvaluations.find(e => e.type === "pH") && (
-                                                    <Badge variant="outline" className={cn(
-                                                        "uppercase font-bold text-[10px] px-3 py-1 shadow-sm",
-                                                        currentEvaluations.find(e => e.type === "pH")?.status === "success" && "bg-green-100 text-green-700 border-green-200",
-                                                        currentEvaluations.find(e => e.type === "pH")?.status === "warning" && "bg-yellow-100 text-yellow-800 border-yellow-200",
-                                                        currentEvaluations.find(e => e.type === "pH")?.status === "error" && "bg-red-100 text-red-700 border-red-200"
-                                                    )}>
-                                                        {currentEvaluations.find(e => e.type === "pH")?.text}
-                                                    </Badge>
-                                                )}
+                                                {/* Badge removed */}
                                             </div>
                                             <div className="space-y-4">
                                                 <div className="space-y-2">
@@ -777,25 +785,7 @@ export default function BitacoraPage() {
                                 </CardContent>
                                 <CardFooter className="bg-muted/30 border-t py-4 flex flex-col gap-4">
                                     <div className="w-full flex flex-wrap justify-center gap-3">
-                                        {currentEvaluations.map((ev, i) => (
-                                            <Badge
-                                                key={i}
-                                                className={cn(
-                                                    "gap-1.5 py-1 px-3 text-sm border font-semibold",
-                                                    ev.status === "success" && "bg-green-600 hover:bg-green-700 text-white border-green-600",
-                                                    ev.status === "warning" && "bg-yellow-100 hover:bg-yellow-200 text-yellow-800 border-yellow-200",
-                                                    ev.status === "error" && "bg-red-600 hover:bg-red-700 text-white border-red-600"
-                                                )}
-                                            >
-                                                {ev.status === "success" ? <CheckCircle2 className="h-3.5 w-3.5" /> : ev.status === "warning" ? <AlertCircle className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
-                                                {ev.type}: {ev.text}
-                                            </Badge>
-                                        ))}
-                                        {currentEvaluations.length === 0 && (
-                                            <p className="text-xs text-muted-foreground italic">
-                                                Ingresa mediciones para ver la evaluación en tiempo real.
-                                            </p>
-                                        )}
+                                        {/* Badges removed from footer */}
                                     </div>
                                     <Button
                                         type="submit"
