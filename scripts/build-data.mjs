@@ -237,6 +237,11 @@ function processFinishedProducts(rawData) {
             cleanedRow[key] = cleanValue(value);
         }
 
+        // Fallback: if sku_code is missing, use code
+        if (!cleanedRow.sku_code && cleanedRow.code) {
+            cleanedRow.sku_code = cleanedRow.code;
+        }
+
         // Validate
         const result = FinishedProductSchema.safeParse(cleanedRow);
 
@@ -270,6 +275,7 @@ function processFinishedProducts(rawData) {
             category: data.category,
             category_slug: slugify(data.category),
             sku_code: data.sku_code,
+            name: data.base_product, // UI expects 'name' for the table
             base_product: data.base_product,
             variant: data.variant || '',
             status: data.status,

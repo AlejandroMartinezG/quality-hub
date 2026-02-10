@@ -30,6 +30,7 @@ export interface FinishedProduct {
     category: string
     category_slug: string
     sku_code: string
+    name: string
     base_product: string
     variant: string
     status: "Activo" | "Inactivo"

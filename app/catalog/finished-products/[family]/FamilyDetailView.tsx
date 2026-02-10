@@ -60,25 +60,23 @@ const columns: ColumnDef<FinishedProduct>[] = [
         ),
     },
     {
-        accessorKey: "variant",
+        accessorKey: "name",
         header: ({ column }) => {
             return (
                 <Button
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
                 >
-                    Variante / Aroma
+                    Producto
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             )
         },
         cell: ({ row }) => (
-            <Badge variant="secondary" className="bg-muted text-foreground border-none gap-1.5 px-2.5 py-1">
-                <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
-                {row.getValue("variant")}
-            </Badge>
+            <span className="font-medium text-foreground">{row.getValue("name")}</span>
         ),
     },
+
     {
         accessorKey: "status",
         header: "Estado",
@@ -241,7 +239,7 @@ const columns: ColumnDef<FinishedProduct>[] = [
     }
 ]
 
-const SEARCH_KEYS = ["sku_code", "base_product", "variant"]
+const SEARCH_KEYS = ["sku_code", "name"]
 
 interface FamilyDetailViewProps {
     family: FamilyGroup
@@ -257,24 +255,24 @@ const familyColors: Record<string, string> = {
 
 const categoryIcons: Record<string, any> = {
     // Cuidado del Hogar
-    "limpiadores-liquidos-multiusos": Spray,
-    "detergentes-liquidos-para-trastes": Droplets,
+    "limpiador-liquido-multiusos": Spray,
+    "detergente-liquido-para-trates": Droplets,
     "aromatizantes-ambientales": Wind,
-    "bases-limpiadores-liquidos-multiusos": FlaskConical,
-    "bases-aromatizantes-ambientales": FlaskRound,
-    "especialidades-cuidado-del-hogar": Star,
+    "base-de-limpiador-liquido-multiusos": FlaskConical,
+    "base-de-aromatizantes-ambientales": FlaskRound,
+    "especialidad-cuidado-del-hogar": Star,
 
     // Lavandería
-    "detergentes-liquidos-para-ropa": Waves,
+    "detergente-liquido-para-ropa": Waves,
     "suavizantes-liquidos-para-telas": Feather,
-    "reforzadores-de-aroma": Flower2,
-    "especialidades-lavanderia": Star,
+    "reforzador-de-aroma": Flower2,
+    "especialidad-lavanderia": Star,
 
     // Cuidado Personal
-    "jabones-liquidos-para-manos": Hand,
-    "shampoos-capilares": Droplet,
-    "enjuagues-capilares": Waves,
-    "cremas-corporales": Smile,
+    "jabon-liquido-para-manos": Hand,
+    "shampoo-capilar": Droplet,
+    "enjuague-capilar": Waves,
+    "crema-corporal": Smile,
 }
 
 export function FamilyDetailView({ family }: FamilyDetailViewProps) {
@@ -300,7 +298,7 @@ export function FamilyDetailView({ family }: FamilyDetailViewProps) {
     const filterConfigs: FilterConfig[] = useMemo(() => {
         if (hasCategories) return []
         const statuses = Array.from(new Set(products.map(p => p.status)))
-        const variants = Array.from(new Set(products.map(p => p.variant).filter(Boolean)))
+        const uniqueProducts = Array.from(new Set(products.map(p => p.name))).sort()
 
         const configs: FilterConfig[] = [
             {
@@ -312,19 +310,16 @@ export function FamilyDetailView({ family }: FamilyDetailViewProps) {
                     count: products.filter(p => p.status === s).length,
                 })),
             },
-        ]
-
-        if (variants.length > 0) {
-            configs.push({
-                id: "variant",
-                label: "Variante",
-                options: variants.map(v => ({
-                    value: v,
-                    label: v,
-                    count: products.filter(p => p.status === "Activo" ? true : true).filter(p => p.variant === v).length,
+            {
+                id: "name",
+                label: "Producto",
+                options: uniqueProducts.map(name => ({
+                    value: name,
+                    label: name,
+                    count: products.filter(p => p.name === name).length,
                 })),
-            })
-        }
+            },
+        ]
 
         return configs
     }, [products, hasCategories])
@@ -454,7 +449,7 @@ export function FamilyDetailView({ family }: FamilyDetailViewProps) {
                             <SimpleSearchInput
                                 value={searchQuery}
                                 onChange={setSearchQuery}
-                                placeholder="Buscar por SKU, producto base, variante..."
+                                placeholder="Buscar por producto"
                             />
                         </div>
                         <Filters

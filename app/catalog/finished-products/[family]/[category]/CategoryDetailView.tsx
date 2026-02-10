@@ -34,25 +34,23 @@ const columns: ColumnDef<FinishedProduct>[] = [
         ),
     },
     {
-        accessorKey: "variant",
+        accessorKey: "name",
         header: ({ column }) => {
             return (
                 <Button
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
                 >
-                    Variante / Aroma
+                    Producto
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             )
         },
         cell: ({ row }) => (
-            <Badge variant="secondary" className="bg-muted text-foreground border-none gap-1.5 px-2.5 py-1">
-                <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
-                {row.getValue("variant")}
-            </Badge>
+            <span className="font-medium text-foreground">{row.getValue("name")}</span>
         ),
     },
+
     {
         accessorKey: "status",
         header: "Estado",
@@ -215,7 +213,7 @@ const columns: ColumnDef<FinishedProduct>[] = [
     }
 ]
 
-const SEARCH_KEYS = ["sku_code", "base_product", "variant"]
+const SEARCH_KEYS = ["sku_code", "name"]
 
 interface CategoryDetailViewProps {
     family: FamilyGroup
@@ -234,7 +232,7 @@ export function CategoryDetailView({ family, category }: CategoryDetailViewProps
     // Build filter options
     const filterConfigs: FilterConfig[] = useMemo(() => {
         const statuses = Array.from(new Set(products.map(p => p.status)))
-        const variants = Array.from(new Set(products.map(p => p.variant).filter(Boolean)))
+        const uniqueProducts = Array.from(new Set(products.map(p => p.name))).sort()
 
         const configs: FilterConfig[] = [
             {
@@ -246,19 +244,16 @@ export function CategoryDetailView({ family, category }: CategoryDetailViewProps
                     count: products.filter(p => p.status === s).length,
                 })),
             },
-        ]
-
-        if (variants.length > 0) {
-            configs.push({
-                id: "variant",
-                label: "Variante",
-                options: variants.map(v => ({
-                    value: v,
-                    label: v,
-                    count: products.filter(p => p.variant === v).length,
+            {
+                id: "name",
+                label: "Producto",
+                options: uniqueProducts.map(name => ({
+                    value: name,
+                    label: name,
+                    count: products.filter(p => p.name === name).length,
                 })),
-            })
-        }
+            },
+        ]
 
         return configs
     }, [products])
@@ -328,7 +323,7 @@ export function CategoryDetailView({ family, category }: CategoryDetailViewProps
                     <SimpleSearchInput
                         value={searchQuery}
                         onChange={setSearchQuery}
-                        placeholder="Buscar por SKU, producto base, variante..."
+                        placeholder="Buscar por producto"
                     />
                 </div>
                 <Filters
