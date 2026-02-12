@@ -81,10 +81,10 @@ export const CATEGORY_PRODUCTS: Record<string, string[]> = {
     "Bases aromatizante ambiental": ["BAROANII", "BAROCAN", "BAROCAR", "BAROCHIC", "BAROCHIF", "BARODRA", "BAROEST", "BAROETE", "BAROFER", "BAROGAR", "BAROHUG", "BAROLUX", "BARONOR", "BAROPOL", "BAROMANC"],
     "Bases limpiadores liquidos multiusos": ["BLIMALA", "BLIMANI", "BLIMBAB", "BLIMBOS", "BLIMBRI", "BLIMCAN", "BLIMCAR", "BLIMCAS", "BLIMCER", "BLIMCHI", "BLIMCHIC", "BLIMCOC", "BLIMDRAG", "BLIMEST", "BLIMETE", "BLIMFER", "BLIMFLO", "BLIMFRU", "BLIMGAR", "BLIMGPO", "BLIMHUG", "BLIMLAV", "BLIMLIM", "BLIMLIS", "BLIMLUX", "BLIMMAN", "BLIMMAND", "BLIMMANC", "BLIMMAR-1", "BLIMMAR-2", "BLIMMEN", "BLIMNAR", "BLIMNOR", "BLIMPER", "BLIMPOL", "BLIMPRI", "BLIMSTE", "BLIMVIO", "BPINBLA", "BPINCRI", "BPINVER"],
     "Crema corporal": ["CREBAB", "CREDEL", "CRELIM", "CREMIE", "CREROS", "CRESAB", "CREWHI"],
-    "Detergente liquido para trastes": ["TRABLUE", "TRALIM", "TRAMAN", "TRANAR", "TRATOR", "XPUMAX"],
+    "Detergente liquido para trastes": ["TRABLU", "TRALIM", "TRAMAN", "TRANAR", "TRATOR", "XPUMAX"],
     "Detergente líquido para ropa": ["AQUA", "COLBLA", "COLGIN", "COLNEG", "DETDON", "ENCANTO", "GIRIEL", "GIRIEL2", "GIRIELOXI", "GIRDOW", "PERGIN", "PERLA", "SHAGIN", "SUNSET", "VELGIN", "VIVGIN", "ZOTAZU", "ZOTBLA", "ZOTROS"],
     "Enjuagues capilares": ["ENJROS", "ENJDUR", "ENJHIE"],
-    "Especialidades cuidado del hogar": ["ACEROJ", "CLO", "CLOGEL", "DETAMO", "DETER", "INS", "LIMREP", "LIMVID", "MOP", "QUILIQ", "QUIPAS", "QUISAR", "SARRIGEL", "SHAMAS", "TEFESP", "TEFLIQ", "DESBRA"],
+    "Especialidades cuidado del hogar": ["ACEROJ", "CLO", "CLOGEL", "DETAMO", "DETER", "INS", "LIMREP", "LIMVID", "MOP", "QUILIQ", "QUIPAS", "QUISAR", "SARRIGEL", "SHAMAS", "TESESP", "TEFLIQ", "DESBRA"],
     "Especialidades lavanderia": ["DESMUG", "DETNEU", "DETPIN", "GINESH", "PLAPLUS", "PLAFAC"],
     "Jabón liquido para manos": ["JABCER", "JABCOC", "JABDUR", "JABHIE", "JABNEU", "JABPM", "JABPRI", "JABUVA"],
     "Línea automotriz": ["ALTBRI", "BRIGEL", "BRILIQ", "CERLIQ", "CREMEC", "DESIND", "DESMOT", "GINESP", "GINLIQ", "SHACER", "SHACLA"],
@@ -195,7 +195,27 @@ export const PRODUCT_STANDARDS: Record<string, { min?: number, max?: number }> =
     "DETALC": { min: 15.5, max: 17.5 },
     "CITGIN": { min: 20.0, max: 25.0 },
     "NAOH10": { min: 8.0, max: 12.0 },
-    "ESPSNT25": { min: 25.0, max: 30.0 }
+    "ESPSNT25": { min: 25.0, max: 30.0 },
+    // Detergentes de trastes
+    "TRABLU": { min: 16.5, max: 17.5 },
+    // Suavizantes
+    "SUANEU": { min: 1.1, max: 2.4 },
+    // Cremas (usar rangos de CREDEL)
+    "CREBAB": { min: 18.0, max: 22.0 },
+    "CRELIM": { min: 18.0, max: 22.0 },
+    "CREMIE": { min: 18.0, max: 22.0 },
+    "CREROS": { min: 18.0, max: 22.0 },
+    "CRESAB": { min: 18.0, max: 22.0 },
+    "CREWHI": { min: 18.0, max: 22.0 },
+    // Enjuagues
+    "ENJDUR": { min: 1.1, max: 2.4 },
+    "ENJHIE": { min: 1.1, max: 2.4 },
+    // Shampoos (usar rangos similares a SHAPAN/SHAHEA)
+    "SHADUR": { min: 7.5, max: 9.5 },
+    "SHAPLU": { min: 7.5, max: 9.5 },
+    "SHAHIE": { min: 7.5, max: 9.5 },
+    // Jabones de manos (usar rango similar a JABPM/JABNEU)
+    "JABDUR": { min: 10.5, max: 14.0 }
 };
 
 export const PH_STANDARDS: Record<string, { min: number, max: number }> = {
@@ -209,8 +229,14 @@ export const PH_STANDARDS: Record<string, { min: number, max: number }> = {
     "DESMUG": { min: 8, max: 10 }, "DETPIN": { min: 7, max: 9 }, "GINESH": { min: 3, max: 4 },
     "SHACER": { min: 6, max: 7 }, "SHACLA": { min: 6, max: 7 }, "BRIGEL": { min: 6, max: 7 }, "GINESP": { min: 6, max: 7 },
     "GELANT": { min: 6, max: 7 }, "JABMAK": { min: 6, max: 7 }, "TRAGRA": { min: 7, max: 9 },
-    "JABPM": { min: 5, max: 6 }, "JABNEU": { min: 5, max: 6 }, "JABCER": { min: 5, max: 6 }, "JABUVA": { min: 5, max: 6 }, "JABHIE": { min: 5, max: 6 }, "JABCOC": { min: 5, max: 6 },
+    "JABPM": { min: 5, max: 6 }, "JABNEU": { min: 5, max: 6 }, "JABCER": { min: 5, max: 6 }, "JABUVA": { min: 5, max: 6 }, "JABHIE": { min: 5, max: 6 }, "JABCOC": { min: 5, max: 6 }, "JABDUR": { min: 5, max: 6 },
     "SHAPAN": { min: 6, max: 7 }, "SHAHEA": { min: 6, max: 7 }, "CREDEL": { min: 6, max: 7 },
+    // Cremas (usar rangos de CREDEL)
+    "CREBAB": { min: 6, max: 7 }, "CRELIM": { min: 6, max: 7 }, "CREMIE": { min: 6, max: 7 }, "CREROS": { min: 6, max: 7 }, "CRESAB": { min: 6, max: 7 }, "CREWHI": { min: 6, max: 7 },
+    // Shampoos (usar rangos similares a SHAPAN/SHAHEA)
+    "SHADUR": { min: 6, max: 7 }, "SHAPLU": { min: 6, max: 7 }, "SHAHIE": { min: 6, max: 7 },
+    // Detergentes de trastes
+    "TRABLU": { min: 7, max: 9 },
     "DETALC": { min: 9, max: 11 },
 };
 
@@ -223,9 +249,9 @@ export const PARAMETER_APPLICABILITY: Record<string, { solidos: boolean, ph: boo
     "BAROANII": { solidos: false, ph: false }, "BAROCAN": { solidos: false, ph: false }, "BAROCAR": { solidos: false, ph: false }, "BAROCHIC": { solidos: false, ph: false }, "BAROCHIF": { solidos: false, ph: false }, "BARODRA": { solidos: false, ph: false }, "BAROEST": { solidos: false, ph: false }, "BAROETE": { solidos: false, ph: false }, "BAROFER": { solidos: false, ph: false }, "BAROGAR": { solidos: false, ph: false }, "BAROHUG": { solidos: false, ph: false }, "BAROLUX": { solidos: false, ph: false }, "BARONOR": { solidos: false, ph: false }, "BAROPOL": { solidos: false, ph: false }, "BAROMANC": { solidos: false, ph: false },
     "LIMLIM": { solidos: true, ph: false }, "LIMVIO": { solidos: true, ph: false }, "LIMMAR": { solidos: true, ph: false }, "LIMCAS": { solidos: true, ph: false }, "LIMBRI": { solidos: true, ph: false }, "LIMCAN": { solidos: true, ph: false }, "LIMCHI": { solidos: true, ph: false }, "LIMBOS": { solidos: true, ph: false }, "LIMLAV": { solidos: true, ph: false }, "LIMPERM": { solidos: true, ph: false }, "LIMMEN": { solidos: true, ph: false }, "LIMSTE": { solidos: true, ph: false }, "LIMFRU": { solidos: true, ph: false }, "LIMPOET": { solidos: true, ph: false }, "LIMMANC": { solidos: true, ph: false }, "LIMLIS": { solidos: true, ph: false }, "LIMALA": { solidos: true, ph: false }, "PINO": { solidos: true, ph: false }, "PINBLA": { solidos: false, ph: false }, "PINVER": { solidos: false, ph: false },
     "TRALIM": { solidos: true, ph: true }, "TRAMAN": { solidos: true, ph: true }, "TRANAR": { solidos: true, ph: true }, "TRATOR": { solidos: true, ph: true }, "TRABLU": { solidos: true, ph: true }, "XPUMAX": { solidos: true, ph: true },
-    "CLOGEL": { solidos: true, ph: true }, "CLO": { solidos: true, ph: false }, "QUIPAS": { solidos: false, ph: false }, "DETNEU": { solidos: true, ph: true }, "INS": { solidos: true, ph: false }, "DETER": { solidos: true, ph: true }, "LIMVID": { solidos: true, ph: false }, "DETAMO": { solidos: true, ph: true }, "TEFLIQ": { solidos: true, ph: false }, "TESESP": { solidos: true, ph: true }, "SHAMAS": { solidos: true, ph: true }, "ACEROJ": { solidos: false, ph: false }, "LIMREP": { solidos: true, ph: false }, "MOP": { solidos: false, ph: false }, "QUILIQ": { solidos: false, ph: false }, "QUISAR": { solidos: false, ph: false }, "SARRIGEL": { solidos: false, ph: false },
+    "CLOGEL": { solidos: true, ph: true }, "CLO": { solidos: true, ph: false }, "QUIPAS": { solidos: false, ph: false }, "DETNEU": { solidos: true, ph: true }, "INS": { solidos: true, ph: false }, "DETER": { solidos: true, ph: true }, "LIMVID": { solidos: true, ph: false }, "DETAMO": { solidos: true, ph: true }, "TEFLIQ": { solidos: true, ph: false }, "TESESP": { solidos: true, ph: true }, "SHAMAS": { solidos: true, ph: true }, "DESBRA": { solidos: true, ph: true }, "ACEROJ": { solidos: false, ph: false }, "LIMREP": { solidos: true, ph: false }, "MOP": { solidos: false, ph: false }, "QUILIQ": { solidos: false, ph: false }, "QUISAR": { solidos: false, ph: false }, "SARRIGEL": { solidos: false, ph: false },
     "COLGIN": { solidos: true, ph: true }, "COLBLA": { solidos: true, ph: true }, "COLNEG": { solidos: true, ph: true }, "GIRIEL": { solidos: true, ph: true }, "GIRIEL2": { solidos: true, ph: true }, "PERGIN": { solidos: true, ph: true }, "VIVGIN": { solidos: true, ph: true }, "GIRIELOXI": { solidos: true, ph: true }, "SUNSET": { solidos: true, ph: true }, "SHAGIN": { solidos: true, ph: true }, "ZOTROS": { solidos: true, ph: true }, "ZOTBLA": { solidos: true, ph: true }, "ZOTAZU": { solidos: true, ph: true }, "AQUA": { solidos: true, ph: true }, "DETDON": { solidos: true, ph: true }, "PERLA": { solidos: true, ph: true }, "ENCANTO": { solidos: true, ph: true }, "VELGIN": { solidos: true, ph: true },
-    "SUASUE": { solidos: true, ph: false }, "SUALIB": { solidos: true, ph: false }, "SUAMAG": { solidos: true, ph: false }, "SUAINT": { solidos: true, ph: false }, "SUANAT": { solidos: true, ph: false }, "SUALUN": { solidos: true, ph: false }, "SUABLU": { solidos: true, ph: false }, "SUAPAS": { solidos: true, ph: false }, "SUASEN": { solidos: true, ph: false }, "SUAPRI": { solidos: true, ph: false }, "SUABAB": { solidos: true, ph: false }, "SUADEL": { solidos: true, ph: false }, "SUANE": { solidos: true, ph: false },
+    "SUASUE": { solidos: true, ph: false }, "SUALIB": { solidos: true, ph: false }, "SUAMAG": { solidos: true, ph: false }, "SUAINT": { solidos: true, ph: false }, "SUANAT": { solidos: true, ph: false }, "SUALUN": { solidos: true, ph: false }, "SUABLU": { solidos: true, ph: false }, "SUAPAS": { solidos: true, ph: false }, "SUASEN": { solidos: true, ph: false }, "SUAPRI": { solidos: true, ph: false }, "SUABAB": { solidos: true, ph: false }, "SUADEL": { solidos: true, ph: false }, "SUANEU": { solidos: true, ph: false },
     "DESMUG": { solidos: true, ph: true }, "DETPIN": { solidos: true, ph: true }, "GINESH": { solidos: true, ph: true }, "PLAFAC": { solidos: false, ph: false }, "PLAPLUS": { solidos: false, ph: false },
     "SHACER": { solidos: true, ph: true }, "SHACLA": { solidos: true, ph: true }, "ALTBRI": { solidos: true, ph: false }, "BRILIQ": { solidos: true, ph: false }, "BRIGEL": { solidos: true, ph: true }, "GINLIQ": { solidos: true, ph: false }, "GINESP": { solidos: true, ph: true }, "DESMOT": { solidos: true, ph: false }, "CERLIQ": { solidos: true, ph: false }, "CREMEC": { solidos: true, ph: false }, "DESIND": { solidos: true, ph: false },
     "GELANT": { solidos: true, ph: true }, "SANBAK": { solidos: true, ph: false }, "LIMSAK": { solidos: true, ph: false }, "JABMAK": { solidos: true, ph: true }, "TRAGRA": { solidos: true, ph: true },
