@@ -145,6 +145,9 @@ export default function BitacoraPage() {
         }
     }
 
+    // ... inside component ...
+    const getEvaluation = () => evaluateRecord(formData)
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
@@ -157,7 +160,7 @@ export default function BitacoraPage() {
             return
         }
 
-        // Applicability checks (product-dependent, beyond schema)
+        // Applicability checks
         const applicability = PARAMETER_APPLICABILITY[formData.codigo_producto] || { solidos: false, ph: false }
 
         // Solids validation
@@ -194,6 +197,17 @@ export default function BitacoraPage() {
                 setLoading(false)
                 return
             }
+
+            // Determine Quality Status
+            const evaluations = evaluateRecord(formData)
+            let estado_calidad = 'CONFORME'
+
+            if (evaluations.some(e => e.status === 'error')) {
+                estado_calidad = 'NO CONFORME'
+            } else if (evaluations.some(e => e.status === 'warning')) {
+                estado_calidad = 'RETENER'
+            }
+
             const { error: insertError } = await supabase
                 .from('bitacora_produccion_calidad')
                 .insert([{
@@ -209,20 +223,32 @@ export default function BitacoraPage() {
                     temp_med2: parseFloat(formData.temp_med2) || null,
                     viscosidad_seg: null,
                     temperatura: null,
-                    contaminacion_microbiologica: "SIN PRESENCIA"
+                    contaminacion_microbiologica: "SIN PRESENCIA",
+                    estado_calidad: estado_calidad // Insert status
                 }])
 
             if (insertError) throw insertError
 
-            toast.success("Registro guardado con éxito", {
-                description: `Lote generado: ${lotNumber}`,
-                action: {
-                    label: "Ir a Calidad",
-                    onClick: () => window.location.href = "/calidad"
-                }
-            })
-            setStep(1)
+            // Custom Toast based on Status
+            if (estado_calidad === 'NO CONFORME') {
+                toast.error('⚠️ Producto No Conforme', {
+                    description: `Lote ${lotNumber} requiere revisión inmediata.`,
+                    duration: 8000,
+                    action: { label: 'Ver detalles', onClick: () => window.location.href = "/calidad" }
+                })
+            } else if (estado_calidad === 'RETENER') {
+                toast.warning('⚠️ Producto en Tolerancia (Retener)', {
+                    description: `Lote ${lotNumber} liberable con precaución.`,
+                    duration: 6000
+                })
+            } else {
+                toast.success('✅ Producto Conforme', {
+                    description: `Lote ${lotNumber} registrado exitosamente.`,
+                    duration: 4000
+                })
+            }
 
+            setStep(1)
             setFormData(prev => ({
                 ...prev,
                 codigo_producto: "",
@@ -241,69 +267,13 @@ export default function BitacoraPage() {
                 observaciones: ""
             }))
         } catch (error: any) {
+            console.error(error)
             toast.error("Error al guardar el registro", {
                 description: "Ocurrió un problema al guardar. Intenta de nuevo."
             })
         } finally {
             setLoading(false)
         }
-    }
-
-    const getEvaluation = () => {
-        const product = formData.codigo_producto
-        const applicability = PARAMETER_APPLICABILITY[product] || { solidos: false, ph: false }
-
-        const evaluations = []
-
-        // Solids evaluation
-        if (applicability.solidos) {
-            const s1 = parseFloat(formData.solidos_medicion_1)
-            const s2 = parseFloat(formData.solidos_medicion_2)
-            const avg = (!isNaN(s1) && !isNaN(s2)) ? (s1 + s2) / 2 : null
-            const standard = PRODUCT_STANDARDS[product]
-
-            if (avg !== null && standard) {
-                const min = standard.min || 0
-                const max = standard.max || 0
-                const minTol = min * 0.95
-                const maxTol = max * 1.05
-
-                if (avg >= min && avg <= max) {
-                    evaluations.push({ type: "Sólidos", status: "success", text: `Conforme (${avg.toFixed(2)}%)` })
-                } else if (avg >= minTol && avg <= maxTol) {
-                    evaluations.push({ type: "Sólidos", status: "warning", text: `En tolerancia (${avg.toFixed(2)}%) - Liberable` })
-                } else {
-                    evaluations.push({ type: "Sólidos", status: "error", text: `Fuera de rango (${avg.toFixed(2)}%) - Retener` })
-                }
-            }
-        }
-
-        // pH evaluation
-        if (applicability.ph) {
-            const phVal = parseFloat(formData.ph)
-            const standard = PH_STANDARDS[product]
-            if (!isNaN(phVal) && standard) {
-                if (phVal >= standard.min && phVal <= standard.max) {
-                    evaluations.push({ type: "pH", status: "success", text: `Conforme (${phVal})` })
-                } else {
-                    evaluations.push({ type: "pH", status: "error", text: `Fuera de rango (${phVal})` })
-                }
-            }
-        }
-
-        // Appearance evaluation
-        if (formData.apariencia) {
-            const expected = APPEARANCE_STANDARDS[product]
-            if (expected) {
-                if (formData.apariencia.toUpperCase() === expected.toUpperCase()) {
-                    evaluations.push({ type: "Apariencia", status: "success", text: `Conforme (${formData.apariencia})` })
-                } else {
-                    evaluations.push({ type: "Apariencia", status: "error", text: `No conforme (Esperado: ${expected})` })
-                }
-            }
-        }
-
-        return evaluations
     }
 
 
@@ -474,11 +444,11 @@ export default function BitacoraPage() {
                                 </CardHeader>
                                 <CardContent className="flex justify-center gap-12 pb-6">
                                     <div className="flex flex-col items-center group cursor-help transition-transform hover:scale-105">
-                                        <img src="https://i.imgur.com/AIqaFdy.jpeg" alt="Tiras de pH" className="h-24 w-auto rounded-xl shadow-md mb-3 group-hover:shadow-lg transition-shadow" />
+                                        <img src="/images/tiras-ph.jpeg" alt="Tiras de pH" className="h-24 w-auto rounded-xl shadow-md mb-3 group-hover:shadow-lg transition-shadow" />
                                         <Badge variant="secondary" className="font-bold text-[10px]">TIRAS pH</Badge>
                                     </div>
                                     <div className="flex flex-col items-center group cursor-help transition-transform hover:scale-105">
-                                        <img src="https://i.imgur.com/jw10WEL.png" alt="Refractómetro" className="h-24 w-auto rounded-xl shadow-md mb-3 group-hover:shadow-lg transition-shadow" />
+                                        <img src="/images/refractometro.png" alt="Refractómetro" className="h-24 w-auto rounded-xl shadow-md mb-3 group-hover:shadow-lg transition-shadow" />
                                         <Badge variant="secondary" className="font-bold text-[10px]">REFRACTÓMETRO</Badge>
                                     </div>
                                 </CardContent>
@@ -778,4 +748,62 @@ export default function BitacoraPage() {
             </AnimatePresence>
         </div >
     )
+}
+
+// Helper function for logic reuse (placed outside component scope)
+function evaluateRecord(formData: any) {
+    const product = formData.codigo_producto
+    const applicability = PARAMETER_APPLICABILITY[product] || { solidos: false, ph: false }
+
+    const evaluations = []
+
+    // Solids evaluation
+    if (applicability.solidos) {
+        const s1 = parseFloat(formData.solidos_medicion_1)
+        const s2 = parseFloat(formData.solidos_medicion_2)
+        const avg = (!isNaN(s1) && !isNaN(s2)) ? (s1 + s2) / 2 : null
+        const standard = PRODUCT_STANDARDS[product]
+
+        if (avg !== null && standard) {
+            const min = standard.min || 0
+            const max = standard.max || 0
+            const minTol = min * 0.95
+            const maxTol = max * 1.05
+
+            if (avg >= min && avg <= max) {
+                evaluations.push({ type: "Sólidos", status: "success", text: `Conforme (${avg.toFixed(2)}%)` })
+            } else if (avg >= minTol && avg <= maxTol) {
+                evaluations.push({ type: "Sólidos", status: "warning", text: `En tolerancia (${avg.toFixed(2)}%) - Liberable` })
+            } else {
+                evaluations.push({ type: "Sólidos", status: "error", text: `Fuera de rango (${avg.toFixed(2)}%) - Retener` })
+            }
+        }
+    }
+
+    // pH evaluation
+    if (applicability.ph) {
+        const phVal = parseFloat(formData.ph)
+        const standard = PH_STANDARDS[product]
+        if (!isNaN(phVal) && standard) {
+            if (phVal >= standard.min && phVal <= standard.max) {
+                evaluations.push({ type: "pH", status: "success", text: `Conforme (${phVal})` })
+            } else {
+                evaluations.push({ type: "pH", status: "error", text: `Fuera de rango (${phVal})` })
+            }
+        }
+    }
+
+    // Appearance evaluation
+    if (formData.apariencia) {
+        const expected = APPEARANCE_STANDARDS[product]
+        if (expected) {
+            if (formData.apariencia.toUpperCase() === expected.toUpperCase()) {
+                evaluations.push({ type: "Apariencia", status: "success", text: `Conforme (${formData.apariencia})` })
+            } else {
+                evaluations.push({ type: "Apariencia", status: "error", text: `No conforme (Esperado: ${expected})` })
+            }
+        }
+    }
+
+    return evaluations
 }

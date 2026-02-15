@@ -25,6 +25,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/components/AuthProvider"
 import { useTheme } from "next-themes"
+import { NotificationBell } from "@/components/NotificationBell"
 
 export function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname()
@@ -187,6 +188,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     GINEZ <span className="text-xs font-normal text-slate-500">ERP</span>
                 </Link>
                 <div className="flex items-center gap-2">
+                    <NotificationBell />
                     <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-slate-600">
                         {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
                     </button>
@@ -213,28 +215,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     {loading ? (
                         <div className="h-10 w-32 bg-slate-100 animate-pulse rounded-full" />
                     ) : (
-                        <Link
-                            href={`${basePath}/configuracion`}
-                            className="flex items-center gap-4 pl-6 py-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer group"
-                        >
-                            <div className="text-right">
-                                <p className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-none group-hover:text-blue-900 transition-colors">
-                                    {profile?.full_name || user?.email?.split('@')[0]}
-                                </p>
-                                <p className="text-[10px] text-slate-500 font-bold tracking-wider mt-1 uppercase">
-                                    {profile?.area || 'USUARIO'}
-                                </p>
-                            </div>
-                            <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-slate-200 to-slate-100 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center border-2 border-white dark:border-zinc-800 shadow-sm group-hover:scale-105 transition-transform">
-                                {/* Using first letter or profile image if available */}
-                                {profile?.avatar_url ? (
-                                    <img src={profile.avatar_url} alt="Avatar" className="h-full w-full rounded-full object-cover" />
-                                ) : (
-                                    <UserIcon className="h-5 w-5 text-slate-500" />
-                                )}
-                            </div>
-                            <ChevronRight className="h-4 w-4 text-slate-300 group-hover:translate-x-1 transition-transform" />
-                        </Link>
+                        <div className="flex items-center gap-4">
+                            <NotificationBell />
+                            <Link
+                                href={`${basePath}/configuracion`}
+                                className="flex items-center gap-4 pl-6 py-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer group"
+                            >
+                                <div className="text-right">
+                                    <p className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-none group-hover:text-blue-900 transition-colors">
+                                        {profile?.full_name || user?.email?.split('@')[0]}
+                                    </p>
+                                    <p className="text-[10px] text-slate-500 font-bold tracking-wider mt-1 uppercase">
+                                        {profile?.area || 'USUARIO'}
+                                    </p>
+                                </div>
+                                <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-slate-200 to-slate-100 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center border-2 border-white dark:border-zinc-800 shadow-sm group-hover:scale-105 transition-transform">
+                                    {/* Using first letter or profile image if available */}
+                                    {profile?.avatar_url ? (
+                                        <img src={profile.avatar_url} alt="Avatar" className="h-full w-full rounded-full object-cover" />
+                                    ) : (
+                                        <UserIcon className="h-5 w-5 text-slate-500" />
+                                    )}
+                                </div>
+                                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:translate-x-1 transition-transform" />
+                            </Link>
+                        </div>
                     )}
                 </header>
 
