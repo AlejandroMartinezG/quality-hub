@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils"
 import { SUCURSALES } from "@/lib/production-constants"
 import { LoginSchema, RegisterSchema, validateForm, getFirstError } from "@/lib/validations"
 import { sanitizeText } from "@/lib/sanitize"
+import { checkRateLimit, resetRateLimit } from "@/lib/rate-limit"
 
 // Roles disponibles para registro
 const ROLES = [
@@ -52,6 +53,15 @@ export default function LoginPage() {
             return
         }
 
+        // Rate limiting check
+        const rateLimitKey = `auth:${formData.email.toLowerCase()}`
+        const rateCheck = checkRateLimit(rateLimitKey)
+        if (!rateCheck.allowed) {
+            setError(rateCheck.message)
+            setLoading(false)
+            return
+        }
+
         try {
             if (isLogin) {
                 const { data: signInData, error } = await supabase.auth.signInWithPassword({
@@ -76,6 +86,8 @@ export default function LoginPage() {
                     }
                 }
 
+                // Login successful — reset rate limit
+                resetRateLimit(rateLimitKey)
                 router.push('/')
             } else {
                 // Primero crear el usuario
