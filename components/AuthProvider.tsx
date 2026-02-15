@@ -11,6 +11,7 @@ interface Profile {
     position: string
     role: string
     is_admin: boolean
+    approved: boolean
     sucursal?: string
     avatar_url?: string
 }
@@ -42,7 +43,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     useEffect(() => {
         let mounted = true
 
-        const fetchProfile = async (userId: string) => {
+        const fetchProfile = async (userId: string): Promise<Profile | null> => {
             try {
                 const { data: profileData, error } = await supabase
                     .from('profiles')
@@ -52,13 +53,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
                 if (error) {
                     console.error("Error fetching profile:", error)
+                    return null
                 }
 
                 if (mounted && profileData) {
+                    // Check if user is approved
+                    if (!profileData.approved) {
+                        console.warn("User not approved, signing out.")
+                        await supabase.auth.signOut()
+                        setUser(null)
+                        setProfile(null)
+                        setSession(null)
+                        return null
+                    }
                     setProfile(profileData)
+                    return profileData
                 }
+                return null
             } catch (err) {
                 console.error("Exception fetching profile:", err)
+                return null
             }
         }
 

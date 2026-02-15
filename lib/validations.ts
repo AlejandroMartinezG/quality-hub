@@ -43,6 +43,19 @@ const optionalNumericString = z
     .transform((val) => (val === "" ? null : val))
     .nullable()
 
+/** Helper for optional solids fields: must be 0-55% if provided */
+const optionalSolidsString = z
+    .string()
+    .refine(
+        (val) => {
+            if (val === "") return true
+            const num = parseFloat(val)
+            return !isNaN(num) && num >= 0 && num <= 55
+        },
+        "El % de sólidos debe estar entre 0 y 55"
+    )
+    .default("")
+
 /** Schema for submitting a Bitácora record */
 export const BitacoraSchema = z.object({
     sucursal: z
@@ -77,9 +90,9 @@ export const BitacoraSchema = z.object({
             "El pH debe ser un entero entre 0 y 14"
         )
         .default(""),
-    solidos_medicion_1: optionalNumericString.default(""),
+    solidos_medicion_1: optionalSolidsString,
     temp_med1: optionalNumericString.default(""),
-    solidos_medicion_2: optionalNumericString.default(""),
+    solidos_medicion_2: optionalSolidsString,
     temp_med2: optionalNumericString.default(""),
     viscosidad_seg: optionalNumericString.default(""),
     temperatura: optionalNumericString.default(""),

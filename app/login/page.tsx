@@ -53,11 +53,28 @@ export default function LoginPage() {
 
         try {
             if (isLogin) {
-                const { error } = await supabase.auth.signInWithPassword({
+                const { data: signInData, error } = await supabase.auth.signInWithPassword({
                     email: formData.email,
                     password: formData.password,
                 })
                 if (error) throw error
+
+                // Check if the user is approved before allowing access
+                if (signInData.user) {
+                    const { data: profileData } = await supabase
+                        .from('profiles')
+                        .select('approved')
+                        .eq('id', signInData.user.id)
+                        .single()
+
+                    if (!profileData?.approved) {
+                        await supabase.auth.signOut()
+                        setError("⏳ Tu cuenta está pendiente de aprobación por un administrador. Serás notificado cuando se active tu acceso.")
+                        setLoading(false)
+                        return
+                    }
+                }
+
                 router.push('/')
             } else {
                 // Primero crear el usuario
@@ -68,7 +85,7 @@ export default function LoginPage() {
 
                 if (authError) throw authError
 
-                // Luego actualizar el perfil con rol y sucursal
+                // Luego actualizar el perfil con rol y sucursal (approved = false by default)
                 if (authData.user) {
                     const { error: profileError } = await supabase
                         .from('profiles')
@@ -77,13 +94,17 @@ export default function LoginPage() {
                             full_name: formData.full_name,
                             role: formData.role,
                             sucursal: formData.sucursal,
+                            approved: false,
                             updated_at: new Date().toISOString()
                         })
 
                     if (profileError) throw profileError
+
+                    // Sign out immediately after registration (unapproved)
+                    await supabase.auth.signOut()
                 }
 
-                setError("Registro exitoso. Revisa tu correo para verificar tu cuenta.")
+                setError("✅ Registro exitoso. Tu cuenta será revisada por un administrador antes de poder acceder. Te notificaremos cuando sea aprobada.")
                 setIsLogin(true)
             }
         } catch (err: any) {

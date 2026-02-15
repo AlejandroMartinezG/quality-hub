@@ -25,7 +25,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Loader2, Shield, Users, Search, Edit, Save, X, Check, Building2 } from "lucide-react"
+import { Loader2, Shield, Users, Search, Edit, Save, X, Check, Building2, UserCheck, UserX, Clock } from "lucide-react"
 import { toast } from "sonner"
 import { SUCURSALES } from "@/lib/production-constants"
 
@@ -35,6 +35,7 @@ interface Profile {
     role: string
     sucursal: string
     updated_at: string
+    approved: boolean
 }
 
 interface UserRole {
@@ -79,6 +80,7 @@ export default function UsuariosPage() {
     const [selectedSucursal, setSelectedSucursal] = useState<string>("")
     const [rolePermissions, setRolePermissions] = useState<ModuleAccess[]>([])
     const [savingRole, setSavingRole] = useState(false)
+    const [showPendingOnly, setShowPendingOnly] = useState(false)
 
     useEffect(() => {
         fetchProfiles()
@@ -171,10 +173,35 @@ export default function UsuariosPage() {
         }
     }
 
-    const filteredProfiles = profiles.filter(p =>
-        p.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.id.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+    const toggleApproval = async (profile: Profile) => {
+        const newStatus = !profile.approved
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update({
+                    approved: newStatus,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', profile.id)
+
+            if (error) throw error
+
+            toast.success(newStatus ? `✅ ${profile.full_name || 'Usuario'} aprobado` : `❌ Acceso revocado para ${profile.full_name || 'Usuario'}`)
+            await fetchProfiles()
+        } catch (error) {
+            console.error("Error toggling approval:", error)
+            toast.error("Error al cambiar estado de aprobación")
+        }
+    }
+
+    const pendingCount = profiles.filter(p => !p.approved).length
+
+    const filteredProfiles = profiles
+        .filter(p => showPendingOnly ? !p.approved : true)
+        .filter(p =>
+            p.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.id.toLowerCase().includes(searchTerm.toLowerCase())
+        )
 
     if (loading) {
         return (
@@ -193,9 +220,36 @@ export default function UsuariosPage() {
                     Gestión de Usuarios
                 </h1>
                 <p className="text-slate-500 dark:text-slate-400 mt-1">
-                    Administra los roles y sucursales de cada usuario
+                    Administra los roles, sucursales y aprobación de cada usuario
                 </p>
             </div>
+
+            {/* Pending Users Alert */}
+            {pendingCount > 0 && (
+                <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950/30">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <Clock className="h-5 w-5 text-amber-600" />
+                            <div>
+                                <p className="font-semibold text-amber-800 dark:text-amber-200">
+                                    {pendingCount} usuario{pendingCount !== 1 ? 's' : ''} pendiente{pendingCount !== 1 ? 's' : ''} de aprobación
+                                </p>
+                                <p className="text-sm text-amber-600 dark:text-amber-400">
+                                    Estos usuarios se registraron pero aún no tienen acceso a la plataforma.
+                                </p>
+                            </div>
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-amber-400 text-amber-700 hover:bg-amber-100"
+                            onClick={() => setShowPendingOnly(!showPendingOnly)}
+                        >
+                            {showPendingOnly ? 'Ver todos' : 'Ver pendientes'}
+                        </Button>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Search */}
             <Card>
@@ -225,6 +279,7 @@ export default function UsuariosPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Usuario</TableHead>
+                                <TableHead>Estado</TableHead>
                                 <TableHead>Rol</TableHead>
                                 <TableHead>Sucursal</TableHead>
                                 <TableHead>Fecha de Registro</TableHead>
@@ -233,9 +288,22 @@ export default function UsuariosPage() {
                         </TableHeader>
                         <TableBody>
                             {filteredProfiles.map((profile) => (
-                                <TableRow key={profile.id}>
+                                <TableRow key={profile.id} className={!profile.approved ? 'bg-amber-50/50 dark:bg-amber-950/20' : ''}>
                                     <TableCell className="font-medium">
                                         {profile.full_name || 'Sin nombre'}
+                                    </TableCell>
+                                    <TableCell>
+                                        {profile.approved ? (
+                                            <Badge className="bg-green-100 text-green-800 border-green-300">
+                                                <UserCheck className="h-3 w-3 mr-1" />
+                                                Aprobado
+                                            </Badge>
+                                        ) : (
+                                            <Badge className="bg-amber-100 text-amber-800 border-amber-300">
+                                                <Clock className="h-3 w-3 mr-1" />
+                                                Pendiente
+                                            </Badge>
+                                        )}
                                     </TableCell>
                                     <TableCell>
                                         <Badge variant="outline">
@@ -250,7 +318,19 @@ export default function UsuariosPage() {
                                     <TableCell>
                                         {new Date(profile.updated_at).toLocaleDateString()}
                                     </TableCell>
-                                    <TableCell className="text-right">
+                                    <TableCell className="text-right space-x-2">
+                                        <Button
+                                            variant={profile.approved ? "outline" : "default"}
+                                            size="sm"
+                                            onClick={() => toggleApproval(profile)}
+                                            className={!profile.approved ? 'bg-green-600 hover:bg-green-700' : 'text-red-600 border-red-300 hover:bg-red-50'}
+                                        >
+                                            {profile.approved ? (
+                                                <><UserX className="h-4 w-4 mr-1" /> Revocar</>
+                                            ) : (
+                                                <><UserCheck className="h-4 w-4 mr-1" /> Aprobar</>
+                                            )}
+                                        </Button>
                                         <Dialog>
                                             <DialogTrigger asChild>
                                                 <Button
