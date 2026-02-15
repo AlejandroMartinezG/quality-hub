@@ -1,5 +1,6 @@
 # Dependencies
 /node_modules
+node_modules/
 
 # Next.js build output
 /.next/
@@ -13,7 +14,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Local env files
+# Local env files - CRITICAL: Never commit secrets
 .env*.local
 .env
 
@@ -39,15 +40,3 @@ Thumbs.db
 
 # Testing
 /coverage
-
-node_modules/
-.next/
-out/
-.env.local
-
-
-node_modules/
-.next/
-out/
-.env.local
-
