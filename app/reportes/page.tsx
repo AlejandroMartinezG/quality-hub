@@ -642,7 +642,7 @@ export default function ReportesPage() {
             ) : (
                 <Tabs defaultValue="calidad" className="space-y-6">
                     <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
-                        <TabsTrigger value="calidad">Calidad y Control</TabsTrigger>
+                        <TabsTrigger value="calidad">First Time Quality</TabsTrigger>
                         <TabsTrigger value="comercial">Análisis Comercial</TabsTrigger>
                     </TabsList>
 
@@ -1013,7 +1013,7 @@ export default function ReportesPage() {
                                             </p>
                                             <div className="text-5xl font-extrabold tracking-tight">
                                                 {kpis.totalVolume.toLocaleString()}
-                                                <span className="text-2xl font-normal opacity-80 ml-2">L/Kg</span>
+                                                <span className="text-2xl font-normal opacity-80 ml-2">L</span>
                                             </div>
                                             <p className="text-sm text-blue-200 mt-2 opacity-80">
                                                 Producción acumulada
@@ -1156,48 +1156,38 @@ export default function ReportesPage() {
                             <CardContent>
                                 <div className="h-[400px] w-full">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <PieChart>
-                                            <Pie
-                                                data={commercialData.productVariantsData.slice(0, 20)}
-                                                cx="50%"
-                                                cy="50%"
-                                                innerRadius={80}
-                                                outerRadius={140}
-                                                paddingAngle={2}
-                                                dataKey="value"
-                                                stroke="none"
-                                                label={(entry) => {
-                                                    const total = commercialData.productVariantsData.slice(0, 20).reduce((sum, p) => sum + p.value, 0)
-                                                    const percent = ((entry.value / total) * 100).toFixed(1)
-                                                    return parseFloat(percent) > 3 ? `${entry.name}` : ''
-                                                }}
-                                                labelLine={true}
-                                            >
-                                                {commercialData.productVariantsData.slice(0, 20).map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                ))}
-                                            </Pie>
+                                        <BarChart
+                                            layout="vertical"
+                                            data={[...commercialData.productVariantsData].slice(0, 20)}
+                                            margin={{ top: 20, right: 30, left: 10, bottom: 5 }}
+                                        >
+                                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
+                                            <XAxis type="number" fontSize={12} tickLine={false} axisLine={false} />
+                                            <YAxis
+                                                type="category"
+                                                dataKey="name"
+                                                width={150}
+                                                fontSize={10}
+                                                tickLine={false}
+                                                axisLine={false}
+                                                interval={0}
+                                            />
                                             <Tooltip
+                                                cursor={{ fill: '#F1F5F9' }}
                                                 formatter={(value: any, name: any, props: any) => {
                                                     const total = commercialData.productVariantsData.slice(0, 20).reduce((sum, p) => sum + p.value, 0)
                                                     const percent = ((value / total) * 100).toFixed(1)
                                                     const type = props.payload.type === 'litros' ? 'L' : 'Pzas'
                                                     return [`${value.toLocaleString()} ${type} (${percent}%)`, name]
                                                 }}
+                                                contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                             />
-                                            <Legend
-                                                layout="vertical"
-                                                align="right"
-                                                verticalAlign="middle"
-                                                iconType="circle"
-                                                formatter={(value, entry: any) => {
-                                                    const total = commercialData.productVariantsData.slice(0, 20).reduce((sum, p) => sum + p.value, 0)
-                                                    const percent = ((entry.payload.value / total) * 100).toFixed(1)
-                                                    return `${value}: ${percent}%`
-                                                }}
-                                                wrapperStyle={{ fontSize: '11px', maxHeight: '380px', overflowY: 'auto' }}
-                                            />
-                                        </PieChart>
+                                            <Bar dataKey="value" name="Volumen" radius={[0, 4, 4, 0]} barSize={12}>
+                                                {commercialData.productVariantsData.slice(0, 20).map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
                                     </ResponsiveContainer>
                                 </div>
                                 <div className="mt-4 text-center text-xs text-slate-500">
