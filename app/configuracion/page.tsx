@@ -26,6 +26,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 
 import { SUCURSALES } from "@/lib/production-constants"
+import { sanitizeText } from "@/lib/sanitize"
 import {
     Select,
     SelectContent,
@@ -247,10 +248,10 @@ export default function ConfigurationPage() {
                 .from('profiles')
                 .upsert({
                     id: user.id,
-                    full_name: myProfileData.full_name,
-                    position: myProfileData.position,
+                    full_name: sanitizeText(myProfileData.full_name),
+                    position: sanitizeText(myProfileData.position),
                     sucursal: myProfileData.sucursal,
-                    area: myProfileData.area,
+                    area: sanitizeText(myProfileData.area),
                     // Email not included in profiles to avoid unverified changes showing up
                     updated_at: new Date().toISOString()
                 })
@@ -301,9 +302,9 @@ export default function ConfigurationPage() {
         const { error } = await supabase
             .from('profiles')
             .update({
-                full_name: editingUser.full_name,
-                area: editingUser.area,
-                position: editingUser.position,
+                full_name: sanitizeText(editingUser.full_name),
+                area: sanitizeText(editingUser.area),
+                position: sanitizeText(editingUser.position),
                 sucursal: editingUser.sucursal,
                 is_admin: editingUser.is_admin,
                 updated_at: new Date().toISOString()

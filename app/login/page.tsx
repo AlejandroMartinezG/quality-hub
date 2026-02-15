@@ -11,6 +11,7 @@ import { ShieldCheck, UserPlus, LogIn, Loader2, Mail, Lock, User, Building2, Bri
 import { cn } from "@/lib/utils"
 import { SUCURSALES } from "@/lib/production-constants"
 import { LoginSchema, RegisterSchema, validateForm, getFirstError } from "@/lib/validations"
+import { sanitizeText } from "@/lib/sanitize"
 
 // Roles disponibles para registro
 const ROLES = [
@@ -91,7 +92,7 @@ export default function LoginPage() {
                         .from('profiles')
                         .upsert({
                             id: authData.user.id,
-                            full_name: formData.full_name,
+                            full_name: sanitizeText(formData.full_name),
                             role: formData.role,
                             sucursal: formData.sucursal,
                             approved: false,

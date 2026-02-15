@@ -35,6 +35,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { BitacoraSchema, validateForm, getFirstError } from "@/lib/validations"
+import { sanitizeFormData } from "@/lib/sanitize"
 
 export default function BitacoraPage() {
     const { user, profile } = useAuth()
@@ -204,7 +205,7 @@ export default function BitacoraPage() {
             const { error: insertError } = await supabase
                 .from('bitacora_produccion_calidad')
                 .insert([{
-                    ...formData,
+                    ...sanitizeFormData(formData, ['observaciones']),
                     user_id: user.id,
                     lote_producto: lotNumber,
                     familia_producto: selectedCategory,
