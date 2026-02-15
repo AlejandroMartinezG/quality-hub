@@ -79,3 +79,14 @@ export function sanitizeFormData<T extends Record<string, unknown>>(
     }
     return sanitized
 }
+
+/**
+ * Sanitize a filename to prevent directory traversal and invalid characters.
+ * Keeps only alphanumeric, dots, dashes, and underscores.
+ */
+export function sanitizeFileName(filename: string): string {
+    return filename
+        .replace(/[^a-zA-Z0-9._-]/g, '_') // Replace invalid chars with underscore
+        .replace(/\.\.+/g, '.')           // Prevent multiple dots (..)
+        .trim()
+}
