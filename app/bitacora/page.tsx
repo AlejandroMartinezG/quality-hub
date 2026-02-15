@@ -125,7 +125,6 @@ export default function BitacoraPage() {
 
         // Count existing records
         try {
-            console.log("calculateLotNumber: counting records...")
             const { count, error } = await supabase
                 .from('bitacora_produccion_calidad')
                 .select('*', { count: 'exact', head: true })
@@ -136,16 +135,12 @@ export default function BitacoraPage() {
                 .neq('lote_producto', '')
                 .neq('lote_producto', 'EMPTY')
 
-            if (error) {
-                console.error("calculateLotNumber error:", error)
-                throw error
-            }
+            if (error) throw error
 
-            console.log("calculateLotNumber count:", count)
             const sequence = String((count || 0) + 1).padStart(2, "0")
             return `${datePart}-${acronym}-${productCode}${size}-${sequence}`
         } catch (err) {
-            console.error("Error in calculateLotNumber:", err)
+            console.error("calculateLotNumber error")
             return null
         }
     }
@@ -194,14 +189,11 @@ export default function BitacoraPage() {
                 throw new Error("No se pudo generar el número de lote. Verifica los datos básicos.")
             }
 
-            console.log("Submitting with user_id:", user?.id)
             if (!user?.id) {
                 toast.error("Sesión no válida", { description: "No se detectó usuario autenticado. Recarga la página." })
                 setLoading(false)
                 return
             }
-
-            console.log("Inserting record into Supabase...")
             const { error: insertError } = await supabase
                 .from('bitacora_produccion_calidad')
                 .insert([{
@@ -220,10 +212,7 @@ export default function BitacoraPage() {
                     contaminacion_microbiologica: "SIN PRESENCIA"
                 }])
 
-            if (insertError) {
-                console.error("Insert error:", insertError)
-                throw insertError
-            }
+            if (insertError) throw insertError
 
             toast.success("Registro guardado con éxito", {
                 description: `Lote generado: ${lotNumber}`,
@@ -253,7 +242,7 @@ export default function BitacoraPage() {
             }))
         } catch (error: any) {
             toast.error("Error al guardar el registro", {
-                description: error.message
+                description: "Ocurrió un problema al guardar. Intenta de nuevo."
             })
         } finally {
             setLoading(false)

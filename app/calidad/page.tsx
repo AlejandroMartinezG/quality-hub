@@ -87,7 +87,6 @@ export default function CalidadPage() {
 
     useEffect(() => {
         if (user) {
-            console.log("Effect triggered: Fetching records...")
             fetchRecords()
         }
     }, [user?.id, profile?.is_admin])
@@ -96,26 +95,18 @@ export default function CalidadPage() {
         if (!user) return
         try {
             setLoading(true)
-            console.log("fetchRecords() - Triggered. Admin:", !!profile?.is_admin)
 
             let query = supabase
                 .from('bitacora_produccion_calidad')
                 .select('*')
                 .order('created_at', { ascending: false })
 
-            // Removed frontend filtering to rely on Supabase RLS policies
-            // if (profile && !profile.is_admin) {
-            //     query = query.eq('user_id', user?.id)
-            // }
-
             const { data, error } = await query.limit(100)
             if (error) throw error
 
             setRecords(data || [])
-            console.log("fetchRecords() - Success. Count:", data?.length)
         } catch (error: any) {
-            console.error("fetchRecords() - Error:", error.message)
-            toast.error("Error al cargar los registros: " + error.message)
+            toast.error("Error al cargar los registros. Intenta de nuevo.")
         } finally {
             setLoading(false)
         }
@@ -123,7 +114,6 @@ export default function CalidadPage() {
 
     const performDelete = async (id: number) => {
         try {
-            console.log("performDelete() - Executing for ID:", id)
             const { error } = await supabase
                 .from('bitacora_produccion_calidad')
                 .delete()
@@ -134,13 +124,11 @@ export default function CalidadPage() {
             toast.success("Registro eliminado permanentemente")
             fetchRecords()
         } catch (error: any) {
-            console.error("performDelete() - Error:", error.message)
-            toast.error("Error al eliminar: " + error.message)
+            toast.error("Error al eliminar el registro. Intenta de nuevo.")
         }
     }
 
     const requestDelete = (id: number, lote: string) => {
-        console.log("requestDelete() - Triggered for:", lote)
         toast("¿Estás seguro?", {
             description: `Se eliminará el lote ${lote} de forma permanente.`,
             action: {
@@ -149,7 +137,7 @@ export default function CalidadPage() {
             },
             cancel: {
                 label: "Cancelar",
-                onClick: () => console.log("Delete cancelled"),
+                onClick: () => { },
             },
             duration: 5000,
         })
@@ -159,7 +147,6 @@ export default function CalidadPage() {
         if (!editingRecord) return
         try {
             setIsUpdating(true)
-            console.log("handleEditSave() - Updating record:", editingRecord.id)
 
             const { error } = await supabase
                 .from('bitacora_produccion_calidad')
@@ -179,8 +166,7 @@ export default function CalidadPage() {
             setIsEditDialogOpen(false)
             fetchRecords()
         } catch (error: any) {
-            console.error("handleEditSave() - Error:", error.message)
-            toast.error("Error al actualizar: " + error.message)
+            toast.error("Error al actualizar el registro. Intenta de nuevo.")
         } finally {
             setIsUpdating(false)
         }
@@ -580,7 +566,6 @@ export default function CalidadPage() {
                                                                     title="Editar registro"
                                                                     onClick={(e) => {
                                                                         e.stopPropagation()
-                                                                        console.log("Edit clicked for:", record.id)
                                                                         setEditingRecord(record)
                                                                         setIsEditDialogOpen(true)
                                                                     }}

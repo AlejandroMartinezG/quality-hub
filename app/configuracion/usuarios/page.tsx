@@ -97,7 +97,7 @@ export default function UsuariosPage() {
             if (error) throw error
             setProfiles(data || [])
         } catch (error) {
-            console.error("Error fetching profiles:", error)
+            // Silently handle fetch failure
             toast.error("Error al cargar usuarios")
         } finally {
             setLoading(false)
@@ -114,7 +114,7 @@ export default function UsuariosPage() {
             if (error) throw error
             setRoles(data || [])
         } catch (error) {
-            console.error("Error fetching roles:", error)
+            // Silently handle fetch failure
         }
     }
 
@@ -129,7 +129,7 @@ export default function UsuariosPage() {
             if (error) throw error
             setRolePermissions(data || [])
         } catch (error) {
-            console.error("Error fetching role permissions:", error)
+            // Silently handle fetch failure
             toast.error("Error al cargar permisos del rol")
         }
     }
@@ -166,8 +166,7 @@ export default function UsuariosPage() {
             setSelectedProfile(null)
             await fetchProfiles()
         } catch (error) {
-            console.error("Error saving role:", error)
-            toast.error("Error al guardar cambios")
+            toast.error("Error al guardar el rol. Intenta de nuevo.")
         } finally {
             setSavingRole(false)
         }
@@ -189,8 +188,7 @@ export default function UsuariosPage() {
             toast.success(newStatus ? `✅ ${profile.full_name || 'Usuario'} aprobado` : `❌ Acceso revocado para ${profile.full_name || 'Usuario'}`)
             await fetchProfiles()
         } catch (error) {
-            console.error("Error toggling approval:", error)
-            toast.error("Error al cambiar estado de aprobación")
+            toast.error("Error al cambiar el estado de aprobación. Intenta de nuevo.")
         }
     }
 

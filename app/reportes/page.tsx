@@ -98,7 +98,7 @@ export default function ReportesPage() {
                 setRecords(analyzed)
             }
         } catch (error) {
-            console.error("Error loading reports data:", error)
+            // Silently handle fetch failure
         } finally {
             setLoading(false)
         }

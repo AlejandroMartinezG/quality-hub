@@ -115,7 +115,6 @@ export default function ConfigurationPage() {
                 .limit(500)
 
             if (logsError) {
-                console.error("Error fetching logs:", logsError)
                 setLogsLoading(false)
                 return
             }
@@ -126,7 +125,7 @@ export default function ConfigurationPage() {
                 .select('id, role')
 
             if (profilesError) {
-                console.error("Error fetching profiles:", profilesError)
+                // Non-critical — continue without role data
             }
 
             // Create a map of user_id -> role
@@ -145,7 +144,7 @@ export default function ConfigurationPage() {
 
             setLogs(transformedLogs)
         } catch (error) {
-            console.error("Exception fetching logs:", error)
+            // Silently handle fetch failure
         } finally {
             setLogsLoading(false)
         }
@@ -217,22 +216,17 @@ export default function ConfigurationPage() {
 
 
     async function fetchAllUsers() {
-        console.log("Fetching all users...")
         try {
             const { data, error } = await supabase
                 .from('profiles')
                 .select('*')
                 .order('full_name', { ascending: true })
 
-            if (error) {
-                console.error("Error fetching users:", error)
-                return
-            }
+            if (error) return
 
-            console.log("Users fetched:", data)
             if (data) setAllUsers(data)
         } catch (e) {
-            console.error("Exception fetching users:", e)
+            // Silently handle fetch failure
         } finally {
             setUsersLoading(false)
         }
@@ -289,8 +283,7 @@ export default function ConfigurationPage() {
             window.location.reload()
 
         } catch (error: any) {
-            console.error("Update error:", error)
-            alert(error.message || "Ocurrió un error desconocido")
+            alert("Ocurrió un error al actualizar el perfil. Intenta de nuevo.")
         } finally {
             setSaveLoading(false)
         }
@@ -329,15 +322,14 @@ export default function ConfigurationPage() {
             })
 
             if (error) {
-                throw new Error(error.message)
+                throw new Error("No se pudo completar la operación")
             }
 
             alert("Perfil de usuario eliminado correctamente.")
             fetchAllUsers()
 
         } catch (error: any) {
-            console.error("Error deleting user:", error)
-            alert("No se pudo eliminar el usuario: " + (error.message || "Error desconocido"))
+            alert("No se pudo eliminar el usuario. Intenta de nuevo.")
         }
     }
 
