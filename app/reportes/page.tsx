@@ -986,8 +986,8 @@ export default function ReportesPage() {
                                                 {/* Reference Lines for pH */}
                                                 {selectedProduct !== "all" && currentStandards?.ph && (
                                                     <>
-                                                        <ReferenceLine y={currentStandards.ph.max} label={{ value: 'LCS', position: 'insideTopRight', fill: '#C1272D', fontSize: 10 }} stroke="#C1272D" strokeWidth={2} isFront={true as any} />
-                                                        <ReferenceLine y={currentStandards.ph.min} label={{ value: 'LCI', position: 'insideBottomRight', fill: '#C1272D', fontSize: 10 }} stroke="#C1272D" strokeWidth={2} isFront={true as any} />
+                                                        <ReferenceLine y={currentStandards.ph.max} label={{ value: 'LCS', position: 'insideTopRight', fill: '#C1272D', fontSize: 10 }} stroke="#C1272D" strokeWidth={2} />
+                                                        <ReferenceLine y={currentStandards.ph.min} label={{ value: 'LCI', position: 'insideBottomRight', fill: '#C1272D', fontSize: 10 }} stroke="#C1272D" strokeWidth={2} />
                                                     </>
                                                 )}
                                             </LineChart>

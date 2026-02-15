@@ -34,6 +34,7 @@ import { Badge } from "@/components/ui/badge"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { BitacoraSchema, validateForm, getFirstError } from "@/lib/validations"
 
 export default function BitacoraPage() {
     const { user, profile } = useAuth()
@@ -151,15 +152,16 @@ export default function BitacoraPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
-        // Final validation
-        if (!formData.sucursal || !formData.codigo_producto || !formData.tamano_lote || !formData.fecha_fabricacion) {
-            toast.error("Campos obligatorios incompletos", {
-                description: "Por favor completa Sucursal, Producto, Tamaño de Lote y Fecha."
+        // Zod schema validation
+        const validation = validateForm(BitacoraSchema, formData)
+        if (!validation.success) {
+            toast.error("Datos inválidos", {
+                description: getFirstError(validation.errors)
             })
             return
         }
 
-        // Applicability checks
+        // Applicability checks (product-dependent, beyond schema)
         const applicability = PARAMETER_APPLICABILITY[formData.codigo_producto] || { solidos: false, ph: false }
 
         // Solids validation
@@ -180,23 +182,6 @@ export default function BitacoraPage() {
                 })
                 return
             }
-
-            // Validate pH range (0-14, integers only)
-            const phValue = parseInt(formData.ph)
-            if (isNaN(phValue) || phValue < 0 || phValue > 14) {
-                toast.error("pH fuera de rango", {
-                    description: "El pH debe ser un número entero entre 0 y 14."
-                })
-                return
-            }
-        }
-
-        // Apariencia validation
-        if (!formData.apariencia) {
-            toast.error("Falta registrar Apariencia", {
-                description: "Selecciona la apariencia del producto."
-            })
-            return
         }
 
         setLoading(true)
@@ -450,7 +435,7 @@ export default function BitacoraPage() {
                                                                     <CardContent className="p-4 flex flex-col items-center text-center gap-3">
                                                                         <div className={cn(
                                                                             "h-16 w-16 rounded-full flex items-center justify-center mb-1 shadow-sm border transition-transform duration-300 group-hover:scale-110",
-                                                                            formData.categoria === cat.name ? "bg-white border-blue-200" : "bg-slate-50 border-slate-100 dark:bg-slate-800 dark:border-slate-700"
+                                                                            selectedCategory === cat.name ? "bg-white border-blue-200" : "bg-slate-50 border-slate-100 dark:bg-slate-800 dark:border-slate-700"
                                                                         )}>
                                                                             <Icon className={cn(
                                                                                 "h-8 w-8",

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ShieldCheck, UserPlus, LogIn, Loader2, Mail, Lock, User, Building2, Briefcase, CheckCircle2, Sparkles, TrendingUp, BarChart3 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { SUCURSALES } from "@/lib/production-constants"
+import { LoginSchema, RegisterSchema, validateForm, getFirstError } from "@/lib/validations"
 
 // Roles disponibles para registro
 const ROLES = [
@@ -40,6 +41,15 @@ export default function LoginPage() {
         e.preventDefault()
         setLoading(true)
         setError(null)
+
+        // Zod validation
+        const schema = isLogin ? LoginSchema : RegisterSchema
+        const validation = validateForm(schema, formData)
+        if (!validation.success) {
+            setError(getFirstError(validation.errors))
+            setLoading(false)
+            return
+        }
 
         try {
             if (isLogin) {
