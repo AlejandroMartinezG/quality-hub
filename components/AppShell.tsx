@@ -11,7 +11,6 @@ import {
     X,
     ClipboardList,
     Microscope,
-    Beaker,
     BarChart3,
     LogOut,
     User as UserIcon,
@@ -19,7 +18,8 @@ import {
     Moon,
     Sun,
     ChevronRight,
-    Package
+    Package,
+    LineChart
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
@@ -30,6 +30,7 @@ import { NotificationBell } from "@/components/NotificationBell"
 export function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname()
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
     const basePath = getBasePath()
     const { user, profile, loading, signOut } = useAuth()
     const { setTheme, theme } = useTheme()
@@ -63,9 +64,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         if (disabled) {
             return (
-                <div className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-400 cursor-not-allowed opacity-70">
+                <div className={cn(
+                    "flex items-center gap-3 py-2.5 text-sm font-medium text-slate-400 cursor-not-allowed opacity-70 transition-all duration-200",
+                    isSidebarCollapsed ? "justify-center px-2" : "px-4"
+                )}>
                     <Icon className="h-5 w-5" />
-                    <span>{label}</span>
+                    {!isSidebarCollapsed && <span>{label}</span>}
                 </div>
             )
         }
@@ -74,15 +78,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Link
                 href={`${basePath}${href}`}
                 className={cn(
-                    "flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group",
+                    "flex items-center gap-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group",
+                    isSidebarCollapsed ? "justify-center px-2" : "px-4",
                     isActive
                         ? "bg-[#1e2756] text-white shadow-md"
                         : "text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-blue-900 dark:hover:text-blue-400"
                 )}
                 onClick={() => setMobileMenuOpen(false)}
+                title={isSidebarCollapsed ? label : undefined}
             >
-                <Icon className={cn("h-5 w-5", isActive ? "text-white" : "text-slate-400 group-hover:text-blue-900 dark:group-hover:text-blue-400")} />
-                <span>{label}</span>
+                <Icon className={cn("h-5 w-5 min-w-[20px]", isActive ? "text-white" : "text-slate-400 group-hover:text-blue-900 dark:group-hover:text-blue-400")} />
+                {!isSidebarCollapsed && <span className="truncate">{label}</span>}
             </Link>
         )
     }
@@ -106,55 +112,76 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return (
         <div className="flex min-h-screen bg-[#FDFDFD] dark:bg-zinc-950">
             {/* Desktop Sidebar */}
-            <aside className="hidden md:flex w-64 flex-col bg-[#FFFBF7] dark:bg-zinc-900 border-r h-screen sticky top-0 z-40 shadow-[1px_0_20px_0_rgba(0,0,0,0.02)]">
+            <aside
+                className={cn(
+                    "hidden md:flex flex-col bg-[#FFFBF7] dark:bg-zinc-900 border-r h-screen sticky top-0 z-40 shadow-[1px_0_20px_0_rgba(0,0,0,0.02)] transition-all duration-300 ease-in-out",
+                    isSidebarCollapsed ? "w-20" : "w-64"
+                )}
+            >
+                {/* Toggle Button */}
+                <button
+                    onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                    className="absolute -right-3 top-9 z-50 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shadow-sm rounded-full p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-500 transition-colors"
+                    title={isSidebarCollapsed ? "Expandir menú" : "Contraer menú"}
+                >
+                    {isSidebarCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronRight className="h-3 w-3 rotate-180" />}
+                </button>
+
                 {/* Logo Area */}
-                <div className="p-4 pb-8 flex justify-center">
-                    <Link href={`${basePath}/`} className="w-full flex justify-center">
-                        <img
-                            src={`${basePath}/logo.png`}
-                            alt="GINEZ"
-                            className="h-16 w-full object-contain max-w-[220px]"
-                        />
+                <div className={cn("flex justify-center transition-all duration-300", isSidebarCollapsed ? "p-4" : "p-4 pb-8")}>
+                    <Link href={`${basePath}/`} className="w-full flex justify-center overflow-hidden">
+                        {isSidebarCollapsed ? (
+                            <div className="flex items-center justify-center h-10 w-10 bg-gradient-to-br from-blue-900 to-blue-700 rounded-xl text-white font-bold text-xl shadow-lg">
+                                G
+                            </div>
+                        ) : (
+                            <img
+                                src={`${basePath}/logo.png`}
+                                alt="GINEZ"
+                                className="h-16 w-full object-contain max-w-[220px]"
+                            />
+                        )}
                     </Link>
                 </div>
 
                 {/* Navigation */}
-                <div className="flex-1 px-4 space-y-8 overflow-y-auto py-2">
+                <div className={cn("flex-1 space-y-8 overflow-y-auto py-2 scrollbar-thin", isSidebarCollapsed ? "px-2" : "px-4")}>
                     <div className="space-y-1">
-                        <h3 className="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">General</h3>
+                        {!isSidebarCollapsed && <h3 className="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">General</h3>}
                         <NavItem href="/" icon={LayoutDashboard} label="Panel Principal" />
                         <NavItem href="/catalog" icon={BookOpen} label="Catálogo" />
                     </div>
 
                     <div className="space-y-1">
-                        <h3 className="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Producción</h3>
+                        {!isSidebarCollapsed && <h3 className="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Producción</h3>}
+                        <NavItem href="/bitacora" icon={ClipboardList} label="Bitácora de Producción" />
                         <NavItem href="/calidad" icon={Microscope} label="Control Calidad" />
-                        <NavItem href="/bitacora" icon={ClipboardList} label="Bitácora" />
-                        <NavItem href="#" icon={Beaker} label="Laboratorio I+D" disabled />
                     </div>
 
                     <div className="space-y-1">
-                        <h3 className="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Soporte</h3>
-                        <NavItem href="/reportes" icon={BarChart3} label="Reportes" />
+                        {!isSidebarCollapsed && <h3 className="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Soporte</h3>}
+                        <NavItem href="/reportes" icon={BarChart3} label="Reportes y KPIs" />
+
                         <Link
                             href={`${basePath}/configuracion`}
                             className={cn(
-                                "flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group",
+                                "flex items-center gap-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group",
+                                isSidebarCollapsed ? "justify-center px-2" : "px-4",
                                 pathname?.startsWith("/configuracion")
                                     ? "bg-[#1e2756] text-white shadow-md"
                                     : "text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-blue-900 dark:hover:text-blue-400"
                             )}
+                            title={isSidebarCollapsed ? "Configuración" : undefined}
                         >
                             <Settings className={cn("h-5 w-5", pathname?.startsWith("/configuracion") ? "text-white" : "text-slate-400 group-hover:text-blue-900 dark:group-hover:text-blue-400")} />
-                            <span>Configuración</span>
+                            {!isSidebarCollapsed && <span>Configuración</span>}
                         </Link>
                     </div>
                 </div>
 
                 {/* Bottom Actions */}
-                {/* Bottom Actions */}
                 <div className="p-4 border-t bg-[#FFFBF7] dark:bg-zinc-900">
-                    <div className="flex justify-between items-center px-2">
+                    <div className={cn("flex items-center transition-all duration-300", isSidebarCollapsed ? "flex-col gap-4 justify-center" : "justify-between px-2")}>
                         <button
                             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                             className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors text-slate-500"
@@ -162,7 +189,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         >
                             {mounted && theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                         </button>
-                        <div className="flex items-center gap-1">
+
+                        <div className={cn("flex items-center gap-1", isSidebarCollapsed ? "flex-col" : "")}>
                             <Link
                                 href="/configuracion"
                                 className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors text-slate-500"
@@ -201,8 +229,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <div className="space-y-2">
                         <MobileNavItem href="/" icon={LayoutDashboard} label="Panel Principal" />
                         <MobileNavItem href="/catalog" icon={BookOpen} label="Catálogo" />
+                        <MobileNavItem href="/bitacora" icon={ClipboardList} label="Bitácora de Producción" />
                         <MobileNavItem href="/calidad" icon={Microscope} label="Control Calidad" />
-                        <MobileNavItem href="/bitacora" icon={ClipboardList} label="Bitácora" />
+                        <MobileNavItem href="/reportes" icon={BarChart3} label="Reportes y KPIs" />
                         <MobileNavItem href="/configuracion" icon={Settings} label="Configuración" />
                     </div>
                 </div>

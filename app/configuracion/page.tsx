@@ -246,7 +246,7 @@ export default function ConfigurationPage() {
                     position: sanitizeText(myProfileData.position),
                     sucursal: myProfileData.sucursal,
                     area: sanitizeText(myProfileData.area),
-                    // Email not included in profiles to avoid unverified changes showing up
+                    email: myProfileData.email, // Required field
                     updated_at: new Date().toISOString()
                 })
                 .select()

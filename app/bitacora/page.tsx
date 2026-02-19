@@ -43,6 +43,7 @@ export default function BitacoraPage() {
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
     const [expandedGroups, setExpandedGroups] = useState<string[]>([])
     const [loading, setLoading] = useState(false)
+    const [isFlexibleBatch, setIsFlexibleBatch] = useState(false)
     const [formData, setFormData] = useState({
         sucursal: "",
         nombre_preparador: "",
@@ -78,6 +79,7 @@ export default function BitacoraPage() {
         if (category) {
             setSelectedCategory(category.name)
             setStep(2)
+            setIsFlexibleBatch(false)
         }
     }
 
@@ -224,7 +226,11 @@ export default function BitacoraPage() {
                     viscosidad_seg: null,
                     temperatura: null,
                     contaminacion_microbiologica: "SIN PRESENCIA",
-                    estado_calidad: estado_calidad // Insert status
+                    estado_calidad: estado_calidad, // Insert status
+                    observaciones_calidad: evaluations
+                        .filter(e => e.status !== 'success')
+                        .map(e => `${e.type}: ${e.text}`)
+                        .join('. ') // Join multiple defects
                 }])
 
             if (insertError) throw insertError
@@ -249,6 +255,7 @@ export default function BitacoraPage() {
             }
 
             setStep(1)
+            setIsFlexibleBatch(false)
             setFormData(prev => ({
                 ...prev,
                 codigo_producto: "",
@@ -529,17 +536,43 @@ export default function BitacoraPage() {
                                         <Label htmlFor="tamano_lote">
                                             Tamaño de Lote ({selectedCategory?.includes("aromatizante") || selectedCategory?.includes("limpiadores") ? "Piezas" : "Litros"})
                                         </Label>
-                                        <Input
-                                            id="tamano_lote"
-                                            name="tamano_lote"
-                                            type="number"
-                                            step="0.1"
-                                            placeholder={selectedCategory?.includes("aromatizante") || selectedCategory?.includes("limpiadores") ? "Ej: 500" : "Ej: 100"}
-                                            value={formData.tamano_lote}
-                                            onChange={handleInputChange}
-                                            required
-                                            className={cn("rounded-full", !formData.tamano_lote ? "border-red-500" : "")}
-                                        />
+                                        <Select
+                                            value={isFlexibleBatch ? "Flexible" : (["20", "50", "100", "200", "1000"].includes(formData.tamano_lote) ? formData.tamano_lote : (formData.tamano_lote ? "Flexible" : ""))}
+                                            onValueChange={(val) => {
+                                                if (val === "Flexible") {
+                                                    setIsFlexibleBatch(true)
+                                                    setFormData(prev => ({ ...prev, tamano_lote: "" }))
+                                                } else {
+                                                    setIsFlexibleBatch(false)
+                                                    setFormData(prev => ({ ...prev, tamano_lote: val }))
+                                                }
+                                            }}
+                                        >
+                                            <SelectTrigger className={cn("rounded-full", !formData.tamano_lote && !isFlexibleBatch ? "border-red-500" : "")}>
+                                                <SelectValue placeholder="Selecciona tamaño" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="20">20</SelectItem>
+                                                <SelectItem value="50">50</SelectItem>
+                                                <SelectItem value="100">100</SelectItem>
+                                                <SelectItem value="200">200</SelectItem>
+                                                <SelectItem value="1000">1000</SelectItem>
+                                                <SelectItem value="Flexible">Flexible (Manual)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        {isFlexibleBatch && (
+                                            <Input
+                                                id="tamano_lote"
+                                                name="tamano_lote"
+                                                type="number"
+                                                step="0.1"
+                                                placeholder={selectedCategory?.includes("aromatizante") || selectedCategory?.includes("limpiadores") ? "Ej: 500" : "Ej: 100"}
+                                                value={formData.tamano_lote}
+                                                onChange={handleInputChange}
+                                                required
+                                                className={cn("rounded-full mt-2", !formData.tamano_lote ? "border-red-500" : "")}
+                                            />
+                                        )}
                                     </div>
                                 </CardContent>
                             </Card>
@@ -773,9 +806,17 @@ function evaluateRecord(formData: any) {
             if (avg >= min && avg <= max) {
                 evaluations.push({ type: "Sólidos", status: "success", text: `Conforme (${avg.toFixed(2)}%)` })
             } else if (avg >= minTol && avg <= maxTol) {
-                evaluations.push({ type: "Sólidos", status: "warning", text: `En tolerancia (${avg.toFixed(2)}%) - Liberable` })
+                evaluations.push({
+                    type: "Sólidos",
+                    status: "warning",
+                    text: `En tolerancia (${avg.toFixed(2)}%) [Std: ${min}-${max} | Tol (+/- 5%): ${minTol.toFixed(2)}-${maxTol.toFixed(2)}] - Liberable`
+                })
             } else {
-                evaluations.push({ type: "Sólidos", status: "error", text: `Fuera de rango (${avg.toFixed(2)}%) - Retener` })
+                evaluations.push({
+                    type: "Sólidos",
+                    status: "error",
+                    text: `Fuera de rango (${avg.toFixed(2)}%) [Std: ${min}-${max} | Tol (+/- 5%): ${minTol.toFixed(2)}-${maxTol.toFixed(2)}] - Retener`
+                })
             }
         }
     }
@@ -788,7 +829,7 @@ function evaluateRecord(formData: any) {
             if (phVal >= standard.min && phVal <= standard.max) {
                 evaluations.push({ type: "pH", status: "success", text: `Conforme (${phVal})` })
             } else {
-                evaluations.push({ type: "pH", status: "error", text: `Fuera de rango (${phVal})` })
+                evaluations.push({ type: "pH", status: "error", text: `Fuera de rango (${phVal}) [Std: ${standard.min}-${standard.max}]` })
             }
         }
     }
@@ -803,6 +844,17 @@ function evaluateRecord(formData: any) {
                 evaluations.push({ type: "Apariencia", status: "error", text: `No conforme (Esperado: ${expected})` })
             }
         }
+    }
+
+
+    // Color evaluation
+    if (formData.color === 'NO CONFORME') {
+        evaluations.push({ type: "Color", status: "error", text: "No Conforme" })
+    }
+
+    // Aroma evaluation
+    if (formData.aroma === 'NO CONFORME') {
+        evaluations.push({ type: "Aroma", status: "error", text: "No Conforme" })
     }
 
     return evaluations

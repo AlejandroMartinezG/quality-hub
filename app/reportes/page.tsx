@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Loader2, RefreshCcw, Filter, Download, Factory, Trophy, TrendingUp, Package, Activity, AlertCircle, ChevronRight } from "lucide-react"
+import { toast } from "sonner"
 import {
     Select,
     SelectContent,
@@ -36,6 +37,7 @@ import {
 } from "recharts"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SUCURSALES, PRODUCT_STANDARDS, PH_STANDARDS, CATEGORY_PRODUCTS, PRODUCT_GROUPS, PRODUCT_CATEGORIES } from "@/lib/production-constants"
+import SPYReportPage from "./spy/page"
 
 // --- Components ---
 
@@ -59,7 +61,7 @@ const KPICard = ({ title, value, subtitle, icon: Icon, colorClass }: any) => (
 )
 
 export default function ReportesPage() {
-    const { user } = useAuth()
+    const { user, loading: authLoading } = useAuth()
     const [records, setRecords] = useState<EnrichedRecord[]>([])
     const [loading, setLoading] = useState(true)
 
@@ -68,6 +70,7 @@ export default function ReportesPage() {
     const [selectedBranch, setSelectedBranch] = useState<string>("all")
     const [selectedProduct, setSelectedProduct] = useState<string>("all")
     const [selectedCategory, setSelectedCategory] = useState<string>("all") // NEW: Category filter
+    const [selectedPreparer, setSelectedPreparer] = useState<string>("all") // NEW: Preparer filter
     const [dateRange, setDateRange] = useState<string>("all")
     const [showAllProducts, setShowAllProducts] = useState(false)
     const [rankingCategoryFilter, setRankingCategoryFilter] = useState<string>("all")
@@ -78,29 +81,46 @@ export default function ReportesPage() {
 
     useEffect(() => {
         if (user) {
+            console.log("ReportesPage: User authenticated, fetching data...")
             fetchData()
+        } else if (!authLoading) {
+            console.log("ReportesPage: No user found and auth finished.")
+            setLoading(false)
+        } else {
+            console.log("ReportesPage: Waiting for auth...")
         }
-    }, [user])
+    }, [user, authLoading])
 
     const fetchData = async () => {
         setLoading(true)
+        console.log("ReportesPage: fetchData started")
         try {
             const { data, error } = await supabase
                 .from('bitacora_produccion_calidad')
                 .select('*')
                 .order('created_at', { ascending: true }) // Ascending for charts
 
-            if (error) throw error
+            if (error) {
+                console.error("ReportesPage: Supabase error", error)
+                throw error
+            }
 
             if (data) {
+                console.log(`ReportesPage: Fetched ${data.length} records`)
                 // Analyze all records
                 const analyzed = data.map(analyzeRecord)
                 setRecords(analyzed)
+            } else {
+                console.log("ReportesPage: No data returned")
             }
-        } catch (error) {
-            // Silently handle fetch failure
+        } catch (error: any) {
+            console.error("ReportesPage: Fetch error", error)
+            toast.error("Error al cargar datos", {
+                description: error.message || "Verifica tu conexión o contacta a soporte."
+            })
         } finally {
             setLoading(false)
+            console.log("ReportesPage: Loading set to false")
         }
     }
 
@@ -110,6 +130,12 @@ export default function ReportesPage() {
     const uniqueProducts = useMemo(() => {
         const products = new Set(records.map(r => r.codigo_producto))
         return Array.from(products).sort()
+    }, [records])
+
+    // Get unique preparers for filter
+    const uniquePreparers = useMemo(() => {
+        const preparers = new Set(records.map(r => r.nombre_preparador).filter(Boolean))
+        return Array.from(preparers).sort()
     }, [records])
 
     // 1. Filtered Data
@@ -150,6 +176,9 @@ export default function ReportesPage() {
             // Filter by product
             if (selectedProduct !== "all" && r.codigo_producto !== selectedProduct) return false
 
+            // Filter by preparer
+            if (selectedPreparer !== "all" && r.nombre_preparador !== selectedPreparer) return false
+
             // Filter by date range
             if (dateThreshold && r.fecha_fabricacion) {
                 const recordDate = new Date(r.fecha_fabricacion)
@@ -158,7 +187,7 @@ export default function ReportesPage() {
 
             return true
         })
-    }, [records, selectedSucursal, selectedCategory, selectedProduct, selectedDateRange])
+    }, [records, selectedSucursal, selectedCategory, selectedProduct, selectedPreparer, selectedDateRange])
 
     // 2. KPIs
     const kpis = useMemo(() => {
@@ -191,7 +220,28 @@ export default function ReportesPage() {
         const percentSemiConformidad = total > 0 ? ((semiConformes / total) * 100).toFixed(1) : "0.0"
         const percentNoConformidad = total > 0 ? ((noConformes / total) * 100).toFixed(1) : "0.0"
 
-        return { total, conformes, semiConformes, noConformes, percentConformidad, percentSemiConformidad, percentNoConformidad, totalVolume, totalPieces }
+        // pH KPIs
+        const conformesPH = filteredRecords.filter(r => r.analysis.phStatus === 'conforme').length
+        const noConformesPH = filteredRecords.filter(r => r.analysis.phStatus === 'no-conforme').length
+
+        const percentConformidadPH = total > 0 ? ((conformesPH / total) * 100).toFixed(1) : "0.0"
+        const percentNoConformidadPH = total > 0 ? ((noConformesPH / total) * 100).toFixed(1) : "0.0"
+
+        return {
+            total,
+            conformes,
+            semiConformes,
+            noConformes,
+            percentConformidad,
+            percentSemiConformidad,
+            percentNoConformidad,
+            totalVolume,
+            totalPieces,
+            conformesPH,
+            noConformesPH,
+            percentConformidadPH,
+            percentNoConformidadPH
+        }
     }, [filteredRecords])
 
     // 3. Stacked Bar Chart (Sucursales)
@@ -566,6 +616,30 @@ export default function ReportesPage() {
     // Corporate GINEZ colors - Red and Blue from logo
     const COLORS = ['#C1272D', '#0000A0', '#E63946', '#1E3A8A', '#DC2626', '#1E40AF', '#B91C1C', '#1D4ED8'];
 
+    if (loading) {
+        return (
+            <div className="h-screen flex flex-col items-center justify-center space-y-4">
+                <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
+                <p className="text-slate-500">Cargando datos...</p>
+            </div>
+        )
+    }
+
+    if (!user) {
+        return (
+            <div className="h-screen flex flex-col items-center justify-center space-y-6">
+                <AlertCircle className="h-16 w-16 text-yellow-500" />
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Sesión no iniciada</h2>
+                <p className="text-slate-500 max-w-md text-center">
+                    No se detectó una sesión activa. Por favor inicia sesión nuevamente para ver los reportes.
+                </p>
+                <Button onClick={() => window.location.href = '/login'}>
+                    Ir al Login
+                </Button>
+            </div>
+        )
+    }
+
     return (
         <div className="space-y-6 pb-12">
             {/* Header */}
@@ -615,6 +689,18 @@ export default function ReportesPage() {
                         </SelectContent>
                     </Select>
 
+                    <Select value={selectedPreparer} onValueChange={setSelectedPreparer}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Todos los preparadores" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Todos los preparadores</SelectItem>
+                            {uniquePreparers.map((p) => (
+                                <SelectItem key={p} value={p}>{p}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
                     <Select value={selectedDateRange} onValueChange={setSelectedDateRange}>
                         <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="Período" />
@@ -640,11 +726,16 @@ export default function ReportesPage() {
                     <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
                 </div>
             ) : (
-                <Tabs defaultValue="calidad" className="space-y-6">
-                    <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
-                        <TabsTrigger value="calidad">First Time Quality</TabsTrigger>
+                <Tabs defaultValue="comercial" className="space-y-6">
+                    <TabsList className="grid w-full grid-cols-3 max-w-[600px]">
                         <TabsTrigger value="comercial">Análisis Comercial</TabsTrigger>
+                        <TabsTrigger value="calidad">First Time Quality</TabsTrigger>
+                        <TabsTrigger value="spy">SPY (Yield)</TabsTrigger>
                     </TabsList>
+
+                    <TabsContent value="spy" className="space-y-6">
+                        <SPYReportPage />
+                    </TabsContent>
 
                     <TabsContent value="calidad" className="space-y-6">
                         {/* KPI Section */}
@@ -687,6 +778,73 @@ export default function ReportesPage() {
                                 </CardContent>
                             </Card>
 
+                            {/* Pareto de Defectos - Now in Top Row occupying 3 columns */}
+                            <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem] md:col-span-1 lg:col-span-3">
+                                <CardHeader>
+                                    <CardTitle className="text-lg font-bold">Pareto de Defectos</CardTitle>
+                                    <CardDescription>Frecuencia de fallos por parámetro de calidad</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="h-[320px] w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <ComposedChart data={paretoData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                                                <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
+                                                <YAxis yAxisId="left" fontSize={12} tickLine={false} axisLine={false} />
+                                                <YAxis yAxisId="right" orientation="right" fontSize={12} tickLine={false} axisLine={false} unit="%" />
+                                                <Tooltip
+                                                    contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                                />
+                                                <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                                                <Bar yAxisId="left" dataKey="count" name="Cantidad Fallos" fill="#C1272D" barSize={40} radius={[4, 4, 0, 0]} />
+                                                <Line yAxisId="right" type="monotone" dataKey="accumulatedPercent" name="% Acumulado" stroke="#0000A0" strokeWidth={2} dot={{ r: 4 }} />
+                                            </ComposedChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+
+                        {/* Charts Section - Full Width Stacked */}
+                        <div className="grid grid-cols-1 gap-6">
+                            {/* Conformidad por Sucursal - Full Width */}
+                            <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
+                                <CardHeader>
+                                    <CardTitle className="text-lg font-bold">Conformidad por Sucursal</CardTitle>
+                                    <CardDescription>Volumen de producción conforme vs no conforme</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="h-[400px] w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={sucursalChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                                                <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
+                                                <YAxis fontSize={12} tickLine={false} axisLine={false} />
+                                                <Tooltip
+                                                    contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                                    cursor={{ fill: '#F1F5F9' }}
+                                                />
+                                                <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                                                <Bar dataKey="conformes" name="Conformes" stackId="a" fill="#22c55e" radius={[0, 0, 0, 0]} />
+                                                <Bar dataKey="semiConformes" name="Semi-Conformes" stackId="a" fill="#eab308" radius={[0, 0, 0, 0]} />
+                                                <Bar dataKey="noConformes" name="No Conformes" stackId="a" fill="#C1272D" radius={[4, 4, 0, 0]} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+
+                        {/* Titulo Conformidad Solidos */}
+                        <div className="mb-2 mt-4">
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Conformidad del % de sólidos</h3>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                                Desglose de lotes según cumplimiento de especificaciones de sólidos.
+                            </p>
+                        </div>
+
+                        {/* KPI Cards Row (Moved Down) */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {/* KPI 2: Total Conformes - Enhanced */}
                             <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-slate-900 dark:to-slate-800 relative overflow-visible rounded-[2rem]">
                                 <CardContent className="p-6 h-full flex flex-col justify-between">
@@ -761,62 +919,6 @@ export default function ReportesPage() {
                                                 <Activity className="h-10 w-10 text-red-700 dark:text-red-400" />
                                             </div>
                                         </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
-
-                        {/* Charts Section - Full Width Stacked */}
-                        <div className="grid grid-cols-1 gap-6">
-                            {/* Conformidad por Sucursal - Full Width */}
-                            <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
-                                <CardHeader>
-                                    <CardTitle className="text-lg font-bold">Conformidad por Sucursal</CardTitle>
-                                    <CardDescription>Volumen de producción conforme vs no conforme</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="h-[400px] w-full">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart data={sucursalChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                                                <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                                                <YAxis fontSize={12} tickLine={false} axisLine={false} />
-                                                <Tooltip
-                                                    contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                                    cursor={{ fill: '#F1F5F9' }}
-                                                />
-                                                <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                                                <Bar dataKey="conformes" name="Conformes" stackId="a" fill="#22c55e" radius={[0, 0, 0, 0]} />
-                                                <Bar dataKey="semiConformes" name="Semi-Conformes" stackId="a" fill="#eab308" radius={[0, 0, 0, 0]} />
-                                                <Bar dataKey="noConformes" name="No Conformes" stackId="a" fill="#C1272D" radius={[4, 4, 0, 0]} />
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            {/* Pareto de Defectos - Full Width */}
-                            <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
-                                <CardHeader>
-                                    <CardTitle className="text-lg font-bold">Pareto de Defectos</CardTitle>
-                                    <CardDescription>Frecuencia de fallos por parámetro de calidad</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="h-[400px] w-full">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <ComposedChart data={paretoData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                                                <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                                                <YAxis yAxisId="left" fontSize={12} tickLine={false} axisLine={false} />
-                                                <YAxis yAxisId="right" orientation="right" fontSize={12} tickLine={false} axisLine={false} unit="%" />
-                                                <Tooltip
-                                                    contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                                />
-                                                <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                                                <Bar yAxisId="left" dataKey="count" name="Cantidad Fallos" fill="#C1272D" barSize={40} radius={[4, 4, 0, 0]} />
-                                                <Line yAxisId="right" type="monotone" dataKey="accumulatedPercent" name="% Acumulado" stroke="#0000A0" strokeWidth={2} dot={{ r: 4 }} />
-                                            </ComposedChart>
-                                        </ResponsiveContainer>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -954,6 +1056,69 @@ export default function ReportesPage() {
                                     </div>
                                 </CardContent>
                             </Card>
+
+                            {/* Titulo Conformidad pH */}
+                            <div className="mb-2 mt-8">
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Conformidad de pH</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">
+                                    Desglose de lotes según cumplimiento de especificaciones de pH.
+                                </p>
+                            </div>
+
+                            {/* KPI Cards Row for pH */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                {/* KPI 1: pH Conformes */}
+                                <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-slate-900 dark:to-slate-800 relative overflow-visible rounded-[2rem]">
+                                    <CardContent className="p-6 h-full flex flex-col justify-between">
+                                        <div>
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className="flex-1 pr-12">
+                                                    <h3 className="text-base font-extrabold text-green-700 dark:text-green-400 tracking-wide mb-2">TOTAL CONFORMES</h3>
+                                                    <div className="text-5xl font-extrabold text-slate-900 dark:text-white mt-1 leading-none">
+                                                        {kpis.conformesPH}
+                                                    </div>
+                                                    <p className="text-sm text-green-700 dark:text-green-400 font-medium mt-2">registros</p>
+                                                    <div className="flex items-baseline gap-1.5 mt-3">
+                                                        <span className="text-3xl font-extrabold text-green-700 dark:text-green-400">
+                                                            {kpis.percentConformidadPH}%
+                                                        </span>
+                                                        <span className="text-base font-bold text-green-700/70 dark:text-green-400/70">del total</span>
+                                                    </div>
+                                                </div>
+                                                <div className="absolute -top-3 -right-3 p-4 bg-green-100 dark:bg-green-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
+                                                    <TrendingUp className="h-10 w-10 text-green-700 dark:text-green-400" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* KPI 2: pH No Conformes */}
+                                <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-red-50 to-red-100 dark:from-slate-900 dark:to-slate-800 relative overflow-visible rounded-[2rem]">
+                                    <CardContent className="p-6 h-full flex flex-col justify-between">
+                                        <div>
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className="flex-1 pr-12">
+                                                    <h3 className="text-base font-extrabold text-red-700 dark:text-red-400 tracking-wide mb-2">NO CONFORMES</h3>
+                                                    <div className="text-5xl font-extrabold text-slate-900 dark:text-white mt-1 leading-none">
+                                                        {kpis.noConformesPH}
+                                                    </div>
+                                                    <p className="text-sm text-red-700 dark:text-red-400 font-medium mt-2">registros</p>
+                                                    <div className="flex items-baseline gap-1.5 mt-3">
+                                                        <span className="text-3xl font-extrabold text-red-700 dark:text-red-400">
+                                                            {kpis.percentNoConformidadPH}%
+                                                        </span>
+                                                        <span className="text-base font-bold text-red-700/70 dark:text-red-400/70">del total</span>
+                                                    </div>
+                                                </div>
+                                                <div className="absolute -top-3 -right-3 p-4 bg-red-100 dark:bg-red-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
+                                                    <Activity className="h-10 w-10 text-red-700 dark:text-red-400" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
 
                             {/* 2. Gráfico de pH (Segundo) */}
                             <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
@@ -1130,16 +1295,32 @@ export default function ReportesPage() {
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={commercialData.sucursalData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                                            <XAxis dataKey="name" fontSize={11} angle={-45} textAnchor="end" interval={0} tick={{ fill: '#64748b' }} />
+                                            {/* Labels in proper black */}
+                                            <XAxis dataKey="name" fontSize={11} angle={-45} textAnchor="end" interval={0} tick={{ fill: '#000000', fontWeight: 600 }} />
                                             <YAxis fontSize={12} tickLine={false} axisLine={false} />
                                             <Tooltip
                                                 cursor={{ fill: '#F1F5F9' }}
                                                 contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                             />
                                             <Bar dataKey="litros" name="Litros" fill="#C1272D" radius={[4, 4, 0, 0]}>
-                                                {commercialData.sucursalData.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={index === 0 ? '#C1272D' : '#E63946'} />
-                                                ))}
+                                                {commercialData.sucursalData.map((entry, index) => {
+                                                    // Red -> Blue Gradient
+                                                    // Start: #C1272D (Red) -> RGB(193, 39, 45)
+                                                    // End: #1E40AF (Blue 800) -> RGB(30, 64, 175)
+
+                                                    const totalItems = commercialData.sucursalData.length
+                                                    const startColor = [193, 39, 45]
+                                                    const endColor = [30, 64, 175]
+                                                    const ratio = index / (totalItems - 1) // 0 to 1
+
+                                                    const r = Math.round(startColor[0] + (endColor[0] - startColor[0]) * ratio)
+                                                    const g = Math.round(startColor[1] + (endColor[1] - startColor[1]) * ratio)
+                                                    const b = Math.round(startColor[2] + (endColor[2] - startColor[2]) * ratio)
+
+                                                    const fill = `rgb(${r}, ${g}, ${b})`
+
+                                                    return <Cell key={`cell-${index}`} fill={fill} />
+                                                })}
                                             </Bar>
                                         </BarChart>
                                     </ResponsiveContainer>
@@ -1166,8 +1347,30 @@ export default function ReportesPage() {
                                             <YAxis
                                                 type="category"
                                                 dataKey="name"
-                                                width={150}
-                                                fontSize={10}
+                                                width={160}
+                                                tick={({ x, y, payload, index }) => {
+                                                    // Dynamic font size: Largest for top items, smaller for bottom
+                                                    // Range: 13px down to 9px for 20 items
+                                                    const fontSize = Math.max(9, 13 - (index * 0.25))
+                                                    const color = index < 3 ? '#1e293b' : '#64748b' // Darker for top 3
+                                                    const fontWeight = index < 3 ? 700 : 400
+
+                                                    return (
+                                                        <g transform={`translate(${x},${y})`}>
+                                                            <text
+                                                                x={0}
+                                                                y={0}
+                                                                dy={4}
+                                                                textAnchor="end"
+                                                                fill={color}
+                                                                fontSize={fontSize}
+                                                                fontWeight={fontWeight}
+                                                            >
+                                                                {payload.value && payload.value.length > 25 ? payload.value.substring(0, 25) + '...' : payload.value}
+                                                            </text>
+                                                        </g>
+                                                    )
+                                                }}
                                                 tickLine={false}
                                                 axisLine={false}
                                                 interval={0}
@@ -1183,9 +1386,23 @@ export default function ReportesPage() {
                                                 contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                             />
                                             <Bar dataKey="value" name="Volumen" radius={[0, 4, 4, 0]} barSize={12}>
-                                                {commercialData.productVariantsData.slice(0, 20).map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                ))}
+                                                {commercialData.productVariantsData.slice(0, 20).map((entry, index) => {
+                                                    // Red -> Blue Gradient
+                                                    // Start: #C1272D (Red) -> RGB(193, 39, 45)
+                                                    // End: #1E40AF (Blue 800) -> RGB(30, 64, 175)
+
+                                                    const startColor = [193, 39, 45]
+                                                    const endColor = [30, 64, 175]
+                                                    const ratio = index / 19 // 0 to 1 over 20 items
+
+                                                    const r = Math.round(startColor[0] + (endColor[0] - startColor[0]) * ratio)
+                                                    const g = Math.round(startColor[1] + (endColor[1] - startColor[1]) * ratio)
+                                                    const b = Math.round(startColor[2] + (endColor[2] - startColor[2]) * ratio)
+
+                                                    const fill = `rgb(${r}, ${g}, ${b})`
+
+                                                    return <Cell key={`cell-${index}`} fill={fill} />
+                                                })}
                                             </Bar>
                                         </BarChart>
                                     </ResponsiveContainer>

@@ -6,6 +6,7 @@ import { User, Session } from "@supabase/supabase-js"
 import { useRouter, usePathname } from "next/navigation"
 
 interface Profile {
+    id: string
     full_name: string
     area: string
     position: string
@@ -79,20 +80,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const initializeAuth = async () => {
             try {
                 // Check active session
-                const { data: { session }, error } = await supabase.auth.getSession()
+                console.log("AuthProvider: Checking active session...")
+                const { data, error } = await supabase.auth.getSession()
 
-                if (error) throw error
+                if (error) {
+                    // Ignore AbortError which can happen in strict mode/dev
+                    if (error.message && error.message.includes('AbortError')) {
+                        console.warn("AuthProvider: Session check aborted (likely harmless in dev).")
+                        return
+                    }
+                    console.error("AuthProvider: Error getting session:", error)
+                    // Don't throw, just proceed as logged out
+                }
 
                 if (mounted) {
-                    if (session) {
-                        setSession(session)
-                        setUser(session.user)
+                    if (data?.session) {
+                        console.log("AuthProvider: Session found.")
+                        setSession(data.session)
+                        setUser(data.session.user)
                         // Fetch profile immediately if session exists
-                        await fetchProfile(session.user.id)
+                        await fetchProfile(data.session.user.id)
+                    } else {
+                        console.warn("AuthProvider: No session found during init.")
+                        if (window.location.pathname !== '/login') {
+                            console.log("AuthProvider: Redirecting to login...")
+                            router.push('/login')
+                        }
                     }
                 }
             } catch (error) {
-                console.error("Auth initialization error:", error)
+                console.error("Auth initialization exception:", error)
             } finally {
                 if (mounted) setLoading(false)
             }

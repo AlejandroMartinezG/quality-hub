@@ -21,6 +21,7 @@ export type EnrichedRecord = {
     sucursal: string
     familia_producto: string
     fecha_fabricacion: string
+    nombre_preparador: string
     ph: number | null
     solidos_medicion_1: number | null
     solidos_medicion_2: number | null
