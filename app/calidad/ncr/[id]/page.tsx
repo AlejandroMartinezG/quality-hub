@@ -305,6 +305,48 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
 
     const canManage = profile?.role === 'admin' || profile?.role === 'gerente_calidad' || profile?.role === 'coordinador'
 
+    const formatDefectDetail = (text: string) => {
+        if (!text) return 'Sin detalles adicionales.';
+
+        // Separamos el texto por oraciones (normalmente terminadas por ". ")
+        const sentences = text.split('. ').filter(s => s.trim().length > 0);
+
+        return (
+            <div className="space-y-3">
+                {sentences.map((sentence, idx) => {
+                    // Buscar el primer ":" para separar el nombre del parámetro del problema
+                    const parts = sentence.split(/:\s(.+)/);
+                    if (parts.length < 2) return <p key={idx} className="text-slate-700 dark:text-slate-300">{sentence}</p>;
+
+                    const paramName = parts[0];
+                    let rest = parts[1];
+
+                    // Volver a poner el punto si se lo quitamos en el split (excepto tal vez al final)
+                    if (idx < sentences.length - 1 && !rest.endsWith('.')) {
+                        rest += '.';
+                    }
+
+                    // Resaltar valores medidos entre paréntesis () y estándares/tolerancias entre corchetes []
+                    const formattedRest = rest.split(/(\([^)]+\)|\[[^\]]+\])/g).map((part, i) => {
+                        if (part.startsWith('(') && part.endsWith(')')) {
+                            return <span key={i} className="text-red-600 dark:text-red-400 font-bold">{part}</span>;
+                        } else if (part.startsWith('[') && part.endsWith(']')) {
+                            return <span key={i} className="text-blue-700 dark:text-blue-300 text-xs font-mono bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded ml-1 mr-1">{part}</span>;
+                        }
+                        return part;
+                    });
+
+                    return (
+                        <div key={idx} className="pb-2 last:pb-0 border-slate-100 dark:border-slate-800 border-b last:border-0">
+                            <span className="font-extrabold text-slate-900 dark:text-white mr-2">{paramName}:</span>
+                            <span className="text-slate-600 dark:text-slate-300">{formattedRest}</span>
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    };
+
     return (
         <div className="max-w-5xl mx-auto space-y-6 pb-12">
             <DeleteConfirmationDialog
@@ -418,8 +460,8 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
 
                             <div className="space-y-2">
                                 <Label className="text-slate-500 text-xs uppercase tracking-wider font-bold">Detalle del Problema</Label>
-                                <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 text-sm leading-relaxed">
-                                    {ncr.defect_detail || 'Sin detalles adicionales.'}
+                                <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-xl border border-slate-100 dark:border-slate-800 text-sm leading-relaxed shadow-sm">
+                                    {formatDefectDetail(ncr.defect_detail)}
                                 </div>
                             </div>
 

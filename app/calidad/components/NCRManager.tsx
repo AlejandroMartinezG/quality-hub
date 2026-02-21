@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -53,6 +54,8 @@ interface NCR {
     liters_recovered: number
     message_count: number
     disposition_type?: string
+    defect_detail?: string
+    apariencia_reportada?: string
 }
 
 // viewMode logic removed, will rely on profile.role directly
@@ -228,16 +231,28 @@ export function NCRManager() {
             // Client-side join for disposition
             if (ncrData.length > 0) {
                 const ncrIds = ncrData.map((n: any) => n.id)
-                const { data: dispositions } = await supabase
-                    .from('quality_disposition')
-                    .select('ncr_id, disposition_type')
-                    .in('ncr_id', ncrIds)
+                const batchCodes = ncrData.map((n: any) => n.batch_code).filter(Boolean)
 
-                if (dispositions) {
-                    const dispMap = new Map(dispositions.map(d => [d.ncr_id, d.disposition_type]))
+                const [dispResult, ncrExtraResult, bitacoraResult] = await Promise.all([
+                    supabase.from('quality_disposition').select('ncr_id, disposition_type').in('ncr_id', ncrIds),
+                    supabase.from('quality_ncr').select('id, defect_detail').in('id', ncrIds),
+                    supabase.from('bitacora_produccion_calidad').select('lote_producto, apariencia').in('lote_producto', batchCodes)
+                ])
+
+                const dispositions = dispResult.data
+                const ncrExtras = ncrExtraResult.data
+                const bitacoras = bitacoraResult.data
+
+                if (dispositions || ncrExtras || bitacoras) {
+                    const dispMap = new Map(dispositions?.map(d => [d.ncr_id, d.disposition_type]) || [])
+                    const extraMap = new Map(ncrExtras?.map(n => [n.id, n.defect_detail]) || [])
+                    const bitacoraMap = new Map(bitacoras?.map(b => [b.lote_producto, b.apariencia]) || [])
+
                     ncrData = ncrData.map((n: any) => ({
                         ...n,
-                        disposition_type: dispMap.get(n.id)
+                        disposition_type: dispMap.get(n.id),
+                        defect_detail: n.defect_detail || extraMap.get(n.id),
+                        apariencia_reportada: bitacoraMap.get(n.batch_code)
                     }))
                 }
             }
@@ -325,6 +340,96 @@ export function NCRManager() {
             case 'CERRADO': return 'bg-green-100 text-green-800 border-green-200'
             default: return 'bg-slate-100 text-slate-800 border-slate-200'
         }
+    }
+
+    const getParameterColor = (param: string) => {
+        if (!param) return 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
+
+        const lowerParam = param.toLowerCase();
+        if (lowerParam.includes('sólidos') || lowerParam.includes('solidos') || lowerParam.includes('brix')) return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800'
+        if (lowerParam.includes('ph')) return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800'
+        if (lowerParam.includes('apariencia') || lowerParam.includes('estético')) return 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200 dark:bg-fuchsia-900/30 dark:text-fuchsia-300 dark:border-fuchsia-800'
+        if (lowerParam.includes('color')) return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800'
+        if (lowerParam.includes('aroma') || lowerParam.includes('olor')) return 'bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-800'
+        if (lowerParam.includes('viscosidad')) return 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800'
+        if (lowerParam.includes('microbio')) return 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800'
+
+        return 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800/50 dark:text-slate-300 dark:border-slate-700'
+    }
+
+    const renderMeasurement = (ncr: NCR) => {
+        const defectDetail = ncr.defect_detail;
+        const parameter = ncr.defect_parameter;
+
+        if (!defectDetail || !parameter) return <span className="text-muted-foreground text-xs block text-center">-</span>;
+
+        // Buscamos la primera oración que empiece con el parámetro (Ej. Sólidos: ...)
+        const parts = defectDetail.split('. ').find(s => s.startsWith(parameter + ':') || s.includes(parameter));
+        const textToProcess = parts || defectDetail;
+
+        const valMatch = textToProcess.match(/\(([^)]+)\)/);
+        const stdMatch = textToProcess.match(/\[([^\]]+)\]/);
+
+        if (valMatch) {
+            let val = valMatch[1];
+            let std = stdMatch ? stdMatch[1] : '';
+
+            // FIX: If the old format saved "(Esperado: OPACO)" we extract it
+            if (val.startsWith('Esperado:')) {
+                std = val;
+                val = parameter === 'Apariencia' && ncr.apariencia_reportada ? ncr.apariencia_reportada : 'No Conforme';
+            }
+
+            // Simplificar el texto del estándar si es muy largo
+            if (std.includes('Tol (+/- 5%):')) {
+                std = std.split('|')[1].replace('Tol (+/- 5%):', '').trim();
+            } else if (std.startsWith('Esperado:')) {
+                std = std.replace('Esperado:', '').trim();
+            } else if (std.startsWith('Std: ')) {
+                std = std.replace('Std: ', '').trim();
+            }
+
+            return (
+                <div className="flex flex-col items-start justify-center">
+                    <span className="font-bold text-[#C1272D] dark:text-red-400">{val}</span>
+                    {std && <span className="text-[10px] text-slate-500 font-mono mt-0.5 leading-tight" title={stdMatch ? stdMatch[1] : std}>[{std}]</span>}
+                </div>
+            );
+        }
+
+        // Extraemos lo que está en corchetes como estándar si no había entrado en el if anterior
+        let std = stdMatch ? stdMatch[1] : '';
+
+        // Simplificar el texto del estándar
+        if (std.includes('Tol (+/- 5%):')) {
+            std = std.split('|')[1].replace('Tol (+/- 5%):', '').trim();
+        } else if (std.startsWith('Esperado: ')) {
+            std = std.replace('Esperado: ', '').trim();
+        } else if (std.startsWith('Std: ')) {
+            std = std.replace('Std: ', '').trim();
+        }
+
+        // Si no hay paréntesis, extraemos lo reportado (ej. para Apariencia u olores)
+        let reportedText = textToProcess;
+        if (textToProcess.includes(':')) {
+            reportedText = textToProcess.split(':').slice(1).join(':').trim();
+        }
+
+        // Removemos lo que esté en corchetes de lo reportado
+        reportedText = reportedText.replace(/\[([^\]]+)\]/g, '').trim();
+
+        if (!reportedText || reportedText.toLowerCase() === 'no conforme') {
+            reportedText = parameter === 'Apariencia' && ncr.apariencia_reportada ? ncr.apariencia_reportada : 'No Conforme';
+        }
+
+        return (
+            <div className="flex flex-col items-start justify-center">
+                <span className="font-bold text-[#C1272D] dark:text-red-400 max-w-[150px] line-clamp-2 block" title={textToProcess}>
+                    {reportedText}
+                </span>
+                {std && <span className="text-[10px] text-slate-500 font-mono mt-0.5 leading-tight" title={textToProcess}>[{std}]</span>}
+            </div>
+        );
     }
 
     return (
@@ -512,58 +617,54 @@ export function NCRManager() {
                         <Table>
                             <TableHeader>
                                 <TableRow className="bg-gradient-to-r from-[#0e0c9b] to-[#2a28b5] hover:from-[#0e0c9b] hover:to-[#2a28b5] border-none">
-                                    <TableHead className="w-[50px] text-white font-bold text-sm"></TableHead>
+                                    <TableHead className="text-center text-white font-bold text-sm w-[70px]">Check</TableHead>
                                     <TableHead className="text-white font-bold text-sm">Lote</TableHead>
-                                    <TableHead className="text-white font-bold text-sm">Sucursal</TableHead>
-                                    <TableHead className="text-white font-bold text-sm">Producto</TableHead>
                                     <TableHead className="text-white font-bold text-sm">Defecto</TableHead>
-                                    <TableHead className="text-white font-bold text-sm">Preparador</TableHead>
+                                    <TableHead className="text-white font-bold text-sm">Medición</TableHead>
                                     <TableHead className="text-white font-bold text-sm">Litros Inv.</TableHead>
                                     <TableHead className="text-white font-bold text-sm">Disposición</TableHead>
                                     <TableHead className="text-white font-bold text-sm">Estado</TableHead>
-                                    <TableHead className="text-center text-white font-bold text-sm">Check</TableHead>
+                                    <TableHead className="w-[50px] text-white font-bold text-sm"></TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
                                     <TableRow>
-                                        <TableCell colSpan={10} className="h-24 text-center">
+                                        <TableCell colSpan={8} className="h-24 text-center">
                                             Cargando datos...
                                         </TableCell>
                                     </TableRow>
                                 ) : ncrs.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
+                                        <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                                             No se encontraron casos de No Conformidad.
                                         </TableCell>
                                     </TableRow>
                                 ) : (
                                     ncrs.map((ncr) => (
                                         <TableRow key={ncr.id}>
-                                            <TableCell>
-                                                {profile?.role === 'admin' && (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => promptDelete(ncr.id)}
-                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                )}
+                                            <TableCell className="text-center">
+                                                <div className="relative flex items-center justify-center gap-2">
+                                                    <Link href={`/calidad/ncr/${ncr.id}`}>
+                                                        <Button variant="ghost" size="icon">
+                                                            <Eye className="h-4 w-4" />
+                                                        </Button>
+                                                    </Link>
+                                                    {ncr.message_count > 0 && (
+                                                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                                                            {ncr.message_count}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </TableCell>
                                             <TableCell className="font-medium">{ncr.batch_code}</TableCell>
-                                            <TableCell>{ncr.sucursal}</TableCell>
-                                            <TableCell className="max-w-[200px] truncate" title={ncr.product_id}>
-                                                {ncr.product_id}
-                                            </TableCell>
                                             <TableCell>
-                                                <Badge variant="outline" className="text-xs">
+                                                <Badge variant="outline" className={cn("text-xs font-semibold whitespace-nowrap", getParameterColor(ncr.defect_parameter))}>
                                                     {ncr.defect_parameter}
                                                 </Badge>
                                             </TableCell>
-                                            <TableCell className="text-muted-foreground text-sm">
-                                                {ncr.preparer_name || 'Sin asignar'}
+                                            <TableCell>
+                                                {renderMeasurement(ncr)}
                                             </TableCell>
                                             <TableCell>{ncr.liters_involved?.toLocaleString()} L</TableCell>
                                             <TableCell>
@@ -580,19 +681,17 @@ export function NCRManager() {
                                                     {ncr.status.replace('_', ' ')}
                                                 </Badge>
                                             </TableCell>
-                                            <TableCell className="text-center">
-                                                <div className="relative flex items-center justify-center gap-2">
-                                                    <Link href={`/calidad/ncr/${ncr.id}`}>
-                                                        <Button variant="ghost" size="icon">
-                                                            <Eye className="h-4 w-4" />
-                                                        </Button>
-                                                    </Link>
-                                                    {ncr.message_count > 0 && (
-                                                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
-                                                            {ncr.message_count}
-                                                        </span>
-                                                    )}
-                                                </div>
+                                            <TableCell>
+                                                {profile?.role === 'admin' && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => promptDelete(ncr.id)}
+                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                     ))

@@ -131,9 +131,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <div className={cn("flex justify-center transition-all duration-300", isSidebarCollapsed ? "p-4" : "p-4 pb-8")}>
                     <Link href={`${basePath}/`} className="w-full flex justify-center overflow-hidden">
                         {isSidebarCollapsed ? (
-                            <div className="flex items-center justify-center h-10 w-10 bg-gradient-to-br from-blue-900 to-blue-700 rounded-xl text-white font-bold text-xl shadow-lg">
-                                G
-                            </div>
+                            <img
+                                src={`${basePath}/logo-small.png`}
+                                alt="GINEZ Logo"
+                                className="h-10 w-10 object-contain"
+                            />
                         ) : (
                             <img
                                 src={`${basePath}/logo.png`}
@@ -212,8 +214,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
             {/* Mobile Header (Visible only on small screens) */}
             <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white dark:bg-zinc-900 border-b z-50 flex items-center justify-between px-4">
-                <Link href={`${basePath}/`} className="font-bold text-lg text-slate-900 dark:text-slate-100">
-                    GINEZ <span className="text-xs font-normal text-slate-500">ERP</span>
+                <Link href={`${basePath}/`} className="flex items-center">
+                    <img
+                        src={`${basePath}/logo.png`}
+                        alt="GINEZ"
+                        className="h-8 object-contain"
+                    />
                 </Link>
                 <div className="flex items-center gap-2">
                     <NotificationBell />
@@ -225,14 +231,35 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
             {/* Mobile Menu Overlay */}
             {mobileMenuOpen && (
-                <div className="md:hidden fixed inset-0 z-40 bg-white dark:bg-zinc-900 pt-20 px-4 animate-in fade-in slide-in-from-top-10 duration-200">
-                    <div className="space-y-2">
+                <div className="md:hidden fixed inset-0 z-40 bg-white dark:bg-zinc-900 pt-20 px-4 animate-in fade-in slide-in-from-top-10 duration-200 flex flex-col">
+                    <div className="space-y-2 flex-1 overflow-y-auto">
                         <MobileNavItem href="/" icon={LayoutDashboard} label="Panel Principal" />
                         <MobileNavItem href="/catalog" icon={BookOpen} label="Catálogo" />
                         <MobileNavItem href="/bitacora" icon={ClipboardList} label="Bitácora de Producción" />
                         <MobileNavItem href="/calidad" icon={Microscope} label="Control Calidad" />
                         <MobileNavItem href="/reportes" icon={BarChart3} label="Reportes y KPIs" />
                         <MobileNavItem href="/configuracion" icon={Settings} label="Configuración" />
+                    </div>
+
+                    <div className="p-4 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between pb-8">
+                        <button
+                            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                        >
+                            {mounted && theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                            <span>Tema</span>
+                        </button>
+
+                        <button
+                            onClick={async () => {
+                                setMobileMenuOpen(false);
+                                await signOut();
+                            }}
+                            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        >
+                            <LogOut className="h-5 w-5" />
+                            <span>Salir</span>
+                        </button>
                     </div>
                 </div>
             )}

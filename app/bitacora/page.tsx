@@ -841,7 +841,7 @@ function evaluateRecord(formData: any) {
             if (formData.apariencia.toUpperCase() === expected.toUpperCase()) {
                 evaluations.push({ type: "Apariencia", status: "success", text: `Conforme (${formData.apariencia})` })
             } else {
-                evaluations.push({ type: "Apariencia", status: "error", text: `No conforme (Esperado: ${expected})` })
+                evaluations.push({ type: "Apariencia", status: "error", text: `Fuera de especificación (${formData.apariencia}) [Esperado: ${expected}]` })
             }
         }
     }

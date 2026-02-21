@@ -54,7 +54,8 @@ export function DashboardBanner() {
                         <CarouselItem key={slide.id}>
                             <div className="p-1">
                                 <Card className="border-none shadow-sm overflow-hidden">
-                                    <CardContent className="flex aspect-[21/9] md:aspect-[24/7] items-center justify-center p-0 relative bg-slate-100 dark:bg-slate-800">
+                                    {/* Usamos el mismo aspect ratio para todo: 24/7 (aprox 1920x560) */}
+                                    <CardContent className="flex aspect-[24/7] items-center justify-center p-0 relative bg-slate-100 dark:bg-slate-800">
                                         <Image
                                             src={slide.image}
                                             alt={slide.alt}
