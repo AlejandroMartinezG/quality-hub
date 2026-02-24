@@ -4,7 +4,26 @@ Sistema integral de gestión de calidad y producción para GINEZ. Aplicación we
 
 ---
 
-## 📋 Tabla de Contenidos
+## � Vista General del Sistema
+
+### Inicio de Sesión
+![Login](public/capturas_proyecto_quality_hub/loggin.png)
+
+### Panel Principal
+![Panel Principal](public/capturas_proyecto_quality_hub/Panel_principal.png)
+
+| Módulo | Vista |
+|---|---|
+| Bitácora de Producción | ![Bitácora](public/capturas_proyecto_quality_hub/bitacora_produccion_calidad.png) |
+| Control de Calidad / NCR | ![Control Calidad](public/capturas_proyecto_quality_hub/control_de_calidad_ncr.png) |
+| Reportes FTQ | ![Reportes FTQ](public/capturas_proyecto_quality_hub/Reportes_FTQ.png) |
+| Reportes Comercial | ![Reportes Comercial](public/capturas_proyecto_quality_hub/Reportes_comercial.png) |
+| Banner / Capacitaciones | ![Banner](public/capturas_proyecto_quality_hub/Banner_carusel.png) |
+
+---
+
+
+## �📋 Tabla de Contenidos
 
 - [Características Principales](#-características-principales)
 - [Arquitectura del Sistema](#-arquitectura-del-sistema)
@@ -95,9 +114,12 @@ Sistema integral de gestión de calidad y producción para GINEZ. Aplicación we
 ### 1. Panel Principal (Dashboard)
 **Ruta**: `/`
 
+![Panel Principal](public/capturas_proyecto_quality_hub/Panel_principal.png)
+
 **Características**:
 - Resumen ejecutivo de producción
 - Accesos rápidos a módulos principales
+- Banner dinámico con anuncios y capacitaciones
 - Indicadores de estado del sistema
 
 ---
@@ -121,6 +143,8 @@ Sistema integral de gestión de calidad y producción para GINEZ. Aplicación we
 ### 3. Bitácora de Producción
 **Ruta**: `/bitacora`
 
+![Bitácora de Producción](public/capturas_proyecto_quality_hub/bitacora_produccion_calidad.png)
+
 **Características**:
 - **Wizard de Registro**: Interfaz guiada en 4 pasos
   1. Información del lote
@@ -140,6 +164,8 @@ Sistema integral de gestión de calidad y producción para GINEZ. Aplicación we
 
 ### 4. Control de Calidad
 **Ruta**: `/calidad`
+
+![Control de Calidad y NCR](public/capturas_proyecto_quality_hub/control_de_calidad_ncr.png)
 
 **Características**:
 - **Historial de Mediciones**: Últimos 50 registros con estado visual
@@ -178,6 +204,10 @@ else → NO CONFORME
 
 ### 5. Reportes y Análisis
 **Ruta**: `/reportes`
+
+| Calidad FTQ | Comercial |
+|---|---|
+| ![Reportes FTQ](public/capturas_proyecto_quality_hub/Reportes_FTQ.png) | ![Reportes Comercial](public/capturas_proyecto_quality_hub/Reportes_comercial.png) |
 
 **Características**:
 
