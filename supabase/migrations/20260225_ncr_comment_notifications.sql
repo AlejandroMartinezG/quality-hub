@@ -33,18 +33,15 @@ BEGIN
          SELECT id FROM profiles 
          WHERE role IN ('admin', 'administrador', 'coordinador', 'gerente_calidad', 'director_operaciones')
       LOOP
-          -- Don't notify the author if they are an admin
-          IF target_user.id != NEW.author_user_id THEN
-             INSERT INTO notifications (user_id, type, title, message, link, metadata)
-             VALUES (
-               target_user.id,
-               'NCR_CREATED',
-               '🚨 Alerta de Calidad: ' || NEW.sucursal,
-               'Nuevo NCR generado para ' || NEW.product_id || ' Lote ' || NEW.batch_code || '. Defecto: ' || NEW.defect_parameter,
-               '/calidad/ncr/' || NEW.id,
-               jsonb_build_object('ncr_id', NEW.id, 'lote', NEW.batch_code, 'sucursal', NEW.sucursal)
-             );
-          END IF;
+          INSERT INTO notifications (user_id, type, title, message, link, metadata)
+          VALUES (
+            target_user.id,
+            'NCR_CREATED',
+            '🚨 Alerta de Calidad: ' || NEW.sucursal,
+            'Nuevo NCR generado para ' || NEW.product_id || ' Lote ' || NEW.batch_code || '. Defecto: ' || NEW.defect_parameter,
+            '/calidad/ncr/' || NEW.id,
+            jsonb_build_object('ncr_id', NEW.id, 'lote', NEW.batch_code, 'sucursal', NEW.sucursal)
+          );
       END LOOP;
 
   END IF;

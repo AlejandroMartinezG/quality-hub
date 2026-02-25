@@ -94,7 +94,7 @@ export default function BitacoraPage() {
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target
 
-        // pH validation: only integers 0-14
+        // pH validation: allow numbers and a single decimal point
         if (name === "ph") {
             // Allow empty string for clearing
             if (value === "") {
@@ -102,10 +102,13 @@ export default function BitacoraPage() {
                 return
             }
 
-            const numValue = parseInt(value)
-            // Only accept integers between 0-14
-            if (!isNaN(numValue) && numValue >= 0 && numValue <= 14 && value === numValue.toString()) {
-                setFormData(prev => ({ ...prev, [name]: value }))
+            // Regex for a valid partial decimal number (e.g., "7", "7.", "7.5")
+            // Allows numbers from 0 to 14
+            if (/^\d*\.?\d*$/.test(value)) {
+                const num = parseFloat(value)
+                if (value === "." || (!isNaN(num) && num >= 0 && num <= 14)) {
+                    setFormData(prev => ({ ...prev, [name]: value }))
+                }
             }
             return
         }
@@ -210,28 +213,41 @@ export default function BitacoraPage() {
                 estado_calidad = 'RETENER'
             }
 
+            // Numeric helper to avoid NaN in DB
+            const parseNum = (val: any) => {
+                const n = parseFloat(val)
+                return isNaN(n) ? null : n
+            }
+
+            // Prepare record for insertion
+            const recordToInsert = {
+                sucursal: formData.sucursal,
+                nombre_preparador: formData.nombre_preparador,
+                fecha_fabricacion: formData.fecha_fabricacion,
+                codigo_producto: formData.codigo_producto,
+                lote_producto: lotNumber,
+                familia_producto: selectedCategory,
+                tamano_lote: parseNum(formData.tamano_lote) || 0,
+                ph: parseNum(formData.ph),
+                solidos_medicion_1: parseNum(formData.solidos_medicion_1),
+                temp_med1: parseNum(formData.temp_med1),
+                solidos_medicion_2: parseNum(formData.solidos_medicion_2),
+                temp_med2: parseNum(formData.temp_med2),
+                apariencia: formData.apariencia,
+                color: formData.color,
+                aroma: formData.aroma,
+                user_id: user.id,
+                estado_calidad: estado_calidad,
+                observaciones: formData.observaciones,
+                observaciones_calidad: evaluations
+                    .filter(e => e.status !== 'success')
+                    .map(e => `${e.type}: ${e.text}`)
+                    .join('. ')
+            }
+
             const { error: insertError } = await supabase
                 .from('bitacora_produccion_calidad')
-                .insert([{
-                    ...sanitizeFormData(formData, ['observaciones']),
-                    user_id: user.id,
-                    lote_producto: lotNumber,
-                    familia_producto: selectedCategory,
-                    tamano_lote: parseFloat(formData.tamano_lote) || 0,
-                    ph: parseFloat(formData.ph) || null,
-                    solidos_medicion_1: parseFloat(formData.solidos_medicion_1) || null,
-                    temp_med1: parseFloat(formData.temp_med1) || null,
-                    solidos_medicion_2: parseFloat(formData.solidos_medicion_2) || null,
-                    temp_med2: parseFloat(formData.temp_med2) || null,
-                    viscosidad_seg: null,
-                    temperatura: null,
-                    contaminacion_microbiologica: "SIN PRESENCIA",
-                    estado_calidad: estado_calidad, // Insert status
-                    observaciones_calidad: evaluations
-                        .filter(e => e.status !== 'success')
-                        .map(e => `${e.type}: ${e.text}`)
-                        .join('. ') // Join multiple defects
-                }])
+                .insert([recordToInsert])
 
             if (insertError) throw insertError
 
@@ -274,9 +290,9 @@ export default function BitacoraPage() {
                 observaciones: ""
             }))
         } catch (error: any) {
-            console.error(error)
+            console.error("Submission error:", error)
             toast.error("Error al guardar el registro", {
-                description: "Ocurrió un problema al guardar. Intenta de nuevo."
+                description: error.message || "Ocurrió un problema al guardar. Intenta de nuevo."
             })
         } finally {
             setLoading(false)

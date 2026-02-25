@@ -139,6 +139,7 @@ export const PRODUCT_STANDARDS: Record<string, { min?: number, max?: number }> =
     "COLNEG": { min: 9.2, max: 10.5 },
     "GIRIEL": { min: 9.0, max: 10.5 },
     "GIRIEL2": { min: 9.0, max: 10.5 },
+    "GIRDOW": { min: 9.0, max: 10.5 },
     "PERGIN": { min: 9.0, max: 10.5 },
     "VIVGIN": { min: 8.5, max: 10.5 },
     "GIRIELOXI": { min: 8.5, max: 10.5 },
@@ -222,7 +223,7 @@ export const PH_STANDARDS: Record<string, { min: number, max: number }> = {
     "TRALIM": { min: 7, max: 9 }, "TRAMAN": { min: 7, max: 9 }, "TRANAR": { min: 7, max: 9 }, "TRATOR": { min: 7, max: 9 }, "XPUMAX": { min: 7, max: 9 },
     "CLOGEL": { min: 7, max: 9 }, "QUIPAS": { min: 7, max: 9 }, "DETNEU": { min: 7, max: 8 }, "DETAMO": { min: 7, max: 9 }, "DESBRA": { min: 7, max: 9 },
     "TEFESP": { min: 7, max: 8 }, "SHAMAS": { min: 7, max: 8 },
-    "COLGIN": { min: 7, max: 9 }, "COLBLA": { min: 7, max: 9 }, "COLNEG": { min: 7, max: 9 }, "GIRIEL": { min: 7, max: 9 }, "GIRIEL2": { min: 7, max: 9 },
+    "COLGIN": { min: 7, max: 9 }, "COLBLA": { min: 7, max: 9 }, "COLNEG": { min: 7, max: 9 }, "GIRIEL": { min: 7, max: 9 }, "GIRIEL2": { min: 7, max: 9 }, "GIRDOW": { min: 7, max: 9 },
     "PERGIN": { min: 7, max: 9 }, "VIVGIN": { min: 7, max: 9 }, "GIRIELOXI": { min: 7, max: 9 }, "SUNSET": { min: 7, max: 9 }, "SHAGIN": { min: 7, max: 9 },
     "ZOTROS": { min: 7, max: 9 }, "ZOTBLA": { min: 7, max: 9 }, "ZOTAZU": { min: 7, max: 9 }, "AQUA": { min: 7, max: 9 }, "DETDON": { min: 7, max: 9 },
     "PERLA": { min: 7, max: 9 }, "ENCANTO": { min: 7, max: 9 }, "VELGIN": { min: 7, max: 9 },
@@ -369,11 +370,7 @@ export const APPEARANCE_STANDARDS: Record<string, string> = {
 
 
     // === LAVANDERÍA: DETERGENTES LÍQUIDOS PARA ROPA ===
-    "COLGIN": "CRISTALINO",
-    "COLBLA": "CRISTALINO",
-    "COLNEG": "CRISTALINO",
-    "GIRIEL": "CRISTALINO",
-    "GIRIEL2": "CRISTALINO",
+    "COLGIN": "CRISTALINO", "COLBLA": "CRISTALINO", "COLNEG": "CRISTALINO", "GIRIEL": "CRISTALINO", "GIRIEL2": "CRISTALINO", "GIRDOW": "CRISTALINO",
     "PERGIN": "CRISTALINO",
     "VIVGIN": "CRISTALINO",
     "GIRIELOXI": "APERLADO",
@@ -491,7 +488,7 @@ export const PARAMETER_APPLICABILITY: Record<string, { solidos: boolean, ph: boo
     "LIMLIM": { solidos: true, ph: false }, "LIMVIO": { solidos: true, ph: false }, "LIMMAR": { solidos: true, ph: false }, "LIMCAS": { solidos: true, ph: false }, "LIMBRI": { solidos: true, ph: false }, "LIMCAN": { solidos: true, ph: false }, "LIMCHI": { solidos: true, ph: false }, "LIMBOS": { solidos: true, ph: false }, "LIMLAV": { solidos: true, ph: false }, "LIMPERM": { solidos: true, ph: false }, "LIMMEN": { solidos: true, ph: false }, "LIMSTE": { solidos: true, ph: false }, "LIMFRU": { solidos: true, ph: false }, "LIMPOET": { solidos: true, ph: false }, "LIMMANC": { solidos: true, ph: false }, "LIMLIS": { solidos: true, ph: false }, "LIMALA": { solidos: true, ph: false }, "PINO": { solidos: true, ph: false }, "PINBLA": { solidos: false, ph: false }, "PINVER": { solidos: false, ph: false },
     "TRALIM": { solidos: true, ph: true }, "TRAMAN": { solidos: true, ph: true }, "TRANAR": { solidos: true, ph: true }, "TRATOR": { solidos: true, ph: true }, "TRABLU": { solidos: true, ph: true }, "XPUMAX": { solidos: true, ph: true },
     "CLOGEL": { solidos: true, ph: true }, "CLO": { solidos: true, ph: false }, "QUIPAS": { solidos: false, ph: false }, "DETNEU": { solidos: true, ph: true }, "INS": { solidos: true, ph: false }, "DETER": { solidos: true, ph: true }, "LIMVID": { solidos: true, ph: false }, "DETAMO": { solidos: true, ph: true }, "TEFLIQ": { solidos: true, ph: false }, "TEFESP": { solidos: true, ph: true }, "SHAMAS": { solidos: true, ph: true }, "DESBRA": { solidos: true, ph: true }, "ACEROJ": { solidos: false, ph: false }, "LIMREP": { solidos: true, ph: false }, "MOP": { solidos: false, ph: false }, "QUILIQ": { solidos: false, ph: false }, "QUISAR": { solidos: false, ph: false }, "SARRIGEL": { solidos: false, ph: false },
-    "COLGIN": { solidos: true, ph: true }, "COLBLA": { solidos: true, ph: true }, "COLNEG": { solidos: true, ph: true }, "GIRIEL": { solidos: true, ph: true }, "GIRIEL2": { solidos: true, ph: true }, "PERGIN": { solidos: true, ph: true }, "VIVGIN": { solidos: true, ph: true }, "GIRIELOXI": { solidos: true, ph: true }, "SUNSET": { solidos: true, ph: true }, "SHAGIN": { solidos: true, ph: true }, "ZOTROS": { solidos: true, ph: true }, "ZOTBLA": { solidos: true, ph: true }, "ZOTAZU": { solidos: true, ph: true }, "AQUA": { solidos: true, ph: true }, "DETDON": { solidos: true, ph: true }, "PERLA": { solidos: true, ph: true }, "ENCANTO": { solidos: true, ph: true }, "VELGIN": { solidos: true, ph: true },
+    "COLGIN": { solidos: true, ph: true }, "COLBLA": { solidos: true, ph: true }, "COLNEG": { solidos: true, ph: true }, "GIRIEL": { solidos: true, ph: true }, "GIRIEL2": { solidos: true, ph: true }, "GIRDOW": { solidos: true, ph: true }, "PERGIN": { solidos: true, ph: true }, "VIVGIN": { solidos: true, ph: true }, "GIRIELOXI": { solidos: true, ph: true }, "SUNSET": { solidos: true, ph: true }, "SHAGIN": { solidos: true, ph: true }, "ZOTROS": { solidos: true, ph: true }, "ZOTBLA": { solidos: true, ph: true }, "ZOTAZU": { solidos: true, ph: true }, "AQUA": { solidos: true, ph: true }, "DETDON": { solidos: true, ph: true }, "PERLA": { solidos: true, ph: true }, "ENCANTO": { solidos: true, ph: true }, "VELGIN": { solidos: true, ph: true },
     "SUASUE": { solidos: true, ph: false }, "SUALIB": { solidos: true, ph: false }, "SUAMAG": { solidos: true, ph: false }, "SUAINT": { solidos: true, ph: false }, "SUANAT": { solidos: true, ph: false }, "SUALUN": { solidos: true, ph: false }, "SUABLU": { solidos: true, ph: false }, "SUAPAS": { solidos: true, ph: false }, "SUASEN": { solidos: true, ph: false }, "SUAPRI": { solidos: true, ph: false }, "SUABAB": { solidos: true, ph: false }, "SUADEL": { solidos: true, ph: false }, "SUANEU": { solidos: true, ph: false },
     "DESMUG": { solidos: true, ph: true }, "DETPIN": { solidos: true, ph: true }, "GINESH": { solidos: true, ph: true }, "PLAFAC": { solidos: false, ph: false }, "PLAPLUS": { solidos: false, ph: false },
     "SHACER": { solidos: true, ph: true }, "SHACLA": { solidos: true, ph: true }, "ALTBRI": { solidos: true, ph: false }, "BRILIQ": { solidos: true, ph: false }, "BRIGEL": { solidos: true, ph: true }, "GINLIQ": { solidos: true, ph: false }, "GINESP": { solidos: true, ph: true }, "DESMOT": { solidos: true, ph: false }, "CERLIQ": { solidos: true, ph: false }, "CREMEC": { solidos: true, ph: false }, "DESIND": { solidos: true, ph: false },

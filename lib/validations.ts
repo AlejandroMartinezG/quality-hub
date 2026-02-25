@@ -74,7 +74,7 @@ export const BitacoraSchema = z.object({
         .string()
         .min(1, "El código del producto es obligatorio")
         .max(20, "Código de producto inválido")
-        .regex(/^[A-Z0-9]+$/, "El código solo puede contener letras mayúsculas y números"),
+        .regex(/^[A-Z0-9-]+$/, "El código solo puede contener letras mayúsculas, números y guiones"),
     tamano_lote: z
         .string()
         .min(1, "El tamaño de lote es obligatorio")
@@ -84,10 +84,10 @@ export const BitacoraSchema = z.object({
         .refine(
             (val) => {
                 if (val === "") return true // Optional when empty
-                const num = parseInt(val)
-                return !isNaN(num) && num >= 0 && num <= 14 && val === num.toString()
+                const num = parseFloat(val)
+                return !isNaN(num) && num >= 0 && num <= 14
             },
-            "El pH debe ser un entero entre 0 y 14"
+            "El pH debe estar entre 0 y 14"
         )
         .default(""),
     solidos_medicion_1: optionalSolidsString,
