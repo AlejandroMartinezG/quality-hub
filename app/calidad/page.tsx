@@ -107,7 +107,7 @@ export default function CalidadPage() {
         if (user) {
             fetchRecords()
         }
-    }, [user?.id, profile?.is_admin])
+    }, [user?.id, profile?.is_admin, profile?.role])
 
     const fetchRecords = async () => {
         if (!user) return
@@ -117,9 +117,16 @@ export default function CalidadPage() {
             let query = supabase
                 .from('bitacora_produccion_calidad')
                 .select('*')
-                .order('created_at', { ascending: false })
 
-            const { data, error } = await query.limit(100)
+            // Filter by user if role is preparador
+            if (profile?.role === 'preparador') {
+                query = query.eq('user_id', user.id)
+            }
+
+            const { data, error } = await query
+                .order('created_at', { ascending: false })
+                .limit(100)
+
             if (error) throw error
 
             setRecords(data || [])
