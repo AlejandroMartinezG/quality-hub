@@ -80,7 +80,6 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
 
     useEffect(() => {
         fetchNCRDetail()
-        markNotificationsAsRead()
 
         const channel = supabase
             .channel(`ncr_detail_${params.id}`)
@@ -95,6 +94,7 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
                     toast.info('💬 Nuevo comentario recibido');
                 }
                 fetchNCRDetail() // Refresh on new comment
+                markNotificationsAsRead()
             })
             .on('postgres_changes', {
                 event: 'UPDATE',
@@ -103,6 +103,7 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
                 filter: `ncr_id=eq.${params.id}`
             }, () => {
                 fetchNCRDetail()
+                markNotificationsAsRead()
             })
             .on('postgres_changes', {
                 event: '*',
@@ -111,6 +112,7 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
                 filter: `ncr_id=eq.${params.id}`
             }, () => {
                 fetchNCRDetail() // Refresh on disposition
+                markNotificationsAsRead()
             })
             .subscribe()
 
@@ -123,23 +125,32 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
         }
     }, [history])
 
+    useEffect(() => {
+        if (profile) {
+            markNotificationsAsRead()
+        }
+    }, [profile, params.id])
+
     async function markNotificationsAsRead() {
         if (!profile) return
         try {
-            // Find unread notifications for this NCR
+            // Find ALL unread notifications for this user
             const { data: unread } = await supabase
                 .from('notifications')
-                .select('id')
+                .select('id, metadata')
                 .eq('user_id', profile.id)
                 .eq('read', false)
-                .contains('metadata', { ncr_id: params.id })
 
-            if (unread && unread.length > 0) {
-                const ids = unread.map(n => n.id)
+            // Filter for THIS ncr_id (handles potential string/uuid variations in metadata)
+            const idsToRead = unread
+                ?.filter(n => n.metadata?.ncr_id?.toString() === params.id.toString())
+                .map(n => n.id) || []
+
+            if (idsToRead.length > 0) {
                 await supabase
                     .from('notifications')
                     .update({ read: true })
-                    .in('id', ids)
+                    .in('id', idsToRead)
             }
         } catch (error) {
             console.error('Error marking notifications as read:', error)

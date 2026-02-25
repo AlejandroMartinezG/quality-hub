@@ -297,7 +297,6 @@ export function NCRManager() {
                         .select('metadata')
                         .eq('user_id', profile.id)
                         .eq('read', false)
-                        .eq('type', 'COMENTARIO_NUEVO')
                 ])
 
                 const dispositions = dispResult.data
@@ -734,7 +733,7 @@ export function NCRManager() {
                                                             <Eye className="h-4 w-4" />
                                                         </Button>
                                                     </Link>
-                                                    {ncr.message_count > 0 && ncr.last_message_author_id !== profile?.id && (
+                                                    {ncr.message_count > 0 && (
                                                         <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm border border-white dark:border-slate-800">
                                                             {ncr.message_count}
                                                         </span>
@@ -813,7 +812,7 @@ export function NCRManager() {
                                                 <Link href={`/calidad/ncr/${ncr.id}`}>
                                                     <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl relative">
                                                         <Eye className="h-4 w-4 text-primary" />
-                                                        {ncr.message_count > 0 && ncr.last_message_author_id !== profile?.id && (
+                                                        {ncr.message_count > 0 && (
                                                             <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm border border-white dark:border-slate-800">
                                                                 {ncr.message_count}
                                                             </span>
