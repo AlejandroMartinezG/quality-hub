@@ -96,8 +96,16 @@ export function NCRManager() {
     // Default view logic moved to parent
     // Fetch filter options if Admin/Quality
     useEffect(() => {
-        if (profile?.role === 'admin' || profile?.role === 'gerente_calidad' || profile?.role === 'coordinador') {
+        const role = profile?.role?.toLowerCase();
+        const isGlobalRole = role === 'admin' || role === 'gerente_calidad' || role === 'coordinador';
+
+        if (isGlobalRole) {
             fetchFilterOptions()
+        }
+
+        // Lock sucursal if branch manager
+        if ((role === 'gerente_sucursal' || role === 'gerente') && profile?.sucursal) {
+            setSucursalFilter(profile.sucursal)
         }
     }, [profile])
 
@@ -213,7 +221,15 @@ export function NCRManager() {
                 let query = supabase.from('quality_ncr').select('*', { count: 'exact', head: true })
 
                 if (status) query = query.eq('status', status)
-                if (sucursalFilter !== 'ALL') query = query.eq('sucursal', sucursalFilter)
+
+                // Enforce sucursal filter
+                const role = profile?.role?.toLowerCase();
+                if ((role === 'gerente_sucursal' || role === 'gerente') && profile?.sucursal) {
+                    query = query.eq('sucursal', profile.sucursal)
+                } else if (sucursalFilter !== 'ALL') {
+                    query = query.eq('sucursal', sucursalFilter)
+                }
+
                 if (productFilter !== 'ALL') query = query.eq('product_id', productFilter)
 
                 // Filter by preparer if applicable
@@ -250,10 +266,18 @@ export function NCRManager() {
         setLoading(true)
 
         try {
+            let effectiveSucursal = sucursalFilter === 'ALL' ? null : sucursalFilter;
+
+            // Security: Enforce branch lock for managers
+            const role = profile?.role?.toLowerCase();
+            if ((role === 'gerente_sucursal' || role === 'gerente') && profile?.sucursal) {
+                effectiveSucursal = profile.sucursal;
+            }
+
             // Call RPC
             const { data, error } = await supabase.rpc('rpc_ncr_list', {
                 p_status: statusFilter === 'ALL' ? null : statusFilter,
-                p_sucursal: sucursalFilter === 'ALL' ? null : sucursalFilter,
+                p_sucursal: effectiveSucursal,
                 p_product: productFilter === 'ALL' ? null : productFilter,
                 p_batch: searchQuery || null,
                 p_preparer_id: profile.role === 'preparador' ? profile.id : null,
@@ -633,40 +657,53 @@ export function NCRManager() {
 
 
 
-                        {/* Admin Filters: Sucursal & Producto */}
-                        {(profile?.role === 'admin' || profile?.role === 'gerente_calidad' || profile?.role === 'coordinador') && (
-                            <>
-                                <Select value={sucursalFilter} onValueChange={setSucursalFilter}>
-                                    <SelectTrigger className="w-full md:w-[180px]">
-                                        <div className="flex items-center gap-2 truncate">
-                                            <span className="text-muted-foreground">Sucursal:</span>
-                                            <span className="truncate">{sucursalFilter === 'ALL' ? 'Todas' : sucursalFilter}</span>
-                                        </div>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="ALL">Todas las sucursales</SelectItem>
-                                        {sucursalOptions.map(option => (
-                                            <SelectItem key={option} value={option}>{option}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                        {/* Admin/Manager Filters: Sucursal & Producto */}
+                        {(() => {
+                            const role = profile?.role?.toLowerCase();
+                            const showSucursalFilter = role === 'admin' || role === 'gerente_calidad' || role === 'coordinador';
+                            const showProductFilter = showSucursalFilter || role === 'gerente_sucursal' || role === 'gerente';
 
-                                <Select value={productFilter} onValueChange={setProductFilter}>
-                                    <SelectTrigger className="w-full md:w-[220px]">
-                                        <div className="flex items-center gap-2 truncate">
-                                            <span className="text-muted-foreground">Prod:</span>
-                                            <span className="truncate">{productFilter === 'ALL' ? 'Todos' : productFilter}</span>
-                                        </div>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="ALL">Todos los productos</SelectItem>
-                                        {productOptions.map(option => (
-                                            <SelectItem key={option} value={option}>{option}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </>
-                        )}
+                            if (!showProductFilter) return null;
+
+                            return (
+                                <>
+                                    {showSucursalFilter && (
+                                        <Select
+                                            value={sucursalFilter}
+                                            onValueChange={setSucursalFilter}
+                                        >
+                                            <SelectTrigger className="w-full md:w-[180px]">
+                                                <div className="flex items-center gap-2 truncate">
+                                                    <span className="text-muted-foreground">Sucursal:</span>
+                                                    <span className="truncate">{sucursalFilter === 'ALL' ? 'Todas' : sucursalFilter}</span>
+                                                </div>
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="ALL">Todas las sucursales</SelectItem>
+                                                {sucursalOptions.map(option => (
+                                                    <SelectItem key={option} value={option}>{option}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+
+                                    <Select value={productFilter} onValueChange={setProductFilter}>
+                                        <SelectTrigger className="w-full md:w-[220px]">
+                                            <div className="flex items-center gap-2 truncate">
+                                                <span className="text-muted-foreground">Prod:</span>
+                                                <span className="truncate">{productFilter === 'ALL' ? 'Todos' : productFilter}</span>
+                                            </div>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="ALL">Todos los productos</SelectItem>
+                                            {productOptions.map(option => (
+                                                <SelectItem key={option} value={option}>{option}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </>
+                            );
+                        })()}
                     </div>
                     <Button variant="outline" size="icon" onClick={fetchNCRs} title="Actualizar">
                         <RefreshCcw className="h-4 w-4" />

@@ -65,7 +65,10 @@ export default function ReportesPage() {
     const [records, setRecords] = useState<EnrichedRecord[]>([])
     const [loading, setLoading] = useState(true)
 
-    const isPreparador = profile?.role === 'preparador'
+    const role = profile?.role?.toLowerCase()
+    const isPreparador = role === 'preparador'
+    const isGerente = role === 'gerente_sucursal' || role === 'gerente'
+    const isGlobalRole = role === 'admin' || role === 'gerente_calidad' || role === 'coordinador'
 
     // Filters
     const [selectedSucursal, setSelectedSucursal] = useState("all")
@@ -93,6 +96,13 @@ export default function ReportesPage() {
         }
     }, [user, profile?.role, authLoading])
 
+    // Enforce sucursal filter for branch managers
+    useEffect(() => {
+        if (isGerente && profile?.sucursal) {
+            setSelectedSucursal(profile.sucursal)
+        }
+    }, [isGerente, profile?.sucursal])
+
     const fetchData = async () => {
         setLoading(true)
         console.log("ReportesPage: fetchData started")
@@ -103,6 +113,8 @@ export default function ReportesPage() {
 
             if (isPreparador) {
                 query = query.eq('user_id', user.id)
+            } else if (isGerente && profile?.sucursal) {
+                query = query.eq('sucursal', profile.sucursal)
             }
 
             const { data, error } = await query
@@ -661,7 +673,7 @@ export default function ReportesPage() {
                     </p>
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                    {!isPreparador && (
+                    {!isPreparador && !isGerente && (
                         <Select value={selectedSucursal} onValueChange={setSelectedSucursal}>
                             <SelectTrigger className="w-[180px]">
                                 <SelectValue placeholder="Todas las sucursales" />
@@ -738,9 +750,9 @@ export default function ReportesPage() {
                     <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
                 </div>
             ) : (
-                <Tabs defaultValue={isPreparador ? "calidad" : "comercial"} className="space-y-6">
-                    <TabsList className={`grid w-full ${isPreparador ? 'grid-cols-2 max-w-[400px]' : 'grid-cols-3 max-w-[600px]'}`}>
-                        {!isPreparador && <TabsTrigger value="comercial">Análisis Comercial</TabsTrigger>}
+                <Tabs defaultValue={(isPreparador || isGerente) ? "calidad" : "comercial"} className="space-y-6">
+                    <TabsList className={`grid w-full ${(isPreparador || isGerente) ? 'grid-cols-2 max-w-[400px]' : 'grid-cols-3 max-w-[600px]'}`}>
+                        {(!isPreparador && !isGerente) && <TabsTrigger value="comercial">Análisis Comercial</TabsTrigger>}
                         <TabsTrigger value="calidad">First Time Quality</TabsTrigger>
                         <TabsTrigger value="spy">SPY (Yield)</TabsTrigger>
                     </TabsList>
@@ -945,21 +957,23 @@ export default function ReportesPage() {
                                         <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Filtros Rápidos:</span>
                                     </div>
 
-                                    {/* Sucursal Filter */}
-                                    <div className="flex flex-col gap-0.5">
-                                        <Select value={selectedSucursal} onValueChange={setSelectedSucursal}>
-                                            <SelectTrigger className="h-9 w-[160px] bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700">
-                                                <SelectValue placeholder="Sucursal" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="all">Todas</SelectItem>
-                                                {SUCURSALES.map((suc: string) => (
-                                                    <SelectItem key={suc} value={suc}>{suc}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 px-1">Ubicación</span>
-                                    </div>
+                                    {/* Sucursal Filter - Hidden for branch roles */}
+                                    {!isGerente && !isPreparador && (
+                                        <div className="flex flex-col gap-0.5">
+                                            <Select value={selectedSucursal} onValueChange={setSelectedSucursal}>
+                                                <SelectTrigger className="h-9 w-[160px] bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700">
+                                                    <SelectValue placeholder="Sucursal" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="all">Todas</SelectItem>
+                                                    {SUCURSALES.map((suc: string) => (
+                                                        <SelectItem key={suc} value={suc}>{suc}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <span className="text-[10px] text-slate-400 dark:text-slate-500 px-1">Ubicación</span>
+                                        </div>
+                                    )}
 
                                     {/* Category Filter */}
                                     <div className="flex flex-col gap-0.5">
@@ -1175,408 +1189,410 @@ export default function ReportesPage() {
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="comercial" className="space-y-6 animate-in fade-in-50 duration-500">
-                        {/* Commercial KPIs */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            {/* KPI 1: Volumen Total + Unidades (Merged) - Enhanced */}
-                            <Card className="border-none shadow-md bg-gradient-to-br from-blue-900 to-blue-950 text-white dark:from-blue-950 dark:to-slate-900 md:col-span-2 rounded-[2rem]">
-                                <CardContent className="p-6 relative overflow-hidden">
-                                    <div className="relative z-10">
-                                        {/* Volumen Total - Top Section */}
-                                        <div className="mb-6">
-                                            <p className="text-blue-200 font-medium mb-2 flex items-center gap-2">
-                                                <Factory className="h-5 w-5" />
-                                                Volumen Total
-                                            </p>
-                                            <div className="text-5xl font-extrabold tracking-tight">
-                                                {kpis.totalVolume.toLocaleString()}
-                                                <span className="text-2xl font-normal opacity-80 ml-2">L</span>
-                                            </div>
-                                            <p className="text-sm text-blue-200 mt-2 opacity-80">
-                                                Producción acumulada
-                                            </p>
-                                        </div>
-
-                                        {/* Divider */}
-                                        <div className="border-t border-blue-700 opacity-30 my-4"></div>
-
-                                        {/* Unidades (Bases) - Bottom Section */}
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <p className="text-blue-300 text-sm font-semibold mb-2 flex items-center gap-1.5">
-                                                    <Package className="h-4 w-4" />
-                                                    Piezas (Bases)
+                    {(!isPreparador && !isGerente) && (
+                        <TabsContent value="comercial" className="space-y-6 animate-in fade-in-50 duration-500">
+                            {/* Commercial KPIs */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                {/* KPI 1: Volumen Total + Unidades (Merged) - Enhanced */}
+                                <Card className="border-none shadow-md bg-gradient-to-br from-blue-900 to-blue-950 text-white dark:from-blue-950 dark:to-slate-900 md:col-span-2 rounded-[2rem]">
+                                    <CardContent className="p-6 relative overflow-hidden">
+                                        <div className="relative z-10">
+                                            {/* Volumen Total - Top Section */}
+                                            <div className="mb-6">
+                                                <p className="text-blue-200 font-medium mb-2 flex items-center gap-2">
+                                                    <Factory className="h-5 w-5" />
+                                                    Volumen Total
                                                 </p>
-                                                <div className="text-3xl font-bold">
-                                                    {kpis.totalPieces.toLocaleString()}
-                                                    <span className="text-base font-normal opacity-70 ml-1">pzas</span>
+                                                <div className="text-5xl font-extrabold tracking-tight">
+                                                    {kpis.totalVolume.toLocaleString()}
+                                                    <span className="text-2xl font-normal opacity-80 ml-2">L</span>
                                                 </div>
-                                            </div>
-                                            <div>
-                                                <p className="text-blue-300 text-sm font-semibold mb-2 flex items-center gap-1.5">
-                                                    <Activity className="h-4 w-4" />
-                                                    Rendimiento PT
-                                                </p>
-                                                <div className="text-3xl font-bold">
-                                                    {(kpis.totalPieces * 20).toLocaleString()}
-                                                    <span className="text-base font-normal opacity-70 ml-1">L</span>
-                                                </div>
-                                                <p className="text-xs text-blue-300 opacity-60 mt-1">
-                                                    (20L por pieza)
+                                                <p className="text-sm text-blue-200 mt-2 opacity-80">
+                                                    Producción acumulada
                                                 </p>
                                             </div>
-                                        </div>
-                                    </div>
-                                    <Factory className="absolute -right-8 -bottom-8 h-40 w-40 text-white opacity-10 rotate-12" />
-                                </CardContent>
-                            </Card>
 
-                            {/* KPI 3: Categoría Leader + Top 3 - Enhanced */}
-                            <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-red-50 to-red-100 dark:from-slate-900 dark:to-slate-800 relative overflow-visible rounded-[2rem]">
-                                <CardContent className="p-8 h-full flex flex-col justify-between">
-                                    <div>
-                                        <div className="flex justify-between items-start mb-6">
-                                            <div className="flex-1 pr-12">
-                                                <h3 className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wider mb-2">Categoría Más Producida</h3>
-                                                <div className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1 leading-tight">
-                                                    {commercialData.top3Categories.length > 0 ? commercialData.top3Categories[0].name : '-'}
-                                                </div>
-                                                <p className="text-lg text-red-700 dark:text-red-400 font-bold mt-3">
-                                                    {commercialData.top3Categories.length > 0 ? `${commercialData.top3Categories[0].value.toLocaleString()} ${commercialData.top3Categories[0].type}` : ''}
-                                                </p>
-                                            </div>
-                                            <div className="absolute -top-3 -right-3 p-4 bg-red-100 dark:bg-red-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
-                                                <TrendingUp className="h-10 w-10 text-red-700 dark:text-red-400" />
-                                            </div>
-                                        </div>
+                                            {/* Divider */}
+                                            <div className="border-t border-blue-700 opacity-30 my-4"></div>
 
-                                        {/* Top 3 Small List */}
-                                        <div className="space-y-3 pt-4 border-t-2 border-red-200 dark:border-slate-700">
-                                            {commercialData.top3Categories.slice(1).map((cat, i) => (
-                                                <div key={i} className="flex justify-between items-center">
-                                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate max-w-[140px]">{cat.name}</span>
-                                                    <span className="text-sm font-bold font-mono text-red-700 dark:text-red-400">{cat.value.toLocaleString()}</span>
+                                            {/* Unidades (Bases) - Bottom Section */}
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <p className="text-blue-300 text-sm font-semibold mb-2 flex items-center gap-1.5">
+                                                        <Package className="h-4 w-4" />
+                                                        Piezas (Bases)
+                                                    </p>
+                                                    <div className="text-3xl font-bold">
+                                                        {kpis.totalPieces.toLocaleString()}
+                                                        <span className="text-base font-normal opacity-70 ml-1">pzas</span>
+                                                    </div>
                                                 </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            {/* KPI 4: Sucursal Leader + Top 3 - Enhanced */}
-                            <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-slate-900 dark:to-slate-800 relative overflow-visible rounded-[2rem]">
-                                <CardContent className="p-8 h-full flex flex-col justify-between">
-                                    <div>
-                                        <div className="flex justify-between items-start mb-6">
-                                            <div className="flex-1 pr-12">
-                                                <h3 className="text-xs font-semibold text-blue-900 dark:text-blue-400 uppercase tracking-wider mb-2">Sucursal Líder</h3>
-                                                <div className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1 leading-tight">
-                                                    {commercialData.top3Sucursales.length > 0 ? commercialData.top3Sucursales[0].name : '-'}
+                                                <div>
+                                                    <p className="text-blue-300 text-sm font-semibold mb-2 flex items-center gap-1.5">
+                                                        <Activity className="h-4 w-4" />
+                                                        Rendimiento PT
+                                                    </p>
+                                                    <div className="text-3xl font-bold">
+                                                        {(kpis.totalPieces * 20).toLocaleString()}
+                                                        <span className="text-base font-normal opacity-70 ml-1">L</span>
+                                                    </div>
+                                                    <p className="text-xs text-blue-300 opacity-60 mt-1">
+                                                        (20L por pieza)
+                                                    </p>
                                                 </div>
-                                                <p className="text-lg text-blue-900 dark:text-blue-400 font-bold mt-3">
-                                                    {commercialData.top3Sucursales.length > 0 ? `${commercialData.top3Sucursales[0].litros.toLocaleString()} L` : ''}
-                                                </p>
-                                            </div>
-                                            <div className="absolute -top-3 -right-3 p-4 bg-blue-100 dark:bg-blue-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
-                                                <Trophy className="h-10 w-10 text-blue-900 dark:text-blue-400" />
                                             </div>
                                         </div>
+                                        <Factory className="absolute -right-8 -bottom-8 h-40 w-40 text-white opacity-10 rotate-12" />
+                                    </CardContent>
+                                </Card>
 
-                                        {/* Top 3 Small List */}
-                                        <div className="space-y-3 pt-4 border-t-2 border-blue-200 dark:border-slate-700">
-                                            {commercialData.top3Sucursales.slice(1).map((suc, i) => (
-                                                <div key={i} className="flex justify-between items-center">
-                                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate max-w-[140px]">{suc.name}</span>
-                                                    <span className="text-sm font-bold font-mono text-blue-900 dark:text-blue-400">{suc.litros.toLocaleString()} L</span>
+                                {/* KPI 3: Categoría Leader + Top 3 - Enhanced */}
+                                <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-red-50 to-red-100 dark:from-slate-900 dark:to-slate-800 relative overflow-visible rounded-[2rem]">
+                                    <CardContent className="p-8 h-full flex flex-col justify-between">
+                                        <div>
+                                            <div className="flex justify-between items-start mb-6">
+                                                <div className="flex-1 pr-12">
+                                                    <h3 className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wider mb-2">Categoría Más Producida</h3>
+                                                    <div className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1 leading-tight">
+                                                        {commercialData.top3Categories.length > 0 ? commercialData.top3Categories[0].name : '-'}
+                                                    </div>
+                                                    <p className="text-lg text-red-700 dark:text-red-400 font-bold mt-3">
+                                                        {commercialData.top3Categories.length > 0 ? `${commercialData.top3Categories[0].value.toLocaleString()} ${commercialData.top3Categories[0].type}` : ''}
+                                                    </p>
                                                 </div>
-                                            ))}
+                                                <div className="absolute -top-3 -right-3 p-4 bg-red-100 dark:bg-red-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
+                                                    <TrendingUp className="h-10 w-10 text-red-700 dark:text-red-400" />
+                                                </div>
+                                            </div>
+
+                                            {/* Top 3 Small List */}
+                                            <div className="space-y-3 pt-4 border-t-2 border-red-200 dark:border-slate-700">
+                                                {commercialData.top3Categories.slice(1).map((cat, i) => (
+                                                    <div key={i} className="flex justify-between items-center">
+                                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate max-w-[140px]">{cat.name}</span>
+                                                        <span className="text-sm font-bold font-mono text-red-700 dark:text-red-400">{cat.value.toLocaleString()}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
+                                    </CardContent>
+                                </Card>
 
-                        {/* Chart 1: Production by Sucursal (Full Width) */}
-                        <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
-                            <CardHeader>
-                                <CardTitle className="text-lg font-bold">Producción Total por Sucursal (Litros)</CardTitle>
-                                <CardDescription>Comparativa de volumen de producción entre todas las sucursales</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="h-[350px] w-full">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={commercialData.sucursalData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                                            {/* Labels in proper black */}
-                                            <XAxis dataKey="name" fontSize={11} angle={-45} textAnchor="end" interval={0} tick={{ fill: '#000000', fontWeight: 600 }} />
-                                            <YAxis fontSize={12} tickLine={false} axisLine={false} />
-                                            <Tooltip
-                                                cursor={{ fill: '#F1F5F9' }}
-                                                contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                            />
-                                            <Bar dataKey="litros" name="Litros" fill="#C1272D" radius={[4, 4, 0, 0]}>
-                                                {commercialData.sucursalData.map((entry, index) => {
-                                                    // Red -> Blue Gradient
-                                                    // Start: #C1272D (Red) -> RGB(193, 39, 45)
-                                                    // End: #1E40AF (Blue 800) -> RGB(30, 64, 175)
+                                {/* KPI 4: Sucursal Leader + Top 3 - Enhanced */}
+                                <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-slate-900 dark:to-slate-800 relative overflow-visible rounded-[2rem]">
+                                    <CardContent className="p-8 h-full flex flex-col justify-between">
+                                        <div>
+                                            <div className="flex justify-between items-start mb-6">
+                                                <div className="flex-1 pr-12">
+                                                    <h3 className="text-xs font-semibold text-blue-900 dark:text-blue-400 uppercase tracking-wider mb-2">Sucursal Líder</h3>
+                                                    <div className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1 leading-tight">
+                                                        {commercialData.top3Sucursales.length > 0 ? commercialData.top3Sucursales[0].name : '-'}
+                                                    </div>
+                                                    <p className="text-lg text-blue-900 dark:text-blue-400 font-bold mt-3">
+                                                        {commercialData.top3Sucursales.length > 0 ? `${commercialData.top3Sucursales[0].litros.toLocaleString()} L` : ''}
+                                                    </p>
+                                                </div>
+                                                <div className="absolute -top-3 -right-3 p-4 bg-blue-100 dark:bg-blue-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
+                                                    <Trophy className="h-10 w-10 text-blue-900 dark:text-blue-400" />
+                                                </div>
+                                            </div>
 
-                                                    const totalItems = commercialData.sucursalData.length
-                                                    const startColor = [193, 39, 45]
-                                                    const endColor = [30, 64, 175]
-                                                    const ratio = index / (totalItems - 1) // 0 to 1
+                                            {/* Top 3 Small List */}
+                                            <div className="space-y-3 pt-4 border-t-2 border-blue-200 dark:border-slate-700">
+                                                {commercialData.top3Sucursales.slice(1).map((suc, i) => (
+                                                    <div key={i} className="flex justify-between items-center">
+                                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate max-w-[140px]">{suc.name}</span>
+                                                        <span className="text-sm font-bold font-mono text-blue-900 dark:text-blue-400">{suc.litros.toLocaleString()} L</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
 
-                                                    const r = Math.round(startColor[0] + (endColor[0] - startColor[0]) * ratio)
-                                                    const g = Math.round(startColor[1] + (endColor[1] - startColor[1]) * ratio)
-                                                    const b = Math.round(startColor[2] + (endColor[2] - startColor[2]) * ratio)
-
-                                                    const fill = `rgb(${r}, ${g}, ${b})`
-
-                                                    return <Cell key={`cell-${index}`} fill={fill} />
-                                                })}
-                                            </Bar>
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        {/* Product Variants Donut Chart */}
-                        <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
-                            <CardHeader>
-                                <CardTitle className="text-lg font-bold">Distribución de Productos por Variante</CardTitle>
-                                <CardDescription>Proporción de todos los productos por SKU/Código</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="h-[400px] w-full">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart
-                                            layout="vertical"
-                                            data={[...commercialData.productVariantsData].slice(0, 20)}
-                                            margin={{ top: 20, right: 30, left: 10, bottom: 5 }}
-                                        >
-                                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
-                                            <XAxis type="number" fontSize={12} tickLine={false} axisLine={false} />
-                                            <YAxis
-                                                type="category"
-                                                dataKey="name"
-                                                width={160}
-                                                tick={({ x, y, payload, index }) => {
-                                                    // Dynamic font size: Largest for top items, smaller for bottom
-                                                    // Range: 13px down to 9px for 20 items
-                                                    const fontSize = Math.max(9, 13 - (index * 0.25))
-                                                    const color = index < 3 ? '#1e293b' : '#64748b' // Darker for top 3
-                                                    const fontWeight = index < 3 ? 700 : 400
-
-                                                    return (
-                                                        <g transform={`translate(${x},${y})`}>
-                                                            <text
-                                                                x={0}
-                                                                y={0}
-                                                                dy={4}
-                                                                textAnchor="end"
-                                                                fill={color}
-                                                                fontSize={fontSize}
-                                                                fontWeight={fontWeight}
-                                                            >
-                                                                {payload.value && payload.value.length > 25 ? payload.value.substring(0, 25) + '...' : payload.value}
-                                                            </text>
-                                                        </g>
-                                                    )
-                                                }}
-                                                tickLine={false}
-                                                axisLine={false}
-                                                interval={0}
-                                            />
-                                            <Tooltip
-                                                cursor={{ fill: '#F1F5F9' }}
-                                                formatter={(value: any, name: any, props: any) => {
-                                                    const total = commercialData.productVariantsData.slice(0, 20).reduce((sum, p) => sum + p.value, 0)
-                                                    const percent = ((value / total) * 100).toFixed(1)
-                                                    const type = props.payload.type === 'litros' ? 'L' : 'Pzas'
-                                                    return [`${value.toLocaleString()} ${type} (${percent}%)`, name]
-                                                }}
-                                                contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                            />
-                                            <Bar dataKey="value" name="Volumen" radius={[0, 4, 4, 0]} barSize={12}>
-                                                {commercialData.productVariantsData.slice(0, 20).map((entry, index) => {
-                                                    // Red -> Blue Gradient
-                                                    // Start: #C1272D (Red) -> RGB(193, 39, 45)
-                                                    // End: #1E40AF (Blue 800) -> RGB(30, 64, 175)
-
-                                                    const startColor = [193, 39, 45]
-                                                    const endColor = [30, 64, 175]
-                                                    const ratio = index / 19 // 0 to 1 over 20 items
-
-                                                    const r = Math.round(startColor[0] + (endColor[0] - startColor[0]) * ratio)
-                                                    const g = Math.round(startColor[1] + (endColor[1] - startColor[1]) * ratio)
-                                                    const b = Math.round(startColor[2] + (endColor[2] - startColor[2]) * ratio)
-
-                                                    const fill = `rgb(${r}, ${g}, ${b})`
-
-                                                    return <Cell key={`cell-${index}`} fill={fill} />
-                                                })}
-                                            </Bar>
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                                <div className="mt-4 text-center text-xs text-slate-500">
-                                    Mostrando los top 20 productos más producidos
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        {/* Top Products & Family Distribution Grid */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-                            <Card className="border-none shadow-sm dark:bg-slate-900 col-span-1 lg:col-span-1 flex flex-col rounded-[2rem]">
-                                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                    <div className="space-y-1">
-                                        <CardTitle className="text-lg font-bold">Ranking de Productos</CardTitle>
-                                        <CardDescription>Los más producidos globalmente</CardDescription>
-                                    </div>
+                            {/* Chart 1: Production by Sucursal (Full Width) */}
+                            <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
+                                <CardHeader>
+                                    <CardTitle className="text-lg font-bold">Producción Total por Sucursal (Litros)</CardTitle>
+                                    <CardDescription>Comparativa de volumen de producción entre todas las sucursales</CardDescription>
                                 </CardHeader>
-                                <div className="px-6 pb-2">
-                                    <Select value={rankingCategoryFilter} onValueChange={setRankingCategoryFilter}>
-                                        <SelectTrigger className="w-full text-xs h-8">
-                                            <SelectValue placeholder="Filtrar por categoría" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">Todas las categorías</SelectItem>
-                                            {PRODUCT_CATEGORIES.map(cat => (
-                                                <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <CardContent className="flex-1 overflow-auto max-h-[800px] pt-2">
-                                    <div className="space-y-5">
-                                        {commercialData.topProducts
-                                            .filter(p => rankingCategoryFilter === "all" || p.category === rankingCategoryFilter)
-                                            .slice(0, showAllProducts ? undefined : 5)
-                                            .map((prod, i) => (
-                                                <div key={prod.name} className="relative">
-                                                    <div className="flex justify-between items-end mb-1 z-10 relative">
-                                                        <div>
-                                                            <span className="text-xs font-bold text-slate-400 mr-2">#{i + 1}</span>
-                                                            <span className="font-semibold text-sm text-slate-800 dark:text-slate-200">{prod.name}</span>
-                                                        </div>
-                                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                                                            {prod.value.toLocaleString()} <span className="text-[10px] font-normal text-slate-500">{prod.type === 'litros' ? 'L' : 'Pzas'}</span>
-                                                        </span>
-                                                    </div>
-                                                    {/* Progress Bar Background */}
-                                                    <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                                        <div
-                                                            className="h-full bg-blue-500 rounded-full"
-                                                            style={{ width: `${(prod.value / commercialData.maxProductVal) * 100}%` }}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        {commercialData.topProducts.filter(p => rankingCategoryFilter === "all" || p.category === rankingCategoryFilter).length === 0 && (
-                                            <div className="text-center py-8 text-slate-500 text-sm">
-                                                No hay productos en esta categoría
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="mt-6 text-center">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setShowAllProducts(!showAllProducts)}
-                                            className="w-full text-xs"
-                                        >
-                                            {showAllProducts ? "Ver Menos" : `Ver Todos`}
-                                        </Button>
+                                <CardContent>
+                                    <div className="h-[350px] w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={commercialData.sucursalData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                                                {/* Labels in proper black */}
+                                                <XAxis dataKey="name" fontSize={11} angle={-45} textAnchor="end" interval={0} tick={{ fill: '#000000', fontWeight: 600 }} />
+                                                <YAxis fontSize={12} tickLine={false} axisLine={false} />
+                                                <Tooltip
+                                                    cursor={{ fill: '#F1F5F9' }}
+                                                    contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                                />
+                                                <Bar dataKey="litros" name="Litros" fill="#C1272D" radius={[4, 4, 0, 0]}>
+                                                    {commercialData.sucursalData.map((entry, index) => {
+                                                        // Red -> Blue Gradient
+                                                        // Start: #C1272D (Red) -> RGB(193, 39, 45)
+                                                        // End: #1E40AF (Blue 800) -> RGB(30, 64, 175)
+
+                                                        const totalItems = commercialData.sucursalData.length
+                                                        const startColor = [193, 39, 45]
+                                                        const endColor = [30, 64, 175]
+                                                        const ratio = index / (totalItems - 1) // 0 to 1
+
+                                                        const r = Math.round(startColor[0] + (endColor[0] - startColor[0]) * ratio)
+                                                        const g = Math.round(startColor[1] + (endColor[1] - startColor[1]) * ratio)
+                                                        const b = Math.round(startColor[2] + (endColor[2] - startColor[2]) * ratio)
+
+                                                        const fill = `rgb(${r}, ${g}, ${b})`
+
+                                                        return <Cell key={`cell-${index}`} fill={fill} />
+                                                    })}
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
                                     </div>
                                 </CardContent>
                             </Card>
 
-                            {/* Right Column: Family Breakdowns (Donut Charts Grid) */}
-                            <div className="col-span-1 lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {commercialData.familyCharts.map((family, idx) => (
-                                    <Card key={family.name} className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
-                                        <CardHeader className="pb-2">
-                                            <CardTitle className="text-base font-bold truncate" title={family.name}>
-                                                {family.name}
-                                            </CardTitle>
-                                            <CardDescription className="text-xs">
-                                                Total: {family.total.toLocaleString()}
-                                            </CardDescription>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="h-[200px] w-full relative">
-                                                <ResponsiveContainer width="100%" height="100%">
-                                                    <PieChart>
-                                                        <Pie
-                                                            data={family.chartData}
-                                                            cx="50%"
-                                                            cy="50%"
-                                                            innerRadius={45}
-                                                            outerRadius={70}
-                                                            paddingAngle={2}
-                                                            dataKey="value"
-                                                            stroke="none"
-                                                            label={(entry) => {
-                                                                const percent = ((entry.value / family.total) * 100).toFixed(1)
-                                                                return `${percent}%`
-                                                            }}
-                                                            labelLine={false}
-                                                        >
-                                                            {family.chartData.map((entry, index) => (
-                                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                            ))}
-                                                        </Pie>
-                                                        <Tooltip
-                                                            formatter={(value: any, name: any) => {
-                                                                const percent = ((value / family.total) * 100).toFixed(1)
-                                                                return [`${value.toLocaleString()} (${percent}%)`, name]
-                                                            }}
-                                                        />
-                                                    </PieChart>
-                                                </ResponsiveContainer>
-                                                {/* Center Label for Top Category in Family */}
-                                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                                    <div className="text-center">
-                                                        <span className="block text-xs text-slate-500">Top</span>
-                                                        <span className="block text-xs font-bold text-slate-800 dark:text-slate-200 truncate max-w-[80px]">
-                                                            {family.chartData.length > 0 ? family.chartData[0].name.split(" ")[0] : '-'}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            {/* Legend */}
-                                            <div className="mt-2 flex flex-wrap gap-2 justify-center">
-                                                {family.chartData.slice(0, 3).map((item, i) => {
-                                                    const percent = ((item.value / family.total) * 100).toFixed(1)
-                                                    return (
-                                                        <div key={i} className="flex items-center text-[10px] text-slate-500">
-                                                            <span className="w-2 h-2 rounded-full mr-1" style={{ backgroundColor: COLORS[i % COLORS.length] }}></span>
-                                                            <span className="truncate max-w-[80px]">{item.name}: {percent}%</span>
-                                                        </div>
-                                                    )
-                                                })}
-                                            </div>
+                            {/* Product Variants Donut Chart */}
+                            <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
+                                <CardHeader>
+                                    <CardTitle className="text-lg font-bold">Distribución de Productos por Variante</CardTitle>
+                                    <CardDescription>Proporción de todos los productos por SKU/Código</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="h-[400px] w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart
+                                                layout="vertical"
+                                                data={[...commercialData.productVariantsData].slice(0, 20)}
+                                                margin={{ top: 20, right: 30, left: 10, bottom: 5 }}
+                                            >
+                                                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
+                                                <XAxis type="number" fontSize={12} tickLine={false} axisLine={false} />
+                                                <YAxis
+                                                    type="category"
+                                                    dataKey="name"
+                                                    width={160}
+                                                    tick={({ x, y, payload, index }) => {
+                                                        // Dynamic font size: Largest for top items, smaller for bottom
+                                                        // Range: 13px down to 9px for 20 items
+                                                        const fontSize = Math.max(9, 13 - (index * 0.25))
+                                                        const color = index < 3 ? '#1e293b' : '#64748b' // Darker for top 3
+                                                        const fontWeight = index < 3 ? 700 : 400
 
-                                            {/* Ver Categorías Button (Only for specific families) */}
-                                            {(family.name === "Cuidado del Hogar" || family.name === "Lavandería" || family.name === "Cuidado Personal") && (
-                                                <div className="mt-4">
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={() => setDrillDownFamily(family.name)}
-                                                        className="w-full text-xs flex items-center justify-center gap-1"
-                                                    >
-                                                        Ver Categorías <ChevronRight className="h-3 w-3" />
-                                                    </Button>
+                                                        return (
+                                                            <g transform={`translate(${x},${y})`}>
+                                                                <text
+                                                                    x={0}
+                                                                    y={0}
+                                                                    dy={4}
+                                                                    textAnchor="end"
+                                                                    fill={color}
+                                                                    fontSize={fontSize}
+                                                                    fontWeight={fontWeight}
+                                                                >
+                                                                    {payload.value && payload.value.length > 25 ? payload.value.substring(0, 25) + '...' : payload.value}
+                                                                </text>
+                                                            </g>
+                                                        )
+                                                    }}
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    interval={0}
+                                                />
+                                                <Tooltip
+                                                    cursor={{ fill: '#F1F5F9' }}
+                                                    formatter={(value: any, name: any, props: any) => {
+                                                        const total = commercialData.productVariantsData.slice(0, 20).reduce((sum, p) => sum + p.value, 0)
+                                                        const percent = ((value / total) * 100).toFixed(1)
+                                                        const type = props.payload.type === 'litros' ? 'L' : 'Pzas'
+                                                        return [`${value.toLocaleString()} ${type} (${percent}%)`, name]
+                                                    }}
+                                                    contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                                />
+                                                <Bar dataKey="value" name="Volumen" radius={[0, 4, 4, 0]} barSize={12}>
+                                                    {commercialData.productVariantsData.slice(0, 20).map((entry, index) => {
+                                                        // Red -> Blue Gradient
+                                                        // Start: #C1272D (Red) -> RGB(193, 39, 45)
+                                                        // End: #1E40AF (Blue 800) -> RGB(30, 64, 175)
+
+                                                        const startColor = [193, 39, 45]
+                                                        const endColor = [30, 64, 175]
+                                                        const ratio = index / 19 // 0 to 1 over 20 items
+
+                                                        const r = Math.round(startColor[0] + (endColor[0] - startColor[0]) * ratio)
+                                                        const g = Math.round(startColor[1] + (endColor[1] - startColor[1]) * ratio)
+                                                        const b = Math.round(startColor[2] + (endColor[2] - startColor[2]) * ratio)
+
+                                                        const fill = `rgb(${r}, ${g}, ${b})`
+
+                                                        return <Cell key={`cell-${index}`} fill={fill} />
+                                                    })}
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                    <div className="mt-4 text-center text-xs text-slate-500">
+                                        Mostrando los top 20 productos más producidos
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Top Products & Family Distribution Grid */}
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                                <Card className="border-none shadow-sm dark:bg-slate-900 col-span-1 lg:col-span-1 flex flex-col rounded-[2rem]">
+                                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                        <div className="space-y-1">
+                                            <CardTitle className="text-lg font-bold">Ranking de Productos</CardTitle>
+                                            <CardDescription>Los más producidos globalmente</CardDescription>
+                                        </div>
+                                    </CardHeader>
+                                    <div className="px-6 pb-2">
+                                        <Select value={rankingCategoryFilter} onValueChange={setRankingCategoryFilter}>
+                                            <SelectTrigger className="w-full text-xs h-8">
+                                                <SelectValue placeholder="Filtrar por categoría" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">Todas las categorías</SelectItem>
+                                                {PRODUCT_CATEGORIES.map(cat => (
+                                                    <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <CardContent className="flex-1 overflow-auto max-h-[800px] pt-2">
+                                        <div className="space-y-5">
+                                            {commercialData.topProducts
+                                                .filter(p => rankingCategoryFilter === "all" || p.category === rankingCategoryFilter)
+                                                .slice(0, showAllProducts ? undefined : 5)
+                                                .map((prod, i) => (
+                                                    <div key={prod.name} className="relative">
+                                                        <div className="flex justify-between items-end mb-1 z-10 relative">
+                                                            <div>
+                                                                <span className="text-xs font-bold text-slate-400 mr-2">#{i + 1}</span>
+                                                                <span className="font-semibold text-sm text-slate-800 dark:text-slate-200">{prod.name}</span>
+                                                            </div>
+                                                            <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                                                                {prod.value.toLocaleString()} <span className="text-[10px] font-normal text-slate-500">{prod.type === 'litros' ? 'L' : 'Pzas'}</span>
+                                                            </span>
+                                                        </div>
+                                                        {/* Progress Bar Background */}
+                                                        <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                                            <div
+                                                                className="h-full bg-blue-500 rounded-full"
+                                                                style={{ width: `${(prod.value / commercialData.maxProductVal) * 100}%` }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            {commercialData.topProducts.filter(p => rankingCategoryFilter === "all" || p.category === rankingCategoryFilter).length === 0 && (
+                                                <div className="text-center py-8 text-slate-500 text-sm">
+                                                    No hay productos en esta categoría
                                                 </div>
                                             )}
-                                        </CardContent>
-                                    </Card>
-                                ))}
+                                        </div>
+                                        <div className="mt-6 text-center">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setShowAllProducts(!showAllProducts)}
+                                                className="w-full text-xs"
+                                            >
+                                                {showAllProducts ? "Ver Menos" : `Ver Todos`}
+                                            </Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Right Column: Family Breakdowns (Donut Charts Grid) */}
+                                <div className="col-span-1 lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {commercialData.familyCharts.map((family, idx) => (
+                                        <Card key={family.name} className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
+                                            <CardHeader className="pb-2">
+                                                <CardTitle className="text-base font-bold truncate" title={family.name}>
+                                                    {family.name}
+                                                </CardTitle>
+                                                <CardDescription className="text-xs">
+                                                    Total: {family.total.toLocaleString()}
+                                                </CardDescription>
+                                            </CardHeader>
+                                            <CardContent>
+                                                <div className="h-[200px] w-full relative">
+                                                    <ResponsiveContainer width="100%" height="100%">
+                                                        <PieChart>
+                                                            <Pie
+                                                                data={family.chartData}
+                                                                cx="50%"
+                                                                cy="50%"
+                                                                innerRadius={45}
+                                                                outerRadius={70}
+                                                                paddingAngle={2}
+                                                                dataKey="value"
+                                                                stroke="none"
+                                                                label={(entry) => {
+                                                                    const percent = ((entry.value / family.total) * 100).toFixed(1)
+                                                                    return `${percent}%`
+                                                                }}
+                                                                labelLine={false}
+                                                            >
+                                                                {family.chartData.map((entry, index) => (
+                                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                                ))}
+                                                            </Pie>
+                                                            <Tooltip
+                                                                formatter={(value: any, name: any) => {
+                                                                    const percent = ((value / family.total) * 100).toFixed(1)
+                                                                    return [`${value.toLocaleString()} (${percent}%)`, name]
+                                                                }}
+                                                            />
+                                                        </PieChart>
+                                                    </ResponsiveContainer>
+                                                    {/* Center Label for Top Category in Family */}
+                                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                        <div className="text-center">
+                                                            <span className="block text-xs text-slate-500">Top</span>
+                                                            <span className="block text-xs font-bold text-slate-800 dark:text-slate-200 truncate max-w-[80px]">
+                                                                {family.chartData.length > 0 ? family.chartData[0].name.split(" ")[0] : '-'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {/* Legend */}
+                                                <div className="mt-2 flex flex-wrap gap-2 justify-center">
+                                                    {family.chartData.slice(0, 3).map((item, i) => {
+                                                        const percent = ((item.value / family.total) * 100).toFixed(1)
+                                                        return (
+                                                            <div key={i} className="flex items-center text-[10px] text-slate-500">
+                                                                <span className="w-2 h-2 rounded-full mr-1" style={{ backgroundColor: COLORS[i % COLORS.length] }}></span>
+                                                                <span className="truncate max-w-[80px]">{item.name}: {percent}%</span>
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
+
+                                                {/* Ver Categorías Button (Only for specific families) */}
+                                                {(family.name === "Cuidado del Hogar" || family.name === "Lavandería" || family.name === "Cuidado Personal") && (
+                                                    <div className="mt-4">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => setDrillDownFamily(family.name)}
+                                                            className="w-full text-xs flex items-center justify-center gap-1"
+                                                        >
+                                                            Ver Categorías <ChevronRight className="h-3 w-3" />
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    </TabsContent>
+                        </TabsContent>
+                    )}
                 </Tabs>
             )}
 

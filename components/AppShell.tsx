@@ -156,7 +156,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
                     <div className="space-y-1">
                         {!isSidebarCollapsed && <h3 className="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Producción</h3>}
-                        <NavItem href="/bitacora" icon={ClipboardList} label="Bitácora de Producción" />
+
+                        {/* Bitácora: Visible for admin, preparador or undefined roles (pre-init) */}
+                        {(profile?.role?.toLowerCase() === 'admin' || profile?.role?.toLowerCase() === 'preparador' || !profile?.role) && (
+                            <NavItem href="/bitacora" icon={ClipboardList} label="Bitácora de Producción" />
+                        )}
+
                         <NavItem href="/calidad" icon={Microscope} label="Control Calidad" />
                     </div>
 
@@ -235,7 +240,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <div className="space-y-2 flex-1 overflow-y-auto">
                         <MobileNavItem href="/" icon={LayoutDashboard} label="Panel Principal" />
                         <MobileNavItem href="/catalog" icon={BookOpen} label="Catálogo" />
-                        <MobileNavItem href="/bitacora" icon={ClipboardList} label="Bitácora de Producción" />
+
+                        {/* Bitácora en Mobile */}
+                        {(profile?.role?.toLowerCase() === 'admin' || profile?.role?.toLowerCase() === 'preparador' || !profile?.role) && (
+                            <MobileNavItem href="/bitacora" icon={ClipboardList} label="Bitácora de Producción" />
+                        )}
+
                         <MobileNavItem href="/calidad" icon={Microscope} label="Control Calidad" />
                         <MobileNavItem href="/reportes" icon={BarChart3} label="Reportes y KPIs" />
                         <MobileNavItem href="/configuracion" icon={Settings} label="Configuración" />

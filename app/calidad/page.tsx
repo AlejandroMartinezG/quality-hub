@@ -119,8 +119,12 @@ export default function CalidadPage() {
                 .select('*')
 
             // Filter by user if role is preparador
-            if (profile?.role === 'preparador') {
+            const role = profile?.role?.toLowerCase()
+            if (role === 'preparador') {
                 query = query.eq('user_id', user.id)
+            } else if ((role === 'gerente_sucursal' || role === 'gerente') && profile?.sucursal) {
+                // Filter by sucursal if role is branch manager
+                query = query.eq('sucursal', profile.sucursal)
             }
 
             const { data, error } = await query

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/AuthProvider"
 import { Breadcrumbs } from "@/components/Breadcrumbs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
@@ -38,8 +39,24 @@ import { BitacoraSchema, validateForm, getFirstError } from "@/lib/validations"
 import { sanitizeFormData } from "@/lib/sanitize"
 
 export default function BitacoraPage() {
-    const { user, profile } = useAuth()
+    const { user, profile, loading: authLoading } = useAuth()
+    const router = useRouter()
     const [step, setStep] = useState(1) // 1: Category, 2: Form
+
+    // Permissions check
+    useEffect(() => {
+        if (!authLoading && profile) {
+            const role = profile.role?.toLowerCase()
+            const forbiddenRoles = ['gerente_sucursal', 'gerente', 'director_operaciones', 'mostrador', 'cajera', 'vendedor', 'director_compras']
+            if (forbiddenRoles.includes(role)) {
+                toast.error("Acceso restringido", {
+                    description: "No tienes permisos para acceder al módulo de Bitácora."
+                })
+                router.push('/')
+            }
+        }
+    }, [profile, authLoading, router])
+
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
     const [expandedGroups, setExpandedGroups] = useState<string[]>([])
     const [loading, setLoading] = useState(false)
