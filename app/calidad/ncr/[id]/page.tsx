@@ -505,7 +505,7 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
                     </Card>
 
                     {/* Disposition & Actions - Visible to Admins (Edit) or Preparers (View only) */}
-                    {(canManage || ncr.status !== 'ABIERTO' || (profile?.role === 'preparador' && (correctiveActions || dispNotes || ncr.disposition_type))) && (
+                    {(canManage || ncr.status !== 'ABIERTO' || (profile?.role === 'preparador' && (correctiveActions || dispNotes || disposition?.disposition_type || dispType))) && (
                         <Card className="rounded-[2rem] shadow-sm border-blue-200 dark:border-blue-900 bg-blue-50/10 overflow-hidden">
                             <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-950/20 pb-4">
                                 <CardTitle className="text-xl flex items-center gap-2 text-blue-800 dark:text-blue-300">
@@ -581,7 +581,7 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
                                 )}
 
                                 {/* 4. Tipo de Disposición */}
-                                {(canManage || ncr.disposition_type) && (
+                                {(canManage || (disposition?.disposition_type || dispType)) && (
                                     <div className="space-y-2">
                                         <Label className="text-blue-900 dark:text-blue-200 font-semibold">Tipo de Disposición</Label>
                                         {canManage ? (
@@ -602,10 +602,17 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
                                                 </SelectContent>
                                             </Select>
                                         ) : (
-                                            <div className="flex">
-                                                <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-800">
-                                                    {ncr.disposition_type || 'Pendiente de definir'}
-                                                </Badge>
+                                            <div className="flex flex-col gap-2">
+                                                <div className="flex">
+                                                    <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-800">
+                                                        {disposition?.disposition_type || dispType || 'Pendiente de definir'}
+                                                    </Badge>
+                                                </div>
+                                                {(disposition?.disposition_type === 'OTRA' || dispType === 'OTRA') && dispositionCustom && (
+                                                    <div className="p-3 bg-white dark:bg-slate-900/50 rounded-lg border border-blue-100 dark:border-blue-800/50 text-xs text-slate-600 dark:text-slate-400">
+                                                        <span className="font-bold mr-1">Detalle:</span> {dispositionCustom}
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </div>
