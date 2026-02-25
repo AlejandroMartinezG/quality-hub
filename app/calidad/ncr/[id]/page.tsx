@@ -504,8 +504,8 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
                         </CardContent>
                     </Card>
 
-                    {/* Disposition & Actions */}
-                    {canManage && (
+                    {/* Disposition & Actions - Visible to Admins (Edit) or Preparers (View only) */}
+                    {(canManage || ncr.status !== 'ABIERTO' || (profile?.role === 'preparador' && (correctiveActions || dispNotes || ncr.disposition_type))) && (
                         <Card className="rounded-[2rem] shadow-sm border-blue-200 dark:border-blue-900 bg-blue-50/10 overflow-hidden">
                             <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-950/20 pb-4">
                                 <CardTitle className="text-xl flex items-center gap-2 text-blue-800 dark:text-blue-300">
@@ -515,69 +515,103 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
                                     Gestión del estado y disposición final de cada NCR.
                                 </CardTitle>
                                 <CardDescription className="text-blue-400 dark:text-blue-300 ml-10 font-medium">
-                                    Acciones correctivas/Disposición
+                                    {canManage ? 'Acciones correctivas/Disposición' : 'Información de resolución'}
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6 pt-6">
                                 {/* 1. Estatus del NCR */}
                                 <div className="space-y-2">
                                     <Label className="text-blue-900 dark:text-blue-200 font-semibold">Estatus del NCR</Label>
-                                    <Select value={newStatus} onValueChange={setNewStatus}>
-                                        <SelectTrigger className="bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-800">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="ABIERTO">Abierto</SelectItem>
-                                            <SelectItem value="EN_MRB">En MRB (Investigación/Espera)</SelectItem>
-                                            <SelectItem value="CERRADO">Cerrado</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                    {canManage ? (
+                                        <Select value={newStatus} onValueChange={setNewStatus}>
+                                            <SelectTrigger className="bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-800">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="ABIERTO">Abierto</SelectItem>
+                                                <SelectItem value="EN_MRB">En MRB (Investigación/Espera)</SelectItem>
+                                                <SelectItem value="CERRADO">Cerrado</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    ) : (
+                                        <div className="flex">
+                                            <Badge variant="outline" className="bg-white dark:bg-slate-900 border-blue-200 text-blue-700 dark:text-blue-300 px-3 py-1">
+                                                {ncr.status.replace('_', ' ')}
+                                            </Badge>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* 2. Acciones Correctivas */}
-                                <div className="space-y-2">
-                                    <Label className="text-blue-900 dark:text-blue-200 font-semibold">Acciones Correctivas Realizadas</Label>
-                                    <Textarea
-                                        placeholder="Describa las acciones tomadas para corregir el problema..."
-                                        value={correctiveActions}
-                                        onChange={(e) => setCorrectiveActions(e.target.value)}
-                                        className="min-h-[100px] bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-800 resize-none"
-                                    />
-                                </div>
+                                {(canManage || correctiveActions) && (
+                                    <div className="space-y-2">
+                                        <Label className="text-blue-900 dark:text-blue-200 font-semibold">Acciones Correctivas Realizadas</Label>
+                                        {canManage ? (
+                                            <Textarea
+                                                placeholder="Describa las acciones tomadas para corregir el problema..."
+                                                value={correctiveActions}
+                                                onChange={(e) => setCorrectiveActions(e.target.value)}
+                                                className="min-h-[100px] bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-800 resize-none"
+                                            />
+                                        ) : (
+                                            <div className="p-4 bg-white dark:bg-slate-900/50 rounded-xl border border-blue-100 dark:border-blue-800/50 text-sm text-slate-700 dark:text-slate-300 leading-relaxed italic">
+                                                {correctiveActions || 'No se han registrado acciones aún.'}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
                                 {/* 3. Notas Generales */}
-                                <div className="space-y-2">
-                                    <Label className="text-blue-900 dark:text-blue-200 font-semibold">Notas Generales / Instrucciones</Label>
-                                    <Textarea
-                                        placeholder="Notas adicionales..."
-                                        value={dispNotes}
-                                        onChange={(e) => setDispNotes(e.target.value)}
-                                        className="bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-800 resize-none"
-                                    />
-                                </div>
+                                {(canManage || dispNotes) && (
+                                    <div className="space-y-2">
+                                        <Label className="text-blue-900 dark:text-blue-200 font-semibold">Notas Generales / Instrucciones</Label>
+                                        {canManage ? (
+                                            <Textarea
+                                                placeholder="Notas adicionales..."
+                                                value={dispNotes}
+                                                onChange={(e) => setDispNotes(e.target.value)}
+                                                className="bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-800 resize-none"
+                                            />
+                                        ) : (
+                                            <div className="p-4 bg-white dark:bg-slate-900/50 rounded-xl border border-blue-100 dark:border-blue-800/50 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                                                {dispNotes || 'Sin instrucciones adicionales.'}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
                                 {/* 4. Tipo de Disposición */}
-                                <div className="space-y-2">
-                                    <Label className="text-blue-900 dark:text-blue-200 font-semibold">Tipo de Disposición</Label>
-                                    <Select value={dispType} onValueChange={setDispType}>
-                                        <SelectTrigger className="bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-800">
-                                            <SelectValue placeholder="Seleccionar acción..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="REPROCESO">Reproceso (Tipo A/B/C)</SelectItem>
-                                            <SelectItem value="AJUSTE_FORMULA">Ajuste de fórmula / Corrección</SelectItem>
-                                            <SelectItem value="REETIQUETADO_EMPAQUE">Re-etiquetado / Reproceso de empaque</SelectItem>
-                                            <SelectItem value="HOLD_INVESTIGACION">Retención (Hold) por investigación</SelectItem>
-                                            <SelectItem value="DOWNGRADE">Downgrade (Especificación alternativa)</SelectItem>
-                                            <SelectItem value="SCRAP_DESTRUCCION">Scrap / Destrucción</SelectItem>
-                                            <SelectItem value="DEVOLUCION">Devolución</SelectItem>
-                                            <SelectItem value="CONCESION_USE_AS_IS">Concesión (Use As Is)</SelectItem>
-                                            <SelectItem value="OTRA">Otra (Especificar)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                {(canManage || ncr.disposition_type) && (
+                                    <div className="space-y-2">
+                                        <Label className="text-blue-900 dark:text-blue-200 font-semibold">Tipo de Disposición</Label>
+                                        {canManage ? (
+                                            <Select value={dispType} onValueChange={setDispType}>
+                                                <SelectTrigger className="bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-800">
+                                                    <SelectValue placeholder="Seleccionar acción..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="REPROCESO">Reproceso (Tipo A/B/C)</SelectItem>
+                                                    <SelectItem value="AJUSTE_FORMULA">Ajuste de fórmula / Corrección</SelectItem>
+                                                    <SelectItem value="REETIQUETADO_EMPAQUE">Re-etiquetado / Reproceso de empaque</SelectItem>
+                                                    <SelectItem value="HOLD_INVESTIGACION">Retención (Hold) por investigación</SelectItem>
+                                                    <SelectItem value="DOWNGRADE">Downgrade (Especificación alternativa)</SelectItem>
+                                                    <SelectItem value="SCRAP_DESTRUCCION">Scrap / Destrucción</SelectItem>
+                                                    <SelectItem value="DEVOLUCION">Devolución</SelectItem>
+                                                    <SelectItem value="CONCESION_USE_AS_IS">Concesión (Use As Is)</SelectItem>
+                                                    <SelectItem value="OTRA">Otra (Especificar)</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        ) : (
+                                            <div className="flex">
+                                                <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-800">
+                                                    {ncr.disposition_type || 'Pendiente de definir'}
+                                                </Badge>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
-                                {dispType === 'OTRA' && (
+                                {canManage && dispType === 'OTRA' && (
                                     <div className="space-y-2">
                                         <Label className="text-blue-900 dark:text-blue-200 font-semibold">Especificar Otra Disposición</Label>
                                         <Input
@@ -589,15 +623,17 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
                                     </div>
                                 )}
 
-                                <div className="flex justify-end pt-2">
-                                    <Button
-                                        onClick={handleRegisterDisposition}
-                                        disabled={submittingDisp}
-                                        className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 rounded-full px-8"
-                                    >
-                                        {submittingDisp ? 'Guardando...' : 'Guardar Acciones/Disposición'}
-                                    </Button>
-                                </div>
+                                {canManage && (
+                                    <div className="flex justify-end pt-2">
+                                        <Button
+                                            onClick={handleRegisterDisposition}
+                                            disabled={submittingDisp}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 rounded-full px-8"
+                                        >
+                                            {submittingDisp ? 'Guardando...' : 'Guardar Acciones/Disposición'}
+                                        </Button>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     )}

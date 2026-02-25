@@ -70,6 +70,11 @@ export function NCRManager() {
         ncrsRef.current = ncrs
     }, [ncrs])
 
+    const profileRef = useRef(profile)
+    useEffect(() => {
+        profileRef.current = profile
+    }, [profile])
+
     const [loading, setLoading] = useState(true)
     // viewMode is now a prop
 
@@ -117,9 +122,10 @@ export function NCRManager() {
             }, (payload) => {
                 const newComment = payload.new as any;
                 // Only notify if author is someone else
-                if (newComment.author_user_id !== profile?.id) {
+                if (newComment.author_user_id !== profileRef.current?.id) {
                     // Try to find the NCR batch code for a better message
-                    const ncr = ncrsRef.current.find(n => n.id === newComment.ncr_id);
+                    const currentNcrs = ncrsRef.current;
+                    const ncr = currentNcrs.find(n => n.id === newComment.ncr_id);
                     const batchText = ncr ? ` en lote ${ncr.batch_code}` : '';
 
                     toast.info(`💬 Nuevo mensaje${batchText}`, {
@@ -299,11 +305,18 @@ export function NCRManager() {
                     const extraMap = new Map(ncrExtras?.map(n => [n.id, n.defect_detail]) || [])
                     const bitacoraMap = new Map(bitacoras?.map(b => [b.lote_producto, b.apariencia]) || [])
 
-                    // Since we ordered by created_at DESC, the first occurrence of each ncr_id in lastComments is the latest
+                    // Logic for last comment and count of messages from others
                     const lastCommentMap = new Map();
+                    const otherMessageCountMap = new Map();
+
                     lastComments?.forEach(c => {
+                        // Keep track of the actual last author
                         if (!lastCommentMap.has(c.ncr_id)) {
                             lastCommentMap.set(c.ncr_id, c.author_user_id);
+                        }
+                        // Count messages that were NOT sent by the current user
+                        if (c.author_user_id !== profile?.id) {
+                            otherMessageCountMap.set(c.ncr_id, (otherMessageCountMap.get(c.ncr_id) || 0) + 1);
                         }
                     });
 
@@ -312,6 +325,8 @@ export function NCRManager() {
                         disposition_type: dispMap.get(n.id),
                         defect_detail: n.defect_detail || extraMap.get(n.id),
                         apariencia_reportada: bitacoraMap.get(n.batch_code),
+                        // Here we use the custom count of other people's messages
+                        message_count: otherMessageCountMap.get(n.id) || 0,
                         last_message_author_id: n.last_message_author_id || lastCommentMap.get(n.id)
                     }))
                 }
