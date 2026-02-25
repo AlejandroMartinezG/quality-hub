@@ -676,23 +676,23 @@ export function NCRManager() {
 
             {/* Table */}
             <Card className="border-none shadow-lg dark:bg-slate-900 rounded-[2rem] overflow-hidden">
-                <CardHeader className="border-b border-slate-200 dark:border-slate-700">
+                <CardHeader className="border-none">
                     <CardTitle className="text-xl font-bold text-slate-900 dark:text-slate-100">Listado de Casos</CardTitle>
                 </CardHeader>
-                <CardContent className="p-0">
+                <CardContent className="px-6 pb-6 pt-2">
                     {/* Desktop View */}
                     <div className="hidden md:block">
                         <Table>
                             <TableHeader>
-                                <TableRow className="bg-gradient-to-r from-[#0e0c9b] to-[#2a28b5] hover:from-[#0e0c9b] hover:to-[#2a28b5] border-none">
-                                    <TableHead className="text-center text-white font-bold text-sm w-[70px]">Check</TableHead>
+                                <TableRow className="bg-gradient-to-r from-[#0e0c9b] to-[#2a28b5] hover:from-[#0e0c9b] hover:to-[#2a28b5] border-none h-12">
+                                    <TableHead className="text-center text-white font-bold text-sm w-[70px] rounded-l-2xl">Check</TableHead>
                                     <TableHead className="text-white font-bold text-sm">Lote</TableHead>
                                     <TableHead className="text-white font-bold text-sm">Defecto</TableHead>
                                     <TableHead className="text-white font-bold text-sm">Medición</TableHead>
                                     <TableHead className="text-white font-bold text-sm">Litros Inv.</TableHead>
                                     <TableHead className="text-white font-bold text-sm">Disposición</TableHead>
                                     <TableHead className="text-white font-bold text-sm">Estado</TableHead>
-                                    <TableHead className="w-[50px] text-white font-bold text-sm"></TableHead>
+                                    <TableHead className="w-[50px] text-white font-bold text-sm rounded-r-2xl pr-4"></TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>

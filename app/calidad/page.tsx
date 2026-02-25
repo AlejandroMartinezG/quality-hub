@@ -521,7 +521,7 @@ export default function CalidadPage() {
                     </div>
 
                     <Card className="border-none shadow-lg dark:bg-slate-900 rounded-[2rem] overflow-hidden">
-                        <CardHeader className="border-b border-slate-200 dark:border-slate-700">
+                        <CardHeader className="border-none">
                             <CardTitle className="text-xl font-bold text-slate-900 dark:text-slate-100">Historial de Mediciones</CardTitle>
                             <CardDescription className="text-slate-600 dark:text-slate-400">Últimos 50 registros comparados con límites de control.</CardDescription>
                         </CardHeader>
@@ -534,19 +534,25 @@ export default function CalidadPage() {
                             ) : (
                                 <>
                                     {/* Desktop Table View */}
-                                    <div className="hidden md:block rounded-md border overflow-x-auto">
+                                    <div className="hidden md:block rounded-2xl overflow-hidden border-none shadow-sm">
                                         <Table>
                                             <TableHeader>
-                                                <TableRow className="bg-gradient-to-r from-[#0e0c9b] to-[#2a28b5] hover:from-[#0e0c9b] hover:to-[#2a28b5] border-none">
-                                                    <TableHead className="w-[150px] text-white font-bold text-sm">Lote</TableHead>
+                                                <TableRow className="bg-gradient-to-r from-[#0e0c9b] to-[#2a28b5] hover:from-[#0e0c9b] hover:to-[#2a28b5] border-none h-12">
+                                                    <TableHead className="w-[150px] text-white font-bold text-sm rounded-l-2xl pl-6">Lote</TableHead>
                                                     <TableHead className="text-white font-bold text-sm">Producto/Sucursal</TableHead>
                                                     <TableHead className="text-center text-white font-bold text-sm">pH</TableHead>
                                                     <TableHead className="text-center text-white font-bold text-sm">% Sólidos (Avg)</TableHead>
                                                     <TableHead className="text-white font-bold text-sm">Estado</TableHead>
                                                     <TableHead className="text-center text-white font-bold text-sm">Apariencia</TableHead>
-                                                    <TableHead className="text-right text-white font-bold text-sm">Fecha</TableHead>
-                                                    {profile?.is_admin && <TableHead className="text-white font-bold text-sm">Preparador</TableHead>}
-                                                    {profile?.is_admin && <TableHead className="text-right text-white font-bold text-sm">Acciones</TableHead>}
+                                                    {profile?.is_admin ? (
+                                                        <>
+                                                            <TableHead className="text-right text-white font-bold text-sm">Fecha</TableHead>
+                                                            <TableHead className="text-white font-bold text-sm">Preparador</TableHead>
+                                                            <TableHead className="text-right text-white font-bold text-sm rounded-r-2xl pr-6">Acciones</TableHead>
+                                                        </>
+                                                    ) : (
+                                                        <TableHead className="text-right text-white font-bold text-sm rounded-r-2xl pr-6">Fecha</TableHead>
+                                                    )}
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
