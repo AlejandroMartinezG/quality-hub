@@ -285,38 +285,46 @@ export function NCRManager() {
                 const ncrIds = ncrData.map((n: any) => n.id)
                 const batchCodes = ncrData.map((n: any) => n.batch_code).filter(Boolean)
 
-                const [dispResult, ncrExtraResult, bitacoraResult, lastCommentsResult] = await Promise.all([
+                const [dispResult, ncrExtraResult, bitacoraResult, lastCommentsResult, unreadNotifsResult] = await Promise.all([
                     supabase.from('quality_disposition').select('ncr_id, disposition_type').in('ncr_id', ncrIds),
                     supabase.from('quality_ncr').select('id, defect_detail').in('id', ncrIds),
                     supabase.from('bitacora_produccion_calidad').select('lote_producto, apariencia').in('lote_producto', batchCodes),
                     supabase.from('quality_ncr_comments')
                         .select('ncr_id, author_user_id')
                         .in('ncr_id', ncrIds)
-                        .order('created_at', { ascending: false })
+                        .order('created_at', { ascending: false }),
+                    supabase.from('notifications')
+                        .select('metadata')
+                        .eq('user_id', profile.id)
+                        .eq('read', false)
+                        .eq('type', 'COMENTARIO_NUEVO')
                 ])
 
                 const dispositions = dispResult.data
                 const ncrExtras = ncrExtraResult.data
                 const bitacoras = bitacoraResult.data
                 const lastComments = lastCommentsResult.data
+                const unreadNotifs = unreadNotifsResult.data
 
                 if (dispositions || ncrExtras || bitacoras || lastComments) {
                     const dispMap = new Map(dispositions?.map(d => [d.ncr_id, d.disposition_type]) || [])
                     const extraMap = new Map(ncrExtras?.map(n => [n.id, n.defect_detail]) || [])
                     const bitacoraMap = new Map(bitacoras?.map(b => [b.lote_producto, b.apariencia]) || [])
 
-                    // Logic for last comment and count of messages from others
-                    const lastCommentMap = new Map();
-                    const otherMessageCountMap = new Map();
+                    const unreadCountMap = new Map();
+                    unreadNotifs?.forEach((n: any) => {
+                        const ncrId = n.metadata?.ncr_id;
+                        if (ncrId) {
+                            unreadCountMap.set(ncrId, (unreadCountMap.get(ncrId) || 0) + 1);
+                        }
+                    });
 
+                    // Logic for last comment author
+                    const lastCommentMap = new Map();
                     lastComments?.forEach(c => {
                         // Keep track of the actual last author
                         if (!lastCommentMap.has(c.ncr_id)) {
                             lastCommentMap.set(c.ncr_id, c.author_user_id);
-                        }
-                        // Count messages that were NOT sent by the current user
-                        if (c.author_user_id !== profile?.id) {
-                            otherMessageCountMap.set(c.ncr_id, (otherMessageCountMap.get(c.ncr_id) || 0) + 1);
                         }
                     });
 
@@ -325,8 +333,8 @@ export function NCRManager() {
                         disposition_type: dispMap.get(n.id),
                         defect_detail: n.defect_detail || extraMap.get(n.id),
                         apariencia_reportada: bitacoraMap.get(n.batch_code),
-                        // Here we use the custom count of other people's messages
-                        message_count: otherMessageCountMap.get(n.id) || 0,
+                        // Use unread notification count for the badge
+                        message_count: unreadCountMap.get(n.id) || 0,
                         last_message_author_id: n.last_message_author_id || lastCommentMap.get(n.id)
                     }))
                 }

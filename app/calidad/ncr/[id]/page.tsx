@@ -80,6 +80,7 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
 
     useEffect(() => {
         fetchNCRDetail()
+        markNotificationsAsRead()
 
         const channel = supabase
             .channel(`ncr_detail_${params.id}`)
@@ -121,6 +122,29 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
             commentsEndRef.current.scrollIntoView({ behavior: 'smooth' })
         }
     }, [history])
+
+    async function markNotificationsAsRead() {
+        if (!profile) return
+        try {
+            // Find unread notifications for this NCR
+            const { data: unread } = await supabase
+                .from('notifications')
+                .select('id')
+                .eq('user_id', profile.id)
+                .eq('read', false)
+                .contains('metadata', { ncr_id: params.id })
+
+            if (unread && unread.length > 0) {
+                const ids = unread.map(n => n.id)
+                await supabase
+                    .from('notifications')
+                    .update({ read: true })
+                    .in('id', ids)
+            }
+        } catch (error) {
+            console.error('Error marking notifications as read:', error)
+        }
+    }
 
     async function fetchNCRDetail() {
         setLoading(true)
