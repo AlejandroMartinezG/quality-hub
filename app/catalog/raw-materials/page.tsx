@@ -343,6 +343,88 @@ export default function RawMaterialsPage() {
                 columns={columns}
                 data={filteredData}
                 onRowClick={handleRowClick}
+                renderMobileItem={(item) => (
+                    <div className="flex flex-col gap-3">
+                        <div className="flex items-start justify-between gap-2">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{item.code}</span>
+                                <h3 className="font-bold text-slate-900 dark:text-slate-100 leading-tight">{item.name}</h3>
+                            </div>
+                            <Badge
+                                variant="outline"
+                                className={cn("text-[10px] px-2 py-0 h-5 rounded-md shrink-0", getDispositionColor(item.disposition))}
+                            >
+                                {item.disposition}
+                            </Badge>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                            <Badge
+                                variant="outline"
+                                className={cn("text-[10px] font-normal rounded-md", getFunctionalCategoryColor(item.functional_category))}
+                            >
+                                {item.functional_category}
+                            </Badge>
+                            {item.chemical_family && (
+                                <span className="text-[11px] text-muted-foreground self-center">
+                                    • {item.chemical_family}
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 mt-1">
+                            <div className="flex flex-col gap-1.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                                <span className="text-[10px] font-bold text-slate-500 uppercase ml-1">Ficha Técnica (TDS)</span>
+                                <div className="flex items-center gap-1">
+                                    <Button variant="ghost" size="sm" className="h-8 flex-1 gap-2 text-xs bg-white dark:bg-slate-900 shadow-sm" asChild={!!item.tds_view_url} disabled={!item.tds_view_url}>
+                                        {item.tds_view_url ? (
+                                            <TrackedLink href={item.tds_view_url} target="_blank" fileName={item.name} fileType="TDS (Vista)" skuCode={item.code}>
+                                                <Eye className="h-3 w-3 text-primary" />
+                                                Ver
+                                            </TrackedLink>
+                                        ) : (
+                                            <span className="flex items-center gap-2 opacity-30"><Eye className="h-3 w-3" /> Ver</span>
+                                        )}
+                                    </Button>
+                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 bg-white dark:bg-slate-900 shadow-sm" asChild={!!item.tds_download_url} disabled={!item.tds_download_url}>
+                                        {item.tds_download_url ? (
+                                            <TrackedLink href={item.tds_download_url} target="_blank" fileName={item.name} fileType="TDS (Descarga)" skuCode={item.code}>
+                                                <Download className="h-3 w-3 text-muted-foreground" />
+                                            </TrackedLink>
+                                        ) : (
+                                            <Download className="h-3 w-3 opacity-30" />
+                                        )}
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-1.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                                <span className="text-[10px] font-bold text-slate-500 uppercase ml-1">Seguridad (SDS)</span>
+                                <div className="flex items-center gap-1">
+                                    <Button variant="ghost" size="sm" className="h-8 flex-1 gap-2 text-xs bg-white dark:bg-slate-900 shadow-sm" asChild={!!item.sds_view_url} disabled={!item.sds_view_url}>
+                                        {item.sds_view_url ? (
+                                            <TrackedLink href={item.sds_view_url} target="_blank" fileName={item.name} fileType="SDS (Vista)" skuCode={item.code}>
+                                                <ShieldAlert className="h-3 w-3 text-destructive" />
+                                                Ver
+                                            </TrackedLink>
+                                        ) : (
+                                            <span className="flex items-center gap-2 opacity-30"><ShieldAlert className="h-3 w-3" /> Ver</span>
+                                        )}
+                                    </Button>
+                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 bg-white dark:bg-slate-900 shadow-sm" asChild={!!item.sds_download_url} disabled={!item.sds_download_url}>
+                                        {item.sds_download_url ? (
+                                            <TrackedLink href={item.sds_download_url} target="_blank" fileName={item.name} fileType="SDS (Descarga)" skuCode={item.code}>
+                                                <Download className="h-3 w-3 text-muted-foreground" />
+                                            </TrackedLink>
+                                        ) : (
+                                            <Download className="h-3 w-3 opacity-30" />
+                                        )}
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             />
         </div>
     )

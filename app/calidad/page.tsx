@@ -525,152 +525,239 @@ export default function CalidadPage() {
                                     <p className="text-muted-foreground">Cargando registros de calidad...</p>
                                 </div>
                             ) : (
-                                <div className="rounded-md border overflow-x-auto">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow className="bg-gradient-to-r from-[#0e0c9b] to-[#2a28b5] hover:from-[#0e0c9b] hover:to-[#2a28b5] border-none">
-                                                <TableHead className="w-[150px] text-white font-bold text-sm">Lote</TableHead>
-                                                <TableHead className="text-white font-bold text-sm">Producto/Sucursal</TableHead>
-                                                <TableHead className="text-center text-white font-bold text-sm">pH</TableHead>
-                                                <TableHead className="text-center text-white font-bold text-sm">% Sólidos (Avg)</TableHead>
-                                                <TableHead className="text-white font-bold text-sm">Estado</TableHead>
-                                                <TableHead className="text-center text-white font-bold text-sm">Apariencia</TableHead>
-                                                <TableHead className="text-right text-white font-bold text-sm">Fecha</TableHead>
-                                                {profile?.is_admin && <TableHead className="text-white font-bold text-sm">Preparador</TableHead>}
-                                                {profile?.is_admin && <TableHead className="text-right text-white font-bold text-sm">Acciones</TableHead>}
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {filteredRecords.length > 0 ? (
-                                                filteredRecords.map((record) => {
-                                                    const status = getStatusInfo(record)
-                                                    const avgSolids = (record.solidos_medicion_1 !== null && record.solidos_medicion_2 !== null)
-                                                        ? (record.solidos_medicion_1 + record.solidos_medicion_2) / 2
-                                                        : null
+                                <>
+                                    {/* Desktop Table View */}
+                                    <div className="hidden md:block rounded-md border overflow-x-auto">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow className="bg-gradient-to-r from-[#0e0c9b] to-[#2a28b5] hover:from-[#0e0c9b] hover:to-[#2a28b5] border-none">
+                                                    <TableHead className="w-[150px] text-white font-bold text-sm">Lote</TableHead>
+                                                    <TableHead className="text-white font-bold text-sm">Producto/Sucursal</TableHead>
+                                                    <TableHead className="text-center text-white font-bold text-sm">pH</TableHead>
+                                                    <TableHead className="text-center text-white font-bold text-sm">% Sólidos (Avg)</TableHead>
+                                                    <TableHead className="text-white font-bold text-sm">Estado</TableHead>
+                                                    <TableHead className="text-center text-white font-bold text-sm">Apariencia</TableHead>
+                                                    <TableHead className="text-right text-white font-bold text-sm">Fecha</TableHead>
+                                                    {profile?.is_admin && <TableHead className="text-white font-bold text-sm">Preparador</TableHead>}
+                                                    {profile?.is_admin && <TableHead className="text-right text-white font-bold text-sm">Acciones</TableHead>}
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {filteredRecords.length > 0 ? (
+                                                    filteredRecords.map((record) => {
+                                                        const status = getStatusInfo(record)
+                                                        const avgSolids = (record.solidos_medicion_1 !== null && record.solidos_medicion_2 !== null)
+                                                            ? (record.solidos_medicion_1 + record.solidos_medicion_2) / 2
+                                                            : null
 
-                                                    const stdSolids = PRODUCT_STANDARDS[record.codigo_producto]
-                                                    const stdPH = PH_STANDARDS[record.codigo_producto]
-                                                    const stdApp = APPEARANCE_STANDARDS[record.codigo_producto]
+                                                        const stdSolids = PRODUCT_STANDARDS[record.codigo_producto]
+                                                        const stdPH = PH_STANDARDS[record.codigo_producto]
+                                                        const stdApp = APPEARANCE_STANDARDS[record.codigo_producto]
 
-                                                    return (
-                                                        <TableRow key={record.id} className="hover:bg-muted/30 transition-colors">
-                                                            <TableCell className="font-mono font-bold text-sm text-slate-700 dark:text-slate-200">
-                                                                {record.lote_producto}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <div className="flex flex-col">
-                                                                    <span className="font-bold text-base text-slate-800 dark:text-slate-100">{record.codigo_producto}</span>
-                                                                    <span className="text-xs text-muted-foreground dark:text-slate-400 uppercase tracking-wide">{record.sucursal}</span>
-                                                                </div>
-                                                            </TableCell>
-                                                            <TableCell className="text-center">
-                                                                <div className="flex flex-col items-center">
-                                                                    <span className={record.ph !== null ? "font-bold text-sm dark:text-slate-200" : "text-muted-foreground text-xs"}>
-                                                                        {record.ph ?? "N/A"}
-                                                                    </span>
-                                                                    {stdPH && (
-                                                                        <span className="text-[10px] text-muted-foreground dark:text-slate-400">
-                                                                            Ref: {stdPH.min}-{stdPH.max}
+                                                        return (
+                                                            <TableRow key={record.id} className="hover:bg-muted/30 transition-colors">
+                                                                <TableCell className="font-mono font-bold text-sm text-slate-700 dark:text-slate-200">
+                                                                    {record.lote_producto}
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <div className="flex flex-col">
+                                                                        <span className="font-bold text-base text-slate-800 dark:text-slate-100">{record.codigo_producto}</span>
+                                                                        <span className="text-xs text-muted-foreground dark:text-slate-400 uppercase tracking-wide">{record.sucursal}</span>
+                                                                    </div>
+                                                                </TableCell>
+                                                                <TableCell className="text-center">
+                                                                    <div className="flex flex-col items-center">
+                                                                        <span className={record.ph !== null ? "font-bold text-sm dark:text-slate-200" : "text-muted-foreground text-xs"}>
+                                                                            {record.ph ?? "N/A"}
                                                                         </span>
-                                                                    )}
+                                                                        {stdPH && (
+                                                                            <span className="text-[10px] text-muted-foreground dark:text-slate-400">
+                                                                                Ref: {stdPH.min}-{stdPH.max}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </TableCell>
+                                                                <TableCell className="text-center">
+                                                                    <div className="flex flex-col items-center">
+                                                                        <span className={avgSolids !== null ? "font-bold text-base dark:text-slate-100" : "text-muted-foreground text-xs"}>
+                                                                            {avgSolids !== null ? avgSolids.toFixed(2) + "%" : "N/A"}
+                                                                        </span>
+                                                                        {stdSolids && (
+                                                                            <div className="flex flex-col items-center gap-0.5 mt-1">
+                                                                                <span className="text-[10px] font-medium text-slate-500 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                                                                                    Std: {stdSolids.min}-{stdSolids.max}
+                                                                                </span>
+                                                                                <span className="text-[10px] text-muted-foreground/80 dark:text-slate-400">
+                                                                                    Tol: {(stdSolids.min! * 0.95).toFixed(2)}-{(stdSolids.max! * 1.05).toFixed(2)}
+                                                                                </span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <Badge
+                                                                        className={cn(
+                                                                            "gap-1.5 shadow-sm px-3 py-1 text-xs font-semibold uppercase tracking-wider rounded-full border-none",
+                                                                            status === 'success' && "bg-green-600 text-white hover:bg-green-700",
+                                                                            status === 'warning' && "bg-yellow-500 text-white hover:bg-yellow-600",
+                                                                            status === 'error' && "bg-[#C1272D] text-white hover:bg-[#A01F25]"
+                                                                        )}
+                                                                    >
+                                                                        {status === 'success' && <CheckCircle2 className="h-3 w-3" />}
+                                                                        {status === 'warning' && <AlertCircle className="h-3 w-3" />}
+                                                                        {status === 'error' && <XCircle className="h-3 w-3" />}
+                                                                        {status === 'success' ? 'CONFORME' : status === 'warning' ? 'SEMI-CONFORME' : 'NO CONFORME'}
+                                                                    </Badge>
+                                                                </TableCell>
+                                                                <TableCell className="text-center">
+                                                                    <div className="flex flex-col items-center">
+                                                                        <span className="text-sm font-semibold dark:text-slate-200">{record.apariencia || "N/A"}</span>
+                                                                        {stdApp && (
+                                                                            <span className="text-[10px] text-muted-foreground dark:text-slate-400">
+                                                                                Esp: {stdApp}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </TableCell>
+                                                                <TableCell className="text-right text-sm text-muted-foreground dark:text-slate-400">
+                                                                    {new Date(record.fecha_fabricacion).toLocaleDateString()}
+                                                                </TableCell>
+                                                                {profile?.is_admin && (
+                                                                    <TableCell className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                                                        {record.nombre_preparador || "N/A"}
+                                                                    </TableCell>
+                                                                )}
+                                                                {profile?.is_admin && (
+                                                                    <TableCell className="text-right">
+                                                                        <div className="flex justify-end gap-2">
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 cursor-pointer pointer-events-auto"
+                                                                                title="Editar registro"
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation()
+                                                                                    setEditingRecord(record)
+                                                                                    setIsEditDialogOpen(true)
+                                                                                }}
+                                                                            >
+                                                                                <Edit2 className="h-4 w-4" />
+                                                                            </Button>
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer pointer-events-auto"
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation()
+                                                                                    requestDelete(record.id, record.lote_producto)
+                                                                                }}
+                                                                                title="Eliminar registro"
+                                                                            >
+                                                                                <Trash2 className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </div>
+                                                                    </TableCell>
+                                                                )}
+                                                            </TableRow>
+                                                        )
+                                                    })
+                                                ) : (
+                                                    <TableRow>
+                                                        <TableCell colSpan={profile?.is_admin ? 9 : 8} className="h-24 text-center text-muted-foreground">
+                                                            No se encontraron registros.
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+
+                                    {/* Mobile Card View */}
+                                    <div className="md:hidden space-y-4">
+                                        {filteredRecords.length > 0 ? (
+                                            filteredRecords.map((record) => {
+                                                const status = getStatusInfo(record)
+                                                const avgSolids = (record.solidos_medicion_1 !== null && record.solidos_medicion_2 !== null)
+                                                    ? (record.solidos_medicion_1 + record.solidos_medicion_2) / 2
+                                                    : null
+
+                                                const stdSolids = PRODUCT_STANDARDS[record.codigo_producto]
+                                                const stdPH = PH_STANDARDS[record.codigo_producto]
+
+                                                return (
+                                                    <div key={record.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                                                        <div className="p-4 space-y-4">
+                                                            <div className="flex items-start justify-between">
+                                                                <div className="space-y-1">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-[10px] font-bold text-slate-400 tracking-wider uppercase">Lote</span>
+                                                                        <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{record.lote_producto}</span>
+                                                                    </div>
+                                                                    <div className="flex flex-col">
+                                                                        <span className="font-bold text-base leading-tight text-slate-800 dark:text-slate-100">{record.codigo_producto}</span>
+                                                                        <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{record.sucursal} • {new Date(record.fecha_fabricacion).toLocaleDateString()}</span>
+                                                                    </div>
                                                                 </div>
-                                                            </TableCell>
-                                                            <TableCell className="text-center">
-                                                                <div className="flex flex-col items-center">
-                                                                    <span className={avgSolids !== null ? "font-bold text-base dark:text-slate-100" : "text-muted-foreground text-xs"}>
-                                                                        {avgSolids !== null ? avgSolids.toFixed(2) + "%" : "N/A"}
-                                                                    </span>
-                                                                    {stdSolids && (
-                                                                        <div className="flex flex-col items-center gap-0.5 mt-1">
-                                                                            <span className="text-[10px] font-medium text-slate-500 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
-                                                                                Std: {stdSolids.min}-{stdSolids.max}
-                                                                            </span>
-                                                                            <span className="text-[10px] text-muted-foreground/80 dark:text-slate-400">
-                                                                                Tol: {(stdSolids.min! * 0.95).toFixed(2)}-{(stdSolids.max! * 1.05).toFixed(2)}
-                                                                            </span>
+                                                                <div className="flex flex-col items-end gap-2">
+                                                                    <Badge
+                                                                        className={cn(
+                                                                            "px-2 py-0.5 text-[10px] font-bold rounded-full border-none",
+                                                                            status === 'success' && "bg-green-600 text-white",
+                                                                            status === 'warning' && "bg-yellow-500 text-white",
+                                                                            status === 'error' && "bg-[#C1272D] text-white"
+                                                                        )}
+                                                                    >
+                                                                        {status === 'success' ? 'CONFORME' : status === 'warning' ? 'SEMI' : 'NO CONF.'}
+                                                                    </Badge>
+                                                                    {profile?.is_admin && (
+                                                                        <div className="flex gap-1 mt-1">
+                                                                            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => { setEditingRecord(record); setIsEditDialogOpen(true); }}>
+                                                                                <Edit2 className="h-3.5 w-3.5 text-blue-600" />
+                                                                            </Button>
+                                                                            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => requestDelete(record.id, record.lote_producto)}>
+                                                                                <Trash2 className="h-3.5 w-3.5 text-red-600" />
+                                                                            </Button>
                                                                         </div>
                                                                     )}
                                                                 </div>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <Badge
-                                                                    className={cn(
-                                                                        "gap-1.5 shadow-sm px-3 py-1 text-xs font-semibold uppercase tracking-wider rounded-full border-none",
-                                                                        status === 'success' && "bg-green-600 text-white hover:bg-green-700",
-                                                                        status === 'warning' && "bg-yellow-500 text-white hover:bg-yellow-600",
-                                                                        status === 'error' && "bg-[#C1272D] text-white hover:bg-[#A01F25]"
-                                                                    )}
-                                                                >
-                                                                    {status === 'success' && <CheckCircle2 className="h-3 w-3" />}
-                                                                    {status === 'warning' && <AlertCircle className="h-3 w-3" />}
-                                                                    {status === 'error' && <XCircle className="h-3 w-3" />}
-                                                                    {status === 'success' ? 'CONFORME' : status === 'warning' ? 'SEMI-CONFORME' : 'NO CONFORME'}
-                                                                </Badge>
-                                                            </TableCell>
-                                                            <TableCell className="text-center">
-                                                                <div className="flex flex-col items-center">
-                                                                    <span className="text-sm font-semibold dark:text-slate-200">{record.apariencia || "N/A"}</span>
-                                                                    {stdApp && (
-                                                                        <span className="text-[10px] text-muted-foreground dark:text-slate-400">
-                                                                            Esp: {stdApp}
-                                                                        </span>
-                                                                    )}
+                                                            </div>
+
+                                                            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-50 dark:border-slate-800">
+                                                                <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl flex flex-col items-center">
+                                                                    <span className="text-[9px] font-bold text-slate-400 uppercase mb-1">pH</span>
+                                                                    <span className="font-bold text-sm">{record.ph ?? "N/A"}</span>
+                                                                    {stdPH && <span className="text-[8px] text-muted-foreground">Ref: {stdPH.min}-{stdPH.max}</span>}
                                                                 </div>
-                                                            </TableCell>
-                                                            <TableCell className="text-right text-sm text-muted-foreground dark:text-slate-400">
-                                                                {new Date(record.fecha_fabricacion).toLocaleDateString()}
-                                                            </TableCell>
-                                                            {profile?.is_admin && (
-                                                                <TableCell className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                                                    {record.nombre_preparador || "N/A"}
-                                                                </TableCell>
-                                                            )}
-                                                            {profile?.is_admin && (
-                                                                <TableCell className="text-right">
-                                                                    <div className="flex justify-end gap-2">
+                                                                <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl flex flex-col items-center">
+                                                                    <span className="text-[9px] font-bold text-slate-400 uppercase mb-1">% Sólidos</span>
+                                                                    <span className="font-bold text-sm">{avgSolids !== null ? avgSolids.toFixed(2) + "%" : "N/A"}</span>
+                                                                    {stdSolids && <span className="text-[8px] text-muted-foreground text-center">Std: {stdSolids.min}-{stdSolids.max}</span>}
+                                                                </div>
+                                                            </div>
 
-
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 cursor-pointer pointer-events-auto"
-                                                                            title="Editar registro"
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation()
-                                                                                setEditingRecord(record)
-                                                                                setIsEditDialogOpen(true)
-                                                                            }}
-                                                                        >
-                                                                            <Edit2 className="h-4 w-4" />
-                                                                        </Button>
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer pointer-events-auto"
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation()
-                                                                                requestDelete(record.id, record.lote_producto)
-                                                                            }}
-                                                                            title="Eliminar registro"
-                                                                        >
-                                                                            <Trash2 className="h-4 w-4" />
-                                                                        </Button>
+                                                            <div className="flex items-center justify-between text-[11px] pt-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-bold text-slate-400 uppercase text-[9px]">Apariencia:</span>
+                                                                    <span className="font-medium text-slate-700 dark:text-slate-300">{record.apariencia || "N/A"}</span>
+                                                                </div>
+                                                                {profile?.is_admin && (
+                                                                    <div className="flex items-center gap-1">
+                                                                        <span className="font-bold text-slate-400 uppercase text-[9px]">Prep:</span>
+                                                                        <span className="font-medium text-slate-700 dark:text-slate-300">{record.nombre_preparador?.split(' ')[0] || "N/A"}</span>
                                                                     </div>
-                                                                </TableCell>
-                                                            )}
-                                                        </TableRow>
-                                                    )
-                                                })
-                                            ) : (
-                                                <TableRow>
-                                                    <TableCell colSpan={profile?.is_admin ? 9 : 8} className="h-24 text-center text-muted-foreground">
-                                                        No se encontraron registros.
-                                                    </TableCell>
-                                                </TableRow>
-                                            )}
-                                        </TableBody>
-                                    </Table>
-                                </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })
+                                        ) : (
+                                            <div className="p-8 text-center text-muted-foreground bg-slate-50 dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                                                No se encontraron registros.
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
                             )}
                         </CardContent>
                     </Card>

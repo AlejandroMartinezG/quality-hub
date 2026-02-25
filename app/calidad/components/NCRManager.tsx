@@ -613,7 +613,8 @@ export function NCRManager() {
                     <CardTitle className="text-xl font-bold text-slate-900 dark:text-slate-100">Listado de Casos</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                    <div className="overflow-x-auto">
+                    {/* Desktop View */}
+                    <div className="hidden md:block">
                         <Table>
                             <TableHeader>
                                 <TableRow className="bg-gradient-to-r from-[#0e0c9b] to-[#2a28b5] hover:from-[#0e0c9b] hover:to-[#2a28b5] border-none">
@@ -698,6 +699,81 @@ export function NCRManager() {
                                 )}
                             </TableBody>
                         </Table>
+                    </div>
+
+                    {/* Mobile Card View */}
+                    <div className="md:hidden p-4 space-y-4 bg-slate-50/50 dark:bg-slate-950/20">
+                        {loading ? (
+                            <div className="py-12 text-center text-muted-foreground">Cargando datos...</div>
+                        ) : ncrs.length === 0 ? (
+                            <div className="py-12 text-center text-muted-foreground">No se encontraron casos.</div>
+                        ) : (
+                            ncrs.map((ncr) => (
+                                <div key={ncr.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                                    <div className="p-4 space-y-3">
+                                        <div className="flex items-start justify-between">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lote</span>
+                                                    <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{ncr.batch_code}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Badge variant="outline" className={cn("text-[10px] font-bold px-2 py-0 h-5", getParameterColor(ncr.defect_parameter))}>
+                                                        {ncr.defect_parameter}
+                                                    </Badge>
+                                                    <Badge className={cn("text-[10px] px-2 py-0 h-5", getStatusColor(ncr.status))}>
+                                                        {ncr.status.replace('_', ' ')}
+                                                    </Badge>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <Link href={`/calidad/ncr/${ncr.id}`}>
+                                                    <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl relative">
+                                                        <Eye className="h-4 w-4 text-primary" />
+                                                        {ncr.message_count > 0 && (
+                                                            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                                                                {ncr.message_count}
+                                                            </span>
+                                                        )}
+                                                    </Button>
+                                                </Link>
+                                                {profile?.role === 'admin' && (
+                                                    <Button variant="ghost" size="icon" className="h-9 w-9 text-red-500" onClick={() => promptDelete(ncr.id)}>
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                            <div className="space-y-1">
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Detalle Medición</span>
+                                                <div className="text-sm">
+                                                    {renderMeasurement(ncr)}
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1 text-right">
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Volumen</span>
+                                                <div className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                                                    {ncr.liters_involved?.toLocaleString()} L
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Disposición Final</span>
+                                            {ncr.disposition_type && ncr.disposition_type !== '-' ? (
+                                                <Badge variant="secondary" className="text-[10px] h-5 py-0">
+                                                    {ncr.disposition_type.replace(/_/g, ' ')}
+                                                </Badge>
+                                            ) : (
+                                                <span className="text-xs text-muted-foreground">Pendiente</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </CardContent>
             </Card>

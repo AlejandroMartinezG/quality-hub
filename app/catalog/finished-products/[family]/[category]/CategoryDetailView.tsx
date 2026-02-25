@@ -339,6 +339,93 @@ export function CategoryDetailView({ family, category }: CategoryDetailViewProps
                 columns={columns}
                 data={filteredData}
                 onRowClick={handleRowClick}
+                renderMobileItem={(p) => (
+                    <div className="flex flex-col gap-3">
+                        <div className="flex items-start justify-between gap-2">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{p.sku_code}</span>
+                                <h3 className="font-bold text-slate-900 dark:text-slate-100 leading-tight">{p.name}</h3>
+                            </div>
+                            <Badge variant={p.status === "Activo" ? "success" : "secondary"} className="text-[10px] px-2 py-0 h-5 rounded-md shrink-0">
+                                {p.status}
+                            </Badge>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 mt-1">
+                            <div className="flex flex-col gap-1.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                                <span className="text-[9px] font-bold text-slate-500 uppercase text-center">TDS</span>
+                                <div className="flex items-center justify-center gap-1">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 bg-white dark:bg-slate-900 shadow-sm rounded-lg" asChild={!!p.tds_view_url} disabled={!p.tds_view_url}>
+                                        {p.tds_view_url ? (
+                                            <TrackedLink href={p.tds_view_url} target="_blank" fileName={p.variant || p.base_product} fileType="TDS (Vista)" skuCode={p.sku_code}>
+                                                <Eye className="h-3.5 w-3.5 text-primary" />
+                                            </TrackedLink>
+                                        ) : (
+                                            <Eye className="h-3.5 w-3.5 opacity-30" />
+                                        )}
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 bg-white dark:bg-slate-900 shadow-sm rounded-lg" asChild={!!p.tds_download_url} disabled={!p.tds_download_url}>
+                                        {p.tds_download_url ? (
+                                            <TrackedLink href={p.tds_download_url} target="_blank" fileName={p.variant || p.base_product} fileType="TDS (Descarga)" skuCode={p.sku_code}>
+                                                <Download className="h-3.5 w-3.5 text-muted-foreground" />
+                                            </TrackedLink>
+                                        ) : (
+                                            <Download className="h-3.5 w-3.5 opacity-30" />
+                                        )}
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-1.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                                <span className="text-[9px] font-bold text-slate-500 uppercase text-center">SDS</span>
+                                <div className="flex items-center justify-center gap-1">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 bg-white dark:bg-slate-900 shadow-sm rounded-lg" asChild={!!p.sds_view_url} disabled={!p.sds_view_url}>
+                                        {p.sds_view_url ? (
+                                            <TrackedLink href={p.sds_view_url} target="_blank" fileName={p.variant || p.base_product} fileType="SDS (Vista)" skuCode={p.sku_code}>
+                                                <ShieldAlert className="h-3.5 w-3.5 text-destructive" />
+                                            </TrackedLink>
+                                        ) : (
+                                            <ShieldAlert className="h-3.5 w-3.5 opacity-30" />
+                                        )}
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 bg-white dark:bg-slate-900 shadow-sm rounded-lg" asChild={!!p.sds_download_url} disabled={!p.sds_download_url}>
+                                        {p.sds_download_url ? (
+                                            <TrackedLink href={p.sds_download_url} target="_blank" fileName={p.variant || p.base_product} fileType="SDS (Descarga)" skuCode={p.sku_code}>
+                                                <Download className="h-3.5 w-3.5 text-muted-foreground" />
+                                            </TrackedLink>
+                                        ) : (
+                                            <Download className="h-3.5 w-3.5 opacity-30" />
+                                        )}
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-1.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                                <span className="text-[9px] font-bold text-slate-500 uppercase text-center">COA</span>
+                                <div className="flex items-center justify-center gap-1">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 bg-white dark:bg-slate-900 shadow-sm rounded-lg" asChild={!!p.coa_view_url} disabled={!p.coa_view_url}>
+                                        {p.coa_view_url ? (
+                                            <TrackedLink href={p.coa_view_url} target="_blank" fileName={p.variant || p.base_product} fileType="COA (Vista)" skuCode={p.sku_code}>
+                                                <BadgeCheck className="h-3.5 w-3.5 text-green-500" />
+                                            </TrackedLink>
+                                        ) : (
+                                            <BadgeCheck className="h-3.5 w-3.5 opacity-30" />
+                                        )}
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 bg-white dark:bg-slate-900 shadow-sm rounded-lg" asChild={!!p.coa_download_url} disabled={!p.coa_download_url}>
+                                        {p.coa_download_url ? (
+                                            <TrackedLink href={p.coa_download_url} target="_blank" fileName={p.variant || p.base_product} fileType="COA (Descarga)" skuCode={p.sku_code}>
+                                                <Download className="h-3.5 w-3.5 text-muted-foreground" />
+                                            </TrackedLink>
+                                        ) : (
+                                            <Download className="h-3.5 w-3.5 opacity-30" />
+                                        )}
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             />
         </div>
     )
