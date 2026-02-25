@@ -50,6 +50,12 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
     const [history, setHistory] = useState<any[]>([])
     const [bitacoraObs, setBitacoraObs] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
+    const profileRef = useRef(profile)
+
+    // Sync ref with profile state
+    useEffect(() => {
+        profileRef.current = profile
+    }, [profile])
 
     // Form States
     const [newComment, setNewComment] = useState('')
@@ -78,12 +84,24 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
         const channel = supabase
             .channel(`ncr_detail_${params.id}`)
             .on('postgres_changes', {
-                event: '*',
+                event: 'INSERT', // Only trigger on INSERT for notifications
+                schema: 'public',
+                table: 'quality_ncr_comments',
+                filter: `ncr_id=eq.${params.id}`
+            }, (payload) => {
+                const newComment = payload.new as any;
+                if (newComment.author_user_id !== profileRef.current?.id) {
+                    toast.info('💬 Nuevo comentario recibido');
+                }
+                fetchNCRDetail() // Refresh on new comment
+            })
+            .on('postgres_changes', {
+                event: 'UPDATE',
                 schema: 'public',
                 table: 'quality_ncr_comments',
                 filter: `ncr_id=eq.${params.id}`
             }, () => {
-                fetchNCRDetail() // Refresh on new comment
+                fetchNCRDetail()
             })
             .on('postgres_changes', {
                 event: '*',

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -56,12 +56,20 @@ interface NCR {
     disposition_type?: string
     defect_detail?: string
     apariencia_reportada?: string
+    last_message_author_id?: string
 }
 
 // viewMode logic removed, will rely on profile.role directly
 export function NCRManager() {
     const { profile } = useAuth()
     const [ncrs, setNcrs] = useState<NCR[]>([])
+    const ncrsRef = useRef<NCR[]>([])
+
+    // Sync ref with state
+    useEffect(() => {
+        ncrsRef.current = ncrs
+    }, [ncrs])
+
     const [loading, setLoading] = useState(true)
     // viewMode is now a prop
 
@@ -102,7 +110,45 @@ export function NCRManager() {
                 fetchNCRs()
                 fetchStatusCounts()
             })
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'quality_ncr_comments'
+            }, (payload) => {
+                const newComment = payload.new as any;
+                // Only notify if author is someone else
+                if (newComment.author_user_id !== profile?.id) {
+                    // Try to find the NCR batch code for a better message
+                    const ncr = ncrsRef.current.find(n => n.id === newComment.ncr_id);
+                    const batchText = ncr ? ` en lote ${ncr.batch_code}` : '';
+
+                    toast.info(`💬 Nuevo mensaje${batchText}`, {
+                        description: newComment.message.substring(0, 50) + (newComment.message.length > 50 ? '...' : ''),
+                        action: {
+                            label: 'Ver',
+                            onClick: () => {
+                                // Navigate or open details
+                                window.location.href = `/calidad/ncr/${newComment.ncr_id}`;
+                            }
+                        }
+                    });
+
+                    // Browser Notification
+                    if ("Notification" in window && Notification.permission === "granted") {
+                        new Notification(`Nuevo mensaje en NCR${batchText}`, {
+                            body: newComment.message.substring(0, 100),
+                            icon: '/favicon.ico'
+                        });
+                    }
+                }
+                fetchNCRs() // Refresh list to update message counts and last author
+            })
             .subscribe()
+
+        // Request notification permission
+        if ("Notification" in window && Notification.permission === "default") {
+            Notification.requestPermission();
+        }
 
         return () => { supabase.removeChannel(channel) }
     }, [statusFilter, sucursalFilter, productFilter, searchQuery, profile])
@@ -228,31 +274,45 @@ export function NCRManager() {
 
             let ncrData = data || []
 
-            // Client-side join for disposition
+            // Client-side join for disposition and last comment
             if (ncrData.length > 0) {
                 const ncrIds = ncrData.map((n: any) => n.id)
                 const batchCodes = ncrData.map((n: any) => n.batch_code).filter(Boolean)
 
-                const [dispResult, ncrExtraResult, bitacoraResult] = await Promise.all([
+                const [dispResult, ncrExtraResult, bitacoraResult, lastCommentsResult] = await Promise.all([
                     supabase.from('quality_disposition').select('ncr_id, disposition_type').in('ncr_id', ncrIds),
                     supabase.from('quality_ncr').select('id, defect_detail').in('id', ncrIds),
-                    supabase.from('bitacora_produccion_calidad').select('lote_producto, apariencia').in('lote_producto', batchCodes)
+                    supabase.from('bitacora_produccion_calidad').select('lote_producto, apariencia').in('lote_producto', batchCodes),
+                    supabase.from('quality_ncr_comments')
+                        .select('ncr_id, author_user_id')
+                        .in('ncr_id', ncrIds)
+                        .order('created_at', { ascending: false })
                 ])
 
                 const dispositions = dispResult.data
                 const ncrExtras = ncrExtraResult.data
                 const bitacoras = bitacoraResult.data
+                const lastComments = lastCommentsResult.data
 
-                if (dispositions || ncrExtras || bitacoras) {
+                if (dispositions || ncrExtras || bitacoras || lastComments) {
                     const dispMap = new Map(dispositions?.map(d => [d.ncr_id, d.disposition_type]) || [])
                     const extraMap = new Map(ncrExtras?.map(n => [n.id, n.defect_detail]) || [])
                     const bitacoraMap = new Map(bitacoras?.map(b => [b.lote_producto, b.apariencia]) || [])
+
+                    // Since we ordered by created_at DESC, the first occurrence of each ncr_id in lastComments is the latest
+                    const lastCommentMap = new Map();
+                    lastComments?.forEach(c => {
+                        if (!lastCommentMap.has(c.ncr_id)) {
+                            lastCommentMap.set(c.ncr_id, c.author_user_id);
+                        }
+                    });
 
                     ncrData = ncrData.map((n: any) => ({
                         ...n,
                         disposition_type: dispMap.get(n.id),
                         defect_detail: n.defect_detail || extraMap.get(n.id),
-                        apariencia_reportada: bitacoraMap.get(n.batch_code)
+                        apariencia_reportada: bitacoraMap.get(n.batch_code),
+                        last_message_author_id: n.last_message_author_id || lastCommentMap.get(n.id)
                     }))
                 }
             }
@@ -651,8 +711,8 @@ export function NCRManager() {
                                                             <Eye className="h-4 w-4" />
                                                         </Button>
                                                     </Link>
-                                                    {ncr.message_count > 0 && (
-                                                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                                                    {ncr.message_count > 0 && ncr.last_message_author_id !== profile?.id && (
+                                                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm border border-white dark:border-slate-800">
                                                             {ncr.message_count}
                                                         </span>
                                                     )}
@@ -730,8 +790,8 @@ export function NCRManager() {
                                                 <Link href={`/calidad/ncr/${ncr.id}`}>
                                                     <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl relative">
                                                         <Eye className="h-4 w-4 text-primary" />
-                                                        {ncr.message_count > 0 && (
-                                                            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                                                        {ncr.message_count > 0 && ncr.last_message_author_id !== profile?.id && (
+                                                            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm border border-white dark:border-slate-800">
                                                                 {ncr.message_count}
                                                             </span>
                                                         )}
