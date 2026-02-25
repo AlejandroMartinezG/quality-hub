@@ -61,9 +61,11 @@ const KPICard = ({ title, value, subtitle, icon: Icon, colorClass }: any) => (
 )
 
 export default function ReportesPage() {
-    const { user, loading: authLoading } = useAuth()
+    const { user, profile, loading: authLoading } = useAuth()
     const [records, setRecords] = useState<EnrichedRecord[]>([])
     const [loading, setLoading] = useState(true)
+
+    const isPreparador = profile?.role === 'preparador'
 
     // Filters
     const [selectedSucursal, setSelectedSucursal] = useState("all")
@@ -80,7 +82,7 @@ export default function ReportesPage() {
     const [drillDownFamily, setDrillDownFamily] = useState<string | null>(null)
 
     useEffect(() => {
-        if (user) {
+        if (user && profile) {
             console.log("ReportesPage: User authenticated, fetching data...")
             fetchData()
         } else if (!authLoading) {
@@ -89,15 +91,21 @@ export default function ReportesPage() {
         } else {
             console.log("ReportesPage: Waiting for auth...")
         }
-    }, [user, authLoading])
+    }, [user, profile?.role, authLoading])
 
     const fetchData = async () => {
         setLoading(true)
         console.log("ReportesPage: fetchData started")
         try {
-            const { data, error } = await supabase
+            let query = supabase
                 .from('bitacora_produccion_calidad')
                 .select('*')
+
+            if (isPreparador) {
+                query = query.eq('user_id', user.id)
+            }
+
+            const { data, error } = await query
                 .order('created_at', { ascending: true }) // Ascending for charts
 
             if (error) {
@@ -653,17 +661,19 @@ export default function ReportesPage() {
                     </p>
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                    <Select value={selectedSucursal} onValueChange={setSelectedSucursal}>
-                        <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Todas las sucursales" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Todas las sucursales</SelectItem>
-                            {SUCURSALES.map((sucursal: string) => (
-                                <SelectItem key={sucursal} value={sucursal}>{sucursal}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    {!isPreparador && (
+                        <Select value={selectedSucursal} onValueChange={setSelectedSucursal}>
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="Todas las sucursales" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Todas las sucursales</SelectItem>
+                                {SUCURSALES.map((sucursal: string) => (
+                                    <SelectItem key={sucursal} value={sucursal}>{sucursal}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
 
                     <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                         <SelectTrigger className="w-[180px]">
@@ -689,17 +699,19 @@ export default function ReportesPage() {
                         </SelectContent>
                     </Select>
 
-                    <Select value={selectedPreparer} onValueChange={setSelectedPreparer}>
-                        <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Todos los preparadores" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Todos los preparadores</SelectItem>
-                            {uniquePreparers.map((p) => (
-                                <SelectItem key={p} value={p}>{p}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    {!isPreparador && (
+                        <Select value={selectedPreparer} onValueChange={setSelectedPreparer}>
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="Todos los preparadores" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Todos los preparadores</SelectItem>
+                                {uniquePreparers.map((p) => (
+                                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
 
                     <Select value={selectedDateRange} onValueChange={setSelectedDateRange}>
                         <SelectTrigger className="w-[180px]">
@@ -726,9 +738,9 @@ export default function ReportesPage() {
                     <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
                 </div>
             ) : (
-                <Tabs defaultValue="comercial" className="space-y-6">
-                    <TabsList className="grid w-full grid-cols-3 max-w-[600px]">
-                        <TabsTrigger value="comercial">Análisis Comercial</TabsTrigger>
+                <Tabs defaultValue={isPreparador ? "calidad" : "comercial"} className="space-y-6">
+                    <TabsList className={`grid w-full ${isPreparador ? 'grid-cols-2 max-w-[400px]' : 'grid-cols-3 max-w-[600px]'}`}>
+                        {!isPreparador && <TabsTrigger value="comercial">Análisis Comercial</TabsTrigger>}
                         <TabsTrigger value="calidad">First Time Quality</TabsTrigger>
                         <TabsTrigger value="spy">SPY (Yield)</TabsTrigger>
                     </TabsList>

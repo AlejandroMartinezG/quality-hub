@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useAuth } from "@/components/AuthProvider"
 import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -42,26 +43,29 @@ import { format, subDays, startOfDay, endOfDay } from 'date-fns'
 import { es } from 'date-fns/locale'
 
 export default function SPYReportPage() {
+    const { user, profile } = useAuth()
     const [loading, setLoading] = useState(true)
     const [data, setData] = useState<any>(null)
+
+    const isPreparador = profile?.role === 'preparador'
 
     // Filters
     const [timeRange, setTimeRange] = useState('30') // days
     const [metricMode, setMetricMode] = useState<'LOTES' | 'LITROS'>('LITROS')
 
     useEffect(() => {
-        fetchSPYData()
-    }, [timeRange, metricMode])
+        if (user && profile) {
+            fetchSPYData()
+        }
+    }, [user?.id, profile?.role, timeRange, metricMode])
 
     async function fetchSPYData() {
+        if (!user) return
         setLoading(true)
         console.log("Starting SPY Data Fetch...")
 
         try {
-            // DEBUG: Check Session
-            const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-            if (sessionError) console.error("Session Error:", sessionError)
-            console.log("Current Session:", session ? "Authenticated" : "No Session", session?.user?.id)
+            console.log("Current User:", user.id, profile?.role)
 
             // Date Filters
             const endDate = endOfDay(new Date()).toISOString()
@@ -78,18 +82,26 @@ export default function SPYReportPage() {
 
 
             // 1. Fetch Total Production (Bitacora)
-            const fetchProduction = supabase
+            let fetchProduction = supabase
                 .from('bitacora_produccion_calidad')
                 .select('*')
                 .gte('created_at', startDate)
                 .lte('created_at', endDate)
 
+            if (isPreparador) {
+                fetchProduction = fetchProduction.eq('user_id', user.id)
+            }
+
             // 2. Fetch NCRs (Quality NCR)
-            const fetchNCRs = supabase
+            let fetchNCRs = supabase
                 .from('quality_ncr')
                 .select('*')
                 .gte('created_at', startDate)
                 .lte('created_at', endDate)
+
+            if (isPreparador) {
+                fetchNCRs = fetchNCRs.eq('preparer_user_id', user.id)
+            }
 
             const [prodRes, ncrRes] = await Promise.all([fetchProduction, fetchNCRs])
 
