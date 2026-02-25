@@ -209,32 +209,17 @@ export function NCRManager() {
         if (!profile) return
 
         try {
-            const baseQuery = supabase.from('quality_ncr').select('status', { count: 'exact', head: true })
-
-            // Apply filters
-            if (sucursalFilter !== 'ALL') baseQuery.eq('sucursal', sucursalFilter)
-            if (productFilter !== 'ALL') baseQuery.eq('product_id', productFilter)
-            if (profile?.role === 'preparador') baseQuery.eq('author_user_id', profile.id)
-
-            // We need to run separate queries or one generic one. 
-            // Since we can't easily Group By with the JS client without getting all data,
-            // we'll run parallel value counts for simplicity as requested.
-
             const getCount = async (status: string | null) => {
                 let query = supabase.from('quality_ncr').select('*', { count: 'exact', head: true })
 
                 if (status) query = query.eq('status', status)
                 if (sucursalFilter !== 'ALL') query = query.eq('sucursal', sucursalFilter)
                 if (productFilter !== 'ALL') query = query.eq('product_id', productFilter)
-                // Note: Check if we need to filter by preparer. rpc uses p_preparer_id.
-                // The table likely has a preparer_id or user_id column. 
-                // Looking at rpc call: p_preparer_id. 
-                // Looking at NCR interface: preparer_name. 
-                // I'll assume standard RLS or explicit filter. 
-                // For now, let's respect the ViewMode if possible, but the user is usually Admin for these filters.
-                // If ViewMode is MINE, we should technically filter.
-                // However, the previous code used an RPC.
-                // Let's stick to the visible filters for now to avoid breaking if column names differ.
+
+                // Filter by preparer if applicable
+                if (profile?.role === 'preparador') {
+                    query = query.eq('preparer_user_id', profile.id)
+                }
 
                 const { count, error } = await query
                 if (error) throw error
