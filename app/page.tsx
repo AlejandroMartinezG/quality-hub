@@ -19,9 +19,9 @@ export default function HomePage() {
     const { profile } = useAuth()
     const role = profile?.role?.toLowerCase() || ''
 
-    // Bitácora Visibility Rules
-    const forbiddenBitacora = ['gerente_sucursal', 'gerente', 'director_operaciones', 'mostrador', 'cajera', 'vendedor', 'director_compras']
-    const showBitacora = !forbiddenBitacora.includes(role)
+    // Bitácora and Calidad Visibility Rules (Production roles only)
+    const forbiddenProduction = ['gerente_sucursal', 'gerente', 'director_operaciones', 'mostrador', 'cajera', 'vendedor', 'director_compras']
+    const showProduction = !forbiddenProduction.includes(role)
 
     // Reportes Visibility Rules - Now includes preparador
     const showReportes = ['admin', 'gerente_calidad', 'coordinador', 'gerente_sucursal', 'gerente', 'preparador'].includes(role)
@@ -46,7 +46,7 @@ export default function HomePage() {
             {/* Modules Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* 1. Bitácora de Producción */}
-                {showBitacora && (
+                {showProduction && (
                     <Link href="/bitacora" className="group block">
                         <Card className="h-full border-2 border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-sm hover:shadow-md hover:border-blue-500/50 transition-all bg-[#FFFBF7] dark:bg-slate-900">
                             <CardContent className="p-8 flex flex-col items-start gap-4 h-full">
@@ -70,29 +70,31 @@ export default function HomePage() {
                 )}
 
                 {/* 2. Control de Calidad */}
-                <Link href="/calidad" className="group block">
-                    <Card className="h-full border-2 border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-sm hover:shadow-md hover:border-blue-500/50 transition-all bg-[#FFFBF7] dark:bg-slate-900">
-                        <CardContent className="p-8 flex flex-col items-start gap-4 h-full relative">
-                            <Badge className="absolute top-6 right-6 bg-slate-100 text-slate-500 border-none px-3 font-bold rounded-full">
-                                ESTÁNDARES
-                            </Badge>
-                            <div className="h-14 w-14 rounded-2xl bg-[#0e0c9b] flex items-center justify-center mb-2 shadow-blue-900/20 shadow-lg group-hover:scale-110 transition-transform">
-                                <Microscope className="h-7 w-7 text-white" />
-                            </div>
-                            <div>
-                                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2 group-hover:text-blue-900 transition-colors">
-                                    Control de Calidad
-                                </h3>
-                                <p className="text-slate-500 text-sm leading-relaxed mb-6">
-                                    Gestión integral: Historial de mediciones, cumplimiento de estándares y control de No Conformidades (NCR).
-                                </p>
-                            </div>
-                            <div className="mt-auto flex items-center text-blue-700 font-bold text-sm">
-                                Acceder al tablero <ArrowRight className="ml-2 h-4 w-4" />
-                            </div>
-                        </CardContent>
-                    </Card>
-                </Link>
+                {showProduction && (
+                    <Link href="/calidad" className="group block">
+                        <Card className="h-full border-2 border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-sm hover:shadow-md hover:border-blue-500/50 transition-all bg-[#FFFBF7] dark:bg-slate-900">
+                            <CardContent className="p-8 flex flex-col items-start gap-4 h-full relative">
+                                <Badge className="absolute top-6 right-6 bg-slate-100 text-slate-500 border-none px-3 font-bold rounded-full">
+                                    ESTÁNDARES
+                                </Badge>
+                                <div className="h-14 w-14 rounded-2xl bg-[#0e0c9b] flex items-center justify-center mb-2 shadow-blue-900/20 shadow-lg group-hover:scale-110 transition-transform">
+                                    <Microscope className="h-7 w-7 text-white" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2 group-hover:text-blue-900 transition-colors">
+                                        Control de Calidad
+                                    </h3>
+                                    <p className="text-slate-500 text-sm leading-relaxed mb-6">
+                                        Gestión integral: Historial de mediciones, cumplimiento de estándares y control de No Conformidades (NCR).
+                                    </p>
+                                </div>
+                                <div className="mt-auto flex items-center text-blue-700 font-bold text-sm">
+                                    Acceder al tablero <ArrowRight className="ml-2 h-4 w-4" />
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </Link>
+                )}
 
                 {/* 3. Reportes */}
                 {showReportes && (
@@ -166,25 +168,27 @@ export default function HomePage() {
                 </Link>
 
                 {/* 6. Manual de Formulación (Disabled) */}
-                <Card className="h-full border-2 border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-sm bg-[#FFFBF7] dark:bg-slate-900 opacity-60">
-                    <CardContent className="p-8 flex flex-col items-start gap-4 h-full relative">
-                        <Badge className="absolute top-6 right-6 bg-slate-200 text-slate-600 border-none px-3 font-bold rounded-full">
-                            DESARROLLO
-                        </Badge>
-                        <div className="h-14 w-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-2">
-                            <Beaker className="h-7 w-7 text-slate-400" />
-                        </div>
-                        <div>
-                            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">
-                                Manual de Formulación Ginez
-                            </h3>
-                            <p className="text-slate-500 text-sm leading-relaxed mb-6">
-                                Consulta rápida de fórmulas maestras y procedimientos técnicos de elaboración.
-                            </p>
-                        </div>
-                        <div className="mt-auto w-12 h-1 bg-slate-200 rounded-full" />
-                    </CardContent>
-                </Card>
+                {showProduction && (
+                    <Card className="h-full border-2 border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-sm bg-[#FFFBF7] dark:bg-slate-900 opacity-60">
+                        <CardContent className="p-8 flex flex-col items-start gap-4 h-full relative">
+                            <Badge className="absolute top-6 right-6 bg-slate-200 text-slate-600 border-none px-3 font-bold rounded-full">
+                                DESARROLLO
+                            </Badge>
+                            <div className="h-14 w-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-2">
+                                <Beaker className="h-7 w-7 text-slate-400" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">
+                                    Manual de Formulación Ginez
+                                </h3>
+                                <p className="text-slate-500 text-sm leading-relaxed mb-6">
+                                    Consulta rápida de fórmulas maestras y procedimientos técnicos de elaboración.
+                                </p>
+                            </div>
+                            <div className="mt-auto w-12 h-1 bg-slate-200 rounded-full" />
+                        </CardContent>
+                    </Card>
+                )}
             </div>
 
             <div className="flex justify-center items-center text-xs text-slate-400 pt-8 border-t mt-8">

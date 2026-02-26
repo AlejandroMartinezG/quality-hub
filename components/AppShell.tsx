@@ -162,7 +162,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             <NavItem href="/bitacora" icon={ClipboardList} label="Bitácora de Producción" />
                         )}
 
-                        <NavItem href="/calidad" icon={Microscope} label="Control Calidad" />
+                        {/* Control Calidad: Hide for administrative/sales roles */}
+                        {!['gerente_sucursal', 'gerente', 'director_operaciones', 'mostrador', 'cajera', 'vendedor', 'director_compras'].includes(profile?.role?.toLowerCase() || '') && (
+                            <NavItem href="/calidad" icon={Microscope} label="Control Calidad" />
+                        )}
                     </div>
 
                     <div className="space-y-1">
@@ -250,7 +253,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             <MobileNavItem href="/bitacora" icon={ClipboardList} label="Bitácora de Producción" />
                         )}
 
-                        <MobileNavItem href="/calidad" icon={Microscope} label="Control Calidad" />
+                        {/* Control Calidad en Mobile */}
+                        {!['gerente_sucursal', 'gerente', 'director_operaciones', 'mostrador', 'cajera', 'vendedor', 'director_compras'].includes(profile?.role?.toLowerCase() || '') && (
+                            <MobileNavItem href="/calidad" icon={Microscope} label="Control Calidad" />
+                        )}
 
                         {/* Reportes en Mobile */}
                         {['admin', 'gerente_calidad', 'coordinador', 'gerente_sucursal', 'gerente', 'preparador'].includes(profile?.role?.toLowerCase() || '') && (

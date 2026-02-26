@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/AuthProvider"
 import { Breadcrumbs } from "@/components/Breadcrumbs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -78,7 +79,8 @@ interface BitacoraRecord {
 }
 
 export default function CalidadPage() {
-    const { user, profile } = useAuth()
+    const { user, profile, loading: authLoading } = useAuth()
+    const router = useRouter()
     const searchParams = useSearchParams()
     const defaultTab = searchParams.get('tab') === 'history' ? 'history' : 'ncr'
     const [records, setRecords] = useState<BitacoraRecord[]>([])
@@ -103,11 +105,25 @@ export default function CalidadPage() {
     // Lifted State for NCR View Mode & Tabs
     const [activeTab, setActiveTab] = useState(defaultTab)
 
+    // Permissions check
     useEffect(() => {
-        if (user) {
+        if (!authLoading && profile) {
+            const role = profile.role?.toLowerCase() || ''
+            const forbiddenRoles = ['gerente_sucursal', 'gerente', 'director_operaciones', 'mostrador', 'cajera', 'vendedor', 'director_compras']
+            if (forbiddenRoles.includes(role)) {
+                toast.error("Acceso restringido", {
+                    description: "No tienes permisos para acceder al módulo de Control de Calidad."
+                })
+                router.push('/')
+            }
+        }
+    }, [profile, authLoading, router])
+
+    useEffect(() => {
+        if (user && !authLoading) {
             fetchRecords()
         }
-    }, [user?.id, profile?.is_admin, profile?.role])
+    }, [user?.id, profile?.is_admin, profile?.role, authLoading])
 
     const fetchRecords = async () => {
         if (!user) return
