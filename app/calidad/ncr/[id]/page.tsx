@@ -93,7 +93,7 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
                 if (newComment.author_user_id !== profileRef.current?.id) {
                     toast.info('💬 Nuevo comentario recibido');
                 }
-                fetchNCRDetail() // Refresh on new comment
+                fetchNCRDetail(true) // Silent refresh on new comment
                 markNotificationsAsRead()
             })
             .on('postgres_changes', {
@@ -102,7 +102,7 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
                 table: 'quality_ncr_comments',
                 filter: `ncr_id=eq.${params.id}`
             }, () => {
-                fetchNCRDetail()
+                fetchNCRDetail(true)
                 markNotificationsAsRead()
             })
             .on('postgres_changes', {
@@ -127,7 +127,7 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
                 if (payload.eventType === 'INSERT') {
                     toast.success('📋 Disposición registrada');
                 }
-                fetchNCRDetail() // Refresh on disposition
+                fetchNCRDetail(true) // Silent refresh on disposition
                 markNotificationsAsRead()
             })
             .subscribe()
@@ -173,8 +173,8 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
         }
     }
 
-    async function fetchNCRDetail() {
-        setLoading(true)
+    async function fetchNCRDetail(isSilent = false) {
+        if (!isSilent) setLoading(true)
         try {
             const { data, error } = await supabase.rpc('rpc_ncr_detail', { p_ncr_id: params.id })
 
@@ -230,11 +230,25 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
                     visibility: 'PUBLICO_NCR' // Default for now
                 })
 
+            // Optimistic Update
+            const optimisticNewMsg = {
+                id: Math.random().toString(),
+                author: profile.full_name || 'Tú',
+                message: newComment,
+                created_at: new Date().toISOString()
+            }
+            setHistory(prev => [...prev, optimisticNewMsg]);
+
             if (error) throw error
+
+            // Optimistic update: Already showing in UI, will be refreshed by realtime listener too
             setNewComment('')
         } catch (error) {
             console.error('Error posting comment:', error)
             toast.error('Error al enviar comentario')
+            // Revert optimistic if needed? Actually simpler to just wait for fetchNCRDetail(true) 
+            // but for instant feedback we add it manually here
+            fetchNCRDetail(true)
         } finally {
             setSubmittingComment(false)
         }
@@ -743,7 +757,7 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
                                     value={newComment}
                                     onChange={(e) => setNewComment(e.target.value)}
                                     placeholder="Escribir comentario..."
-                                    className="flex-1 text-sm rounded-full bg-slate-50 border-slate-200 focus:ring-0 focus:border-blue-400 transition-colors"
+                                    className="flex-1 text-sm rounded-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 dark:text-slate-100 focus:ring-0 focus:border-blue-400 transition-colors"
                                 />
                                 <Button
                                     type="submit"
