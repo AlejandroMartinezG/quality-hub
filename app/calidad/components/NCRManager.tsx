@@ -23,6 +23,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { SUCURSAL_ACRONYMS } from "@/lib/production-constants"
 import {
     AlertTriangle,
     Search,
@@ -96,16 +97,21 @@ export function NCRManager() {
     // Default view logic moved to parent
     // Fetch filter options if Admin/Quality
     useEffect(() => {
-        const role = profile?.role?.toLowerCase();
-        const isGlobalRole = role === 'admin' || role === 'gerente_calidad' || role === 'coordinador';
+        // Handle both role (new) and rol (legacy) for compatibility
+        const profileAny = profile as any;
+        const userRole = (profileAny?.role || profileAny?.rol || '').toLowerCase();
+        const isGlobalRole = ['admin', 'gerente_calidad', 'coordinador', 'director_operaciones'].includes(userRole);
 
         if (isGlobalRole) {
             fetchFilterOptions()
         }
 
-        // Lock sucursal if branch manager
-        if ((role === 'gerente_sucursal' || role === 'gerente') && profile?.sucursal) {
-            setSucursalFilter(profile.sucursal)
+        // Lock sucursal if branch manager AND has a sucursal assigned
+        const isManager = ['gerente_sucursal', 'gerente', 'sucursal'].includes(userRole);
+        if (isManager && profileAny?.sucursal && profileAny.sucursal.trim() !== '') {
+            setSucursalFilter(profileAny.sucursal.trim())
+        } else if (isManager) {
+            setSucursalFilter('ALL')
         }
     }, [profile])
 
@@ -119,7 +125,37 @@ export function NCRManager() {
                 event: '*',
                 schema: 'public',
                 table: 'quality_ncr'
-            }, () => {
+            }, (payload) => {
+                const event = payload.eventType;
+                const newNcr = payload.new as any;
+                const oldNcr = payload.old as any;
+
+                const role = profileRef.current?.role?.toLowerCase() || '';
+                const isGlobalRole = ['admin', 'administrador', 'coordinador', 'gerente_calidad', 'director_operaciones'].includes(role);
+                const isMySucursal =
+                    newNcr?.sucursal?.toLowerCase() === profileRef.current?.sucursal?.toLowerCase() ||
+                    SUCURSAL_ACRONYMS[profileRef.current?.sucursal || ''] === newNcr?.sucursal;
+
+                const shouldNotify = isGlobalRole || isMySucursal;
+
+                if (shouldNotify && event === 'INSERT') {
+                    toast.info(`🚨 Nuevo NCR: ${newNcr.batch_code}`, {
+                        description: `Se ha reportado un problema en ${newNcr.sucursal}: ${newNcr.defect_parameter}`,
+                        action: {
+                            label: 'Ver',
+                            onClick: () => window.location.href = `/calidad/ncr/${newNcr.id}`
+                        }
+                    });
+                } else if (shouldNotify && event === 'UPDATE' && oldNcr && oldNcr.status !== newNcr.status) {
+                    toast.success(`🔄 Estado Actualizado: ${newNcr.batch_code}`, {
+                        description: `El estado ha cambiado de ${oldNcr.status} a ${newNcr.status}`,
+                        action: {
+                            label: 'Ver',
+                            onClick: () => window.location.href = `/calidad/ncr/${newNcr.id}`
+                        }
+                    });
+                }
+
                 fetchNCRs()
                 fetchStatusCounts()
             })
@@ -129,33 +165,46 @@ export function NCRManager() {
                 table: 'quality_ncr_comments'
             }, (payload) => {
                 const newComment = payload.new as any;
-                // Only notify if author is someone else
                 if (newComment.author_user_id !== profileRef.current?.id) {
-                    // Try to find the NCR batch code for a better message
-                    const currentNcrs = ncrsRef.current;
-                    const ncr = currentNcrs.find(n => n.id === newComment.ncr_id);
-                    const batchText = ncr ? ` en lote ${ncr.batch_code}` : '';
-
-                    toast.info(`💬 Nuevo mensaje${batchText}`, {
-                        description: newComment.message.substring(0, 50) + (newComment.message.length > 50 ? '...' : ''),
-                        action: {
-                            label: 'Ver',
-                            onClick: () => {
-                                // Navigate or open details
-                                window.location.href = `/calidad/ncr/${newComment.ncr_id}`;
+                    const ncr = ncrsRef.current.find(n => n.id === newComment.ncr_id);
+                    if (ncr) {
+                        toast.info(`💬 Nuevo mensaje en lote ${ncr.batch_code}`, {
+                            description: newComment.message.substring(0, 50) + (newComment.message.length > 50 ? '...' : ''),
+                            action: {
+                                label: 'Ver',
+                                onClick: () => {
+                                    window.location.href = `/calidad/ncr/${newComment.ncr_id}`;
+                                }
                             }
-                        }
-                    });
-
-                    // Browser Notification
-                    if ("Notification" in window && Notification.permission === "granted") {
-                        new Notification(`Nuevo mensaje en NCR${batchText}`, {
-                            body: newComment.message.substring(0, 100),
-                            icon: '/favicon.ico'
                         });
+
+                        if ("Notification" in window && Notification.permission === "granted") {
+                            new Notification(`Nuevo mensaje en NCR: ${ncr.batch_code}`, {
+                                body: newComment.message.substring(0, 100),
+                                icon: '/favicon.ico'
+                            });
+                        }
                     }
                 }
-                fetchNCRs() // Refresh list to update message counts and last author
+                fetchNCRs()
+            })
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'quality_disposition'
+            }, (payload) => {
+                const newDisp = payload.new as any;
+                const ncr = ncrsRef.current.find(n => n.id === newDisp.ncr_id);
+                if (ncr) {
+                    toast.success(`📋 Disposición Registrada: ${ncr.batch_code}`, {
+                        description: `Se ha determinado: ${newDisp.disposition_type}`,
+                        action: {
+                            label: 'Ver',
+                            onClick: () => window.location.href = `/calidad/ncr/${ncr.id}`
+                        }
+                    });
+                }
+                fetchNCRs()
             })
             .subscribe()
 
@@ -223,17 +272,20 @@ export function NCRManager() {
                 if (status) query = query.eq('status', status)
 
                 // Enforce sucursal filter
-                const role = profile?.role?.toLowerCase();
-                if ((role === 'gerente_sucursal' || role === 'gerente') && profile?.sucursal) {
-                    query = query.eq('sucursal', profile.sucursal)
-                } else if (sucursalFilter !== 'ALL') {
-                    query = query.eq('sucursal', sucursalFilter)
+                const profileAny = profile as any;
+                const userRole = (profileAny?.role || profileAny?.rol || '').toLowerCase();
+                const isManager = ['gerente_sucursal', 'gerente', 'sucursal'].includes(userRole);
+
+                if (isManager && profileAny?.sucursal && profileAny.sucursal.trim() !== '') {
+                    query = query.eq('sucursal', profileAny.sucursal.trim())
+                } else if (sucursalFilter !== 'ALL' && sucursalFilter) {
+                    query = query.eq('sucursal', sucursalFilter.trim())
                 }
 
                 if (productFilter !== 'ALL') query = query.eq('product_id', productFilter)
 
                 // Filter by preparer if applicable
-                if (profile?.role === 'preparador') {
+                if (userRole === 'preparador') {
                     query = query.eq('preparer_user_id', profile.id)
                 }
 
@@ -266,26 +318,31 @@ export function NCRManager() {
         setLoading(true)
 
         try {
-            let effectiveSucursal = sucursalFilter === 'ALL' ? null : sucursalFilter;
+            const profileAny = profile as any;
+            let effectiveSucursal = (sucursalFilter === 'ALL' || !sucursalFilter) ? null : sucursalFilter.trim();
 
-            // Security: Enforce branch lock for managers
-            const role = profile?.role?.toLowerCase();
-            if ((role === 'gerente_sucursal' || role === 'gerente') && profile?.sucursal) {
-                effectiveSucursal = profile.sucursal;
+            // Security: Enforce branch lock for managers (dual role check)
+            const userRole = (profileAny?.role || profileAny?.rol || '').toLowerCase();
+            const isManager = ['gerente_sucursal', 'gerente', 'sucursal'].includes(userRole);
+
+            if (isManager && profileAny?.sucursal && typeof profileAny.sucursal === 'string' && profileAny.sucursal.trim() !== '') {
+                effectiveSucursal = profileAny.sucursal.trim();
             }
 
             // Call RPC
-            const { data, error } = await supabase.rpc('rpc_ncr_list', {
+            const { data, error: rpcError } = await supabase.rpc('rpc_ncr_list', {
                 p_status: statusFilter === 'ALL' ? null : statusFilter,
                 p_sucursal: effectiveSucursal,
                 p_product: productFilter === 'ALL' ? null : productFilter,
                 p_batch: searchQuery || null,
-                p_preparer_id: profile.role === 'preparador' ? profile.id : null,
+                p_preparer_id: userRole === 'preparador' ? profile.id : null,
                 p_limit: 50,
                 p_offset: 0
             })
 
-            if (error) throw error
+            console.log('NCRManager: RPC Result:', { count: data?.length, error: rpcError, forSucursal: effectiveSucursal })
+
+            if (rpcError) throw rpcError
 
             let ncrData = data || []
 
@@ -294,27 +351,27 @@ export function NCRManager() {
                 const ncrIds = ncrData.map((n: any) => n.id)
                 const batchCodes = ncrData.map((n: any) => n.batch_code).filter(Boolean)
 
-                const [dispResult, ncrExtraResult, bitacoraResult, lastCommentsResult, unreadNotifsResult] = await Promise.all([
-                    supabase.from('quality_disposition').select('ncr_id, disposition_type').in('ncr_id', ncrIds),
-                    supabase.from('quality_ncr').select('id, defect_detail').in('id', ncrIds),
-                    supabase.from('bitacora_produccion_calidad').select('lote_producto, apariencia').in('lote_producto', batchCodes),
-                    supabase.from('quality_ncr_comments')
-                        .select('ncr_id, author_user_id')
-                        .in('ncr_id', ncrIds)
-                        .order('created_at', { ascending: false }),
-                    supabase.from('notifications')
-                        .select('metadata')
-                        .eq('user_id', profile.id)
-                        .eq('read', false)
-                ])
+                try {
+                    const [dispResult, ncrExtraResult, bitacoraResult, lastCommentsResult, unreadNotifsResult] = await Promise.all([
+                        supabase.from('quality_disposition').select('ncr_id, disposition_type').in('ncr_id', ncrIds),
+                        supabase.from('quality_ncr').select('id, defect_detail').in('id', ncrIds),
+                        supabase.from('bitacora_produccion_calidad').select('lote_producto, apariencia').in('lote_producto', batchCodes),
+                        supabase.from('quality_ncr_comments')
+                            .select('ncr_id, author_user_id')
+                            .in('ncr_id', ncrIds)
+                            .order('created_at', { ascending: false }),
+                        supabase.from('notifications')
+                            .select('metadata')
+                            .eq('user_id', profile.id)
+                            .eq('read', false)
+                    ])
 
-                const dispositions = dispResult.data
-                const ncrExtras = ncrExtraResult.data
-                const bitacoras = bitacoraResult.data
-                const lastComments = lastCommentsResult.data
-                const unreadNotifs = unreadNotifsResult.data
+                    const dispositions = dispResult.data
+                    const ncrExtras = ncrExtraResult.data
+                    const bitacoras = bitacoraResult.data
+                    const lastComments = lastCommentsResult.data
+                    const unreadNotifs = unreadNotifsResult.data
 
-                if (dispositions || ncrExtras || bitacoras || lastComments) {
                     const dispMap = new Map(dispositions?.map(d => [d.ncr_id, d.disposition_type]) || [])
                     const extraMap = new Map(ncrExtras?.map(n => [n.id, n.defect_detail]) || [])
                     const bitacoraMap = new Map(bitacoras?.map(b => [b.lote_producto, b.apariencia]) || [])
@@ -322,37 +379,34 @@ export function NCRManager() {
                     const unreadCountMap = new Map();
                     unreadNotifs?.forEach((n: any) => {
                         const ncrId = n.metadata?.ncr_id;
-                        if (ncrId) {
-                            unreadCountMap.set(ncrId, (unreadCountMap.get(ncrId) || 0) + 1);
-                        }
+                        if (ncrId) unreadCountMap.set(ncrId, (unreadCountMap.get(ncrId) || 0) + 1);
                     });
 
-                    // Logic for last comment author
                     const lastCommentMap = new Map();
                     lastComments?.forEach(c => {
-                        // Keep track of the actual last author
-                        if (!lastCommentMap.has(c.ncr_id)) {
-                            lastCommentMap.set(c.ncr_id, c.author_user_id);
-                        }
+                        if (!lastCommentMap.has(c.ncr_id)) lastCommentMap.set(c.ncr_id, c.author_user_id);
                     });
 
                     ncrData = ncrData.map((n: any) => ({
                         ...n,
-                        disposition_type: dispMap.get(n.id),
+                        disposition_type: n.disposition_type || dispMap.get(n.id),
                         defect_detail: n.defect_detail || extraMap.get(n.id),
                         apariencia_reportada: bitacoraMap.get(n.batch_code),
-                        // Use unread notification count for the badge
                         message_count: unreadCountMap.get(n.id) || 0,
                         last_message_author_id: n.last_message_author_id || lastCommentMap.get(n.id)
                     }))
+                } catch (extraError) {
+                    console.error('Non-critical error joining NCR extra data:', extraError)
                 }
             }
 
             setNcrs(ncrData)
-            // Refresh counts when list updates
             fetchStatusCounts()
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error fetching NCRs:', error)
+            const errorMsg = error?.message || 'Error desconocido';
+            const errorDetails = error?.details || '';
+            toast.error(`Error al cargar NCRs: ${errorMsg} ${errorDetails}`)
         } finally {
             setLoading(false)
         }

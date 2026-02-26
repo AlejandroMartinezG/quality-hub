@@ -106,11 +106,27 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
                 markNotificationsAsRead()
             })
             .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'quality_ncr',
+                filter: `id=eq.${params.id}`
+            }, (payload) => {
+                const oldNcr = payload.old as any;
+                const newNcr = payload.new as any;
+                if (oldNcr && oldNcr.status !== newNcr.status) {
+                    toast.success(`🔄 Estado actualizado a ${newNcr.status}`);
+                }
+                fetchNCRDetail()
+            })
+            .on('postgres_changes', {
                 event: '*',
                 schema: 'public',
                 table: 'quality_disposition',
                 filter: `ncr_id=eq.${params.id}`
-            }, () => {
+            }, (payload) => {
+                if (payload.eventType === 'INSERT') {
+                    toast.success('📋 Disposición registrada');
+                }
                 fetchNCRDetail() // Refresh on disposition
                 markNotificationsAsRead()
             })
