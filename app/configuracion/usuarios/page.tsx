@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/AuthProvider"
 import { supabase } from "@/lib/supabase"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -70,7 +71,8 @@ const ACCESS_LEVEL_LABELS: Record<string, { label: string, color: string }> = {
 }
 
 export default function UsuariosPage() {
-    const { user: currentUser } = useAuth()
+    const { user: currentUser, profile, loading: authLoading } = useAuth()
+    const router = useRouter()
     const [profiles, setProfiles] = useState<Profile[]>([])
     const [roles, setRoles] = useState<UserRole[]>([])
     const [loading, setLoading] = useState(true)
@@ -82,10 +84,25 @@ export default function UsuariosPage() {
     const [savingRole, setSavingRole] = useState(false)
     const [showPendingOnly, setShowPendingOnly] = useState(false)
 
+    // Permissions check
     useEffect(() => {
-        fetchProfiles()
-        fetchRoles()
-    }, [])
+        if (!authLoading && profile) {
+            const role = profile.role?.toLowerCase() || ''
+            if (!profile.is_admin && role !== 'admin') {
+                toast.error("Acceso restringido", {
+                    description: "Solo los administradores pueden gestionar usuarios."
+                })
+                router.push('/configuracion')
+            }
+        }
+    }, [profile, authLoading, router])
+
+    useEffect(() => {
+        if (currentUser && (profile?.is_admin || profile?.role?.toLowerCase() === 'admin')) {
+            fetchProfiles()
+            fetchRoles()
+        }
+    }, [currentUser, profile])
 
     const fetchProfiles = async () => {
         try {
