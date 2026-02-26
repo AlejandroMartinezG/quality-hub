@@ -157,8 +157,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <div className="space-y-1">
                         {!isSidebarCollapsed && <h3 className="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Producción</h3>}
 
-                        {/* Bitácora: Visible for admin, preparador or undefined roles (pre-init) */}
-                        {(profile?.role?.toLowerCase() === 'admin' || profile?.role?.toLowerCase() === 'preparador' || !profile?.role) && (
+                        {/* Bitácora: Hide for administrative/sales roles */}
+                        {!['gerente_sucursal', 'gerente', 'director_operaciones', 'mostrador', 'cajera', 'vendedor', 'director_compras'].includes(profile?.role?.toLowerCase() || '') && (
                             <NavItem href="/bitacora" icon={ClipboardList} label="Bitácora de Producción" />
                         )}
 
@@ -167,7 +167,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
                     <div className="space-y-1">
                         {!isSidebarCollapsed && <h3 className="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Soporte</h3>}
-                        <NavItem href="/reportes" icon={BarChart3} label="Reportes y KPIs" />
+
+                        {/* Reportes: For management roles and preparers (internal tab filtering handles specific views) */}
+                        {['admin', 'gerente_calidad', 'coordinador', 'gerente_sucursal', 'gerente', 'preparador'].includes(profile?.role?.toLowerCase() || '') && (
+                            <NavItem href="/reportes" icon={BarChart3} label="Reportes y KPIs" />
+                        )}
 
                         <Link
                             href={`${basePath}/configuracion`}
@@ -242,12 +246,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         <MobileNavItem href="/catalog" icon={BookOpen} label="Catálogo" />
 
                         {/* Bitácora en Mobile */}
-                        {(profile?.role?.toLowerCase() === 'admin' || profile?.role?.toLowerCase() === 'preparador' || !profile?.role) && (
+                        {!['gerente_sucursal', 'gerente', 'director_operaciones', 'mostrador', 'cajera', 'vendedor', 'director_compras'].includes(profile?.role?.toLowerCase() || '') && (
                             <MobileNavItem href="/bitacora" icon={ClipboardList} label="Bitácora de Producción" />
                         )}
 
                         <MobileNavItem href="/calidad" icon={Microscope} label="Control Calidad" />
-                        <MobileNavItem href="/reportes" icon={BarChart3} label="Reportes y KPIs" />
+
+                        {/* Reportes en Mobile */}
+                        {['admin', 'gerente_calidad', 'coordinador', 'gerente_sucursal', 'gerente', 'preparador'].includes(profile?.role?.toLowerCase() || '') && (
+                            <MobileNavItem href="/reportes" icon={BarChart3} label="Reportes y KPIs" />
+                        )}
+
                         <MobileNavItem href="/configuracion" icon={Settings} label="Configuración" />
                     </div>
 
