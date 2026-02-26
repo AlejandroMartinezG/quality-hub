@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/AuthProvider"
 import { supabase } from "@/lib/supabase"
 import { analyzeRecord, EnrichedRecord } from "@/lib/analysis-utils"
@@ -62,10 +63,11 @@ const KPICard = ({ title, value, subtitle, icon: Icon, colorClass }: any) => (
 
 export default function ReportesPage() {
     const { user, profile, loading: authLoading } = useAuth()
+    const router = useRouter()
     const [records, setRecords] = useState<EnrichedRecord[]>([])
     const [loading, setLoading] = useState(true)
 
-    const role = profile?.role?.toLowerCase()
+    const role = profile?.role?.toLowerCase() || ''
     const isPreparador = role === 'preparador'
     const isGerente = role === 'gerente_sucursal' || role === 'gerente'
     const isGlobalRole = role === 'admin' || role === 'gerente_calidad' || role === 'coordinador'
@@ -83,6 +85,19 @@ export default function ReportesPage() {
 
     // Drill-down modal state
     const [drillDownFamily, setDrillDownFamily] = useState<string | null>(null)
+
+    // Permissions check
+    useEffect(() => {
+        if (!authLoading && profile) {
+            const allowedRoles = ['admin', 'gerente_calidad', 'coordinador', 'gerente_sucursal', 'gerente', 'preparador']
+            if (!allowedRoles.includes(role)) {
+                toast.error("Acceso restringido", {
+                    description: "No tienes permisos para acceder al módulo de Reportes."
+                })
+                router.push('/')
+            }
+        }
+    }, [profile, authLoading, role, router])
 
     useEffect(() => {
         if (user && profile) {
