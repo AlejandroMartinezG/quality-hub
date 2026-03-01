@@ -108,10 +108,14 @@ export default function SPYReportPage() {
             if (prodRes.error) console.error("Error fetching production:", prodRes.error)
             if (ncrRes.error) console.error("Error fetching NCRs:", ncrRes.error)
 
-            const productionData = prodRes.data || []
+            // Filter out BASES and intermediate products from TOTAL metrics if desired
+            // The user says 12 come from bases and should be separate.
+            const filteredProduction = (prodRes.data || []).filter((item: any) =>
+                !item.nombre_producto?.toUpperCase().includes('BASE')
+            )
             const ncrData = ncrRes.data || []
 
-            console.log(`Fetched ${productionData.length} production records (Filtered)`)
+            console.log(`Fetched ${filteredProduction.length} production records (Excluding bases)`)
             console.log(`Fetched ${ncrData.length} NCR records (Filtered)`)
 
             // 3. Fetch Dispositions (Quality Disposition)
@@ -136,8 +140,8 @@ export default function SPYReportPage() {
             // --- CALCULATIONS ---
 
             // A. Volume / Count Basis
-            const totalProduction = productionData.length
-            const totalVolume = productionData.reduce((sum, item) => sum + (Number(item.tamano_lote) || 0), 0)
+            const totalProduction = filteredProduction.length
+            const totalVolume = filteredProduction.reduce((sum, item) => sum + (Number(item.tamano_lote) || 0), 0)
 
             // B. NCR Stats
             const totalNCRs = ncrData.length
@@ -164,13 +168,13 @@ export default function SPYReportPage() {
             let countPending = 0
 
             ncrWithDisposition.forEach((item: any) => {
-                const type = item.disposition?.disposition_type
+                const type = item.disposition?.disposition_type?.toUpperCase() || ''
                 const vol = Number(item.liters_involved) || 0
 
                 if (!type) {
                     volumePending += vol
                     countPending++
-                } else if (type === 'SCRAP_DESTRUCCION') {
+                } else if (type.includes('SCRAP') || type.includes('DESECHO')) {
                     volumeScrap += vol
                     countScrap++
                 } else if (type === 'REPROCESO') {
