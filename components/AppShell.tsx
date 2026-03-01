@@ -151,7 +151,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <div className="space-y-1">
                         {!isSidebarCollapsed && <h3 className="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">General</h3>}
                         <NavItem href="/" icon={LayoutDashboard} label="Panel Principal" />
-                        <NavItem href="/catalog" icon={BookOpen} label="Catálogo" />
                     </div>
 
                     <div className="space-y-1">
@@ -166,15 +165,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         {!['gerente_sucursal', 'gerente', 'director_operaciones', 'mostrador', 'cajera', 'vendedor', 'director_compras'].includes(profile?.role?.toLowerCase() || '') && (
                             <NavItem href="/calidad" icon={Microscope} label="Control Calidad" />
                         )}
-                    </div>
-
-                    <div className="space-y-1">
-                        {!isSidebarCollapsed && <h3 className="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Soporte</h3>}
 
                         {/* Reportes: For management roles and preparers (internal tab filtering handles specific views) */}
                         {['admin', 'gerente_calidad', 'coordinador', 'gerente_sucursal', 'gerente', 'preparador'].includes(profile?.role?.toLowerCase() || '') && (
                             <NavItem href="/reportes" icon={BarChart3} label="Reportes y KPIs" />
                         )}
+                    </div>
+
+                    <div className="space-y-1">
+                        {!isSidebarCollapsed && <h3 className="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Soporte</h3>}
+
+                        <NavItem href="/catalog" icon={BookOpen} label="Catálogo" />
 
                         <Link
                             href={`${basePath}/configuracion`}
@@ -246,8 +247,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <div className="md:hidden fixed inset-0 z-40 bg-white dark:bg-zinc-900 pt-20 px-4 animate-in fade-in slide-in-from-top-10 duration-200 flex flex-col">
                     <div className="space-y-2 flex-1 overflow-y-auto">
                         <MobileNavItem href="/" icon={LayoutDashboard} label="Panel Principal" />
-                        <MobileNavItem href="/catalog" icon={BookOpen} label="Catálogo" />
 
+                        {/* Producción Mobile Section */}
                         {/* Bitácora en Mobile */}
                         {!['gerente_sucursal', 'gerente', 'director_operaciones', 'mostrador', 'cajera', 'vendedor', 'director_compras'].includes(profile?.role?.toLowerCase() || '') && (
                             <MobileNavItem href="/bitacora" icon={ClipboardList} label="Bitácora de Producción" />
@@ -263,6 +264,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             <MobileNavItem href="/reportes" icon={BarChart3} label="Reportes y KPIs" />
                         )}
 
+                        {/* Soporte Mobile Section */}
+                        <MobileNavItem href="/catalog" icon={BookOpen} label="Catálogo" />
                         <MobileNavItem href="/configuracion" icon={Settings} label="Configuración" />
                     </div>
 
