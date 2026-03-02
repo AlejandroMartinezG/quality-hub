@@ -23,7 +23,14 @@ import {
     ResponsiveContainer,
     PieChart,
     Pie,
-    Cell
+    Cell,
+    ComposedChart,
+    Line,
+    RadarChart,
+    Radar,
+    PolarGrid,
+    PolarAngleAxis,
+    PolarRadiusAxis
 } from 'recharts'
 import {
     Activity,
@@ -284,25 +291,44 @@ export default function SPYReportPage() {
                 defectsMap.set(defect, (defectsMap.get(defect) || 0) + val)
             })
 
+            // Pareto base: ordenar por volumen desc
             const paretoData = Array.from(defectsMap.entries())
                 .map(([name, value]) => ({ name, value }))
                 .sort((a, b) => b.value - a.value)
 
-            // Reprocess Breakdown (What defects cause reprocess?)
+            // Pareto con % acumulado (para línea 80/20)
+            let cumulative = 0
+            const totalDefects = paretoData.reduce((s, d) => s + d.value, 0)
+            const paretoWithCumulative = paretoData.map(d => {
+                cumulative += d.value
+                return {
+                    ...d,
+                    cumPercent: totalDefects > 0 ? Math.round((cumulative / totalDefects) * 100) : 0
+                }
+            })
+
+
+            // Parámetros críticos: usar ncrData directamente (defect_parameter no depende de disposición)
+            const radarMap = new Map<string, number>()
+            ncrData.forEach((item: any) => {
+                const param = item.defect_parameter || 'Sin parametro'
+                radarMap.set(param, (radarMap.get(param) || 0) + 1)
+            })
+            const radarData = Array.from(radarMap.entries()).map(([param, count]) => ({ param, count }))
+            console.log('[SPY] radarData:', radarData, '| ncrData sample defect_parameter:', ncrData.slice(0, 3).map((n: any) => n.defect_parameter))
+            // Reprocess Breakdown
             const reprocessItems = ncrWithDisposition.filter((item: any) => {
                 const type = item.disposition?.disposition_type?.toUpperCase() || ''
                 return type.includes('REPROCESO') || type.includes('AJUSTE')
             })
-
             const reprocessMap = new Map<string, number>()
             reprocessItems.forEach((item: any) => {
                 const defect = item.defect_parameter || 'No Especificado'
-                const isPiece = PIECE_FAMILIES.includes(item.family || '');
-                const rawVol = Number(item.liters_involved) || 0;
-                const vol = metricMode === 'LITROS' ? (isPiece ? rawVol * 20 : rawVol) : 1;
+                const isPiece = PIECE_FAMILIES.includes(item.family || '')
+                const rawVol = Number(item.liters_involved) || 0
+                const vol = metricMode === 'LITROS' ? (isPiece ? rawVol * 20 : rawVol) : 1
                 reprocessMap.set(defect, (reprocessMap.get(defect) || 0) + vol)
             })
-
             const reprocessPareto = Array.from(reprocessMap.entries())
                 .map(([name, value]) => ({ name, value }))
                 .sort((a, b) => b.value - a.value)
@@ -315,9 +341,10 @@ export default function SPYReportPage() {
                     rework_rate: reworkRate,
                     scrap_rate: scrapRate
                 },
-                pareto_data: paretoData,
+                pareto_data: paretoWithCumulative,
                 disposition_data: fullDispositionData,
-                reprocess_data: reprocessPareto
+                reprocess_data: reprocessPareto,
+                radar_data: radarData
             })
 
         } catch (error) {
@@ -328,7 +355,18 @@ export default function SPYReportPage() {
     }
 
     // Colors for charts
-    const COLORS = ['#22c55e', '#eab308', '#ef4444', '#f97316'];
+    const COLORS = ['#22c55e', '#eab308', '#ef4444', '#f97316', '#3b82f6', '#a855f7', '#06b6d4', '#64748b'];
+    const DISPOSITION_COLORS: Record<string, string> = {
+        'REPROCESO': '#f97316',
+        'AJUSTE FORMULA': '#f97316',
+        'SCRAP DESTRUCCION': '#ef4444',
+        'DESECHO': '#ef4444',
+        'DOWNGRADE': '#22c55e',
+        'HOLD INVESTIGACION': '#3b82f6',
+        'CONCESION': '#a855f7',
+        'DEVOLUCION': '#64748b',
+        'PENDIENTE': '#eab308',
+    }
 
     if (loading && !data) return (
         <div className="h-[50vh] flex flex-col items-center justify-center space-y-4">
@@ -345,6 +383,7 @@ export default function SPYReportPage() {
     const pareto = data?.pareto_data || []
     const dispositionData = data?.disposition_data || []
     const reprocessData = data?.reprocess_data || []
+    const radarData = data?.radar_data || []
 
     return (
         <div className="space-y-6 pb-12">
@@ -478,24 +517,147 @@ export default function SPYReportPage() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
-                {/* Reprocess Breakdown */}
+
+                {/* 1. Pareto real con línea acumulada */}
                 <Card className="col-span-1 border-none shadow-sm rounded-[2rem] bg-white dark:bg-slate-900">
                     <CardHeader>
-                        <CardTitle className="text-slate-700 dark:text-slate-200">Causas de Reproceso</CardTitle>
-                        <CardDescription>Defectos principales que requieren intervención ({UNIT})</CardDescription>
+                        <CardTitle className="text-slate-700 dark:text-slate-200">Pareto de Defectos</CardTitle>
+                        <CardDescription>Causas de No Conformidad con % acumulado — línea naranja = umbral 80%</CardDescription>
                     </CardHeader>
                     <CardContent className="h-[350px]">
+                        {pareto.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <ComposedChart data={pareto} layout="vertical" margin={{ top: 5, right: 50, left: 40, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} strokeOpacity={0.3} />
+                                    <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} />
+                                    <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                                    <YAxis
+                                        yAxisId="pct"
+                                        orientation="right"
+                                        domain={[0, 100]}
+                                        tickFormatter={(v) => `${v}%`}
+                                        tick={{ fill: '#f97316', fontSize: 10 }}
+                                        axisLine={false}
+                                        tickLine={false}
+                                        width={40}
+                                    />
+                                    <Tooltip
+                                        formatter={(value: any, name: string) => [
+                                            name === 'cumPercent' ? `${value}%` : `${Number(value).toLocaleString()} ${UNIT}`,
+                                            name === 'cumPercent' ? '% Acumulado' : 'Cantidad'
+                                        ]}
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    />
+                                    <Bar dataKey="value" fill="#3b82f6" radius={[0, 6, 6, 0]} barSize={22} />
+                                    <Line yAxisId="pct" dataKey="cumPercent" stroke="#f97316" strokeWidth={2} dot={{ r: 3, fill: '#f97316' }} type="monotone" />
+                                    {/* Línea de referencia 80% */}
+                                    <Line yAxisId="pct" dataKey={() => 80} stroke="#f97316" strokeWidth={1} strokeDasharray="4 4" dot={false} legendType="none" />
+                                </ComposedChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="h-full flex items-center justify-center text-muted-foreground text-sm flex-col gap-2">
+                                <CheckCircle2 className="h-8 w-8 text-green-400 opacity-50" />
+                                <p>No hay defectos en este periodo</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* 2. Parámetros críticos — RadarChart */}
+                <Card className="col-span-1 border-none shadow-sm rounded-[2rem] bg-white dark:bg-slate-900">
+                    <CardHeader>
+                        <CardTitle className="text-slate-700 dark:text-slate-200">Parámetros Críticos</CardTitle>
+                        <CardDescription>Frecuencia de incidencias por parámetro (# NCRs)</CardDescription>
+                    </CardHeader>
+                    <CardContent className="pb-6 pr-6">
+                        <div style={{ width: '100%', height: 320 }}>
+                            {radarData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <RadarChart data={radarData} margin={{ top: 20, right: 40, bottom: 20, left: 40 }}>
+                                        <PolarGrid stroke="#e2e8f0" />
+                                        <PolarAngleAxis dataKey="param" tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }} />
+                                        <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={{ fill: '#94a3b8', fontSize: 9 }} tickCount={4} />
+                                        <Radar name="NCRs" dataKey="count" stroke="#6366f1" fill="#6366f1" fillOpacity={0.25} strokeWidth={2} />
+                                        <Tooltip
+                                            formatter={(value: any) => [`${value} NCRs`, 'Incidencias']}
+                                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                        />
+                                    </RadarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-muted-foreground text-sm flex-col gap-2">
+                                    <Activity className="h-8 w-8 text-slate-300" />
+                                    <p>Sin datos de parámetros</p>
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* 4. Destino de Material — barras apiladas */}
+                <Card className="col-span-1 md:col-span-2 border-none shadow-sm rounded-[2rem] bg-white dark:bg-slate-900">
+                    <CardHeader>
+                        <CardTitle className="text-slate-700 dark:text-slate-200">Destino de Material No Conforme</CardTitle>
+                        <CardDescription>Distribución de disposiciones registradas por tipo ({UNIT})</CardDescription>
+                    </CardHeader>
+                    <CardContent className="h-[280px]">
+                        {dispositionData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart
+                                    data={[{ name: 'Disposiciones', ...Object.fromEntries(dispositionData.map((d: any) => [d.name, d.value])) }]}
+                                    margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.3} vertical={false} />
+                                    <XAxis dataKey="name" hide />
+                                    <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} />
+                                    <Tooltip
+                                        formatter={(value: any, name: string) => [`${Number(value).toLocaleString()} ${UNIT}`, name]}
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    />
+                                    <Legend wrapperStyle={{ paddingTop: '16px', fontSize: '12px' }} />
+                                    {dispositionData.map((entry: any) => (
+                                        <Bar
+                                            key={entry.name}
+                                            dataKey={entry.name}
+                                            stackId="a"
+                                            fill={entry.color}
+                                            radius={dispositionData.indexOf(entry) === 0 ? [6, 6, 0, 0] : [0, 0, 0, 0]}
+                                            label={dispositionData.indexOf(entry) === 0 ? { position: 'top', fontSize: 11, fill: '#64748b' } : false}
+                                        />
+                                    ))}
+                                </BarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="h-full flex items-center justify-center text-muted-foreground text-sm flex-col gap-2">
+                                <Activity className="h-8 w-8 text-slate-300" />
+                                <p>No hay datos de disposición en este periodo</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* 5. Causas de Reproceso — mantenemos barras horizontales */}
+                <Card className="col-span-1 md:col-span-2 border-none shadow-sm rounded-[2rem] bg-white dark:bg-slate-900">
+                    <CardHeader>
+                        <CardTitle className="text-slate-700 dark:text-slate-200">Causas de Reproceso</CardTitle>
+                        <CardDescription>Defectos que derivaron en reproceso o ajuste ({UNIT})</CardDescription>
+                    </CardHeader>
+                    <CardContent className="h-[280px]">
                         {reprocessData.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={reprocessData} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} strokeOpacity={0.3} />
-                                    <XAxis type="number" tick={{ fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                                    <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} />
                                     <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
                                     <Tooltip
                                         formatter={(value: any) => [`${Number(value).toLocaleString()} ${UNIT}`, 'Impacto']}
                                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                     />
-                                    <Bar dataKey="value" fill="#f97316" radius={[0, 6, 6, 0]} barSize={24} />
+                                    <Bar dataKey="value" fill="#f97316" radius={[0, 6, 6, 0]} barSize={28}>
+                                        {reprocessData.map((_: any, idx: number) => (
+                                            <Cell key={idx} fill={idx === 0 ? '#ea580c' : '#f97316'} />
+                                        ))}
+                                    </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
                         ) : (
@@ -507,80 +669,6 @@ export default function SPYReportPage() {
                     </CardContent>
                 </Card>
 
-                {/* Pareto General Defects */}
-                <Card className="col-span-1 border-none shadow-sm rounded-[2rem] bg-white dark:bg-slate-900">
-                    <CardHeader>
-                        <CardTitle className="text-slate-700 dark:text-slate-200">Pareto de Defectos (General)</CardTitle>
-                        <CardDescription>Principales causas de No Conformidad ({UNIT})</CardDescription>
-                    </CardHeader>
-                    <CardContent className="h-[350px]">
-                        {pareto.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={pareto} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} strokeOpacity={0.3} />
-                                    <XAxis type="number" tick={{ fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                                    <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                                    <Tooltip
-                                        formatter={(value: any) => [`${Number(value).toLocaleString()} ${UNIT}`, 'Cantidad']}
-                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                    />
-                                    <Bar dataKey="value" fill="#3b82f6" radius={[0, 6, 6, 0]} barSize={24} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="h-full flex items-center justify-center text-muted-foreground text-sm flex-col gap-2">
-                                <CheckCircle2 className="h-8 w-8 text-green-400 opacity-50" />
-                                <p>No hay defectos registrados en este periodo</p>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-
-                {/* Disposition Breakdown */}
-                <Card className="col-span-1 md:col-span-2 border-none shadow-sm rounded-[2rem] bg-white dark:bg-slate-900">
-                    <CardHeader>
-                        <CardTitle className="text-slate-700 dark:text-slate-200">Destino de Material No Conforme</CardTitle>
-                        <CardDescription>Efectividad de las disposiciones de calidad</CardDescription>
-                    </CardHeader>
-                    <CardContent className="h-[350px] flex items-center justify-center">
-                        {dispositionData.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={dispositionData}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={80}
-                                        outerRadius={100}
-                                        paddingAngle={5}
-                                        dataKey="value"
-                                        stroke="none"
-                                    >
-                                        {dispositionData.map((entry: any, index: number) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip
-                                        formatter={(value: any) => [`${Number(value).toLocaleString()} ${UNIT}`, 'Volumen']}
-                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                    />
-                                    <Legend
-                                        verticalAlign="middle"
-                                        align="right"
-                                        layout="vertical"
-                                        iconType="circle"
-                                        wrapperStyle={{ paddingLeft: '20px' }}
-                                    />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="h-full flex items-center justify-center text-muted-foreground text-sm flex-col gap-2">
-                                <Activity className="h-8 w-8 text-slate-300" />
-                                <p>No hay datos de disposición en este periodo</p>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
             </div>
         </div>
     )
