@@ -90,6 +90,7 @@ export function NCRManager() {
     // Filters
     const [statusFilter, setStatusFilter] = useState<string>('ALL')
     const [searchQuery, setSearchQuery] = useState('')
+    const [dispositionFilter, setDispositionFilter] = useState<string>('ALL')
 
     // Admin Filters State
     const [sucursalFilter, setSucursalFilter] = useState<string>('ALL')
@@ -519,6 +520,29 @@ export function NCRManager() {
         return 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800/50 dark:text-slate-300 dark:border-slate-700'
     }
 
+    // Paleta corporativa: azul #0e0c9b → rojo #c41f1a
+    const getDispositionStyle = (type: string): string => {
+        if (!type || type === '-') return 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400'
+        const t = type.toUpperCase()
+        if (t.includes('SCRAP') || t.includes('DESECHO') || t.includes('DESTRUCCI'))
+            return 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-300'
+        if (t.includes('REPROCESO'))
+            return 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300'
+        if (t.includes('AJUSTE'))
+            return 'bg-violet-100 text-violet-800 border-violet-300 dark:bg-violet-900/30 dark:text-violet-300'
+        if (t.includes('DOWNGRADE') || t.includes('USE AS IS'))
+            return 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300'
+        if (t.includes('CONCESION'))
+            return 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-900/30 dark:text-sky-300'
+        if (t.includes('HOLD') || t.includes('RETENCION'))
+            return 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-300'
+        if (t.includes('DEVOLUCION') || t.includes('DEVOLUCIÓN'))
+            return 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300'
+        if (t.includes('PENDIENTE'))
+            return 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-300'
+        return 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300'
+    }
+
     const renderMeasurement = (ncr: NCR) => {
         const defectDetail = ncr.defect_detail;
         const parameter = ncr.defect_parameter;
@@ -593,6 +617,14 @@ export function NCRManager() {
             </div>
         );
     }
+
+    // Pre-filter NCRs by disposition before rendering
+    const displayNCRs = ncrs.filter(ncr => {
+        if (dispositionFilter === 'ALL') return true
+        if (dispositionFilter === 'PENDIENTE') return !ncr.disposition_type || ncr.disposition_type === '-'
+        return (ncr.disposition_type?.toUpperCase().includes(dispositionFilter.replace(/_/g, ' ')))
+            || ncr.disposition_type === dispositionFilter
+    })
 
     return (
         <div className="space-y-6">
@@ -804,6 +836,28 @@ export function NCRManager() {
                             />
                         </div>
 
+                        {/* Filtro por Disposición */}
+                        <Select value={dispositionFilter} onValueChange={setDispositionFilter}>
+                            <SelectTrigger className="w-full md:w-[200px]">
+                                <div className="flex items-center gap-2 truncate">
+                                    <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                    <span className="text-muted-foreground shrink-0">Disp:</span>
+                                    <span className="truncate">{dispositionFilter === 'ALL' ? 'Todas' : dispositionFilter.replace(/_/g, ' ')}</span>
+                                </div>
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="ALL">Todas las disposiciones</SelectItem>
+                                <SelectItem value="PENDIENTE">Sin disposición</SelectItem>
+                                <SelectItem value="REPROCESO">Reproceso</SelectItem>
+                                <SelectItem value="AJUSTE_FORMULA">Ajuste Fórmula</SelectItem>
+                                <SelectItem value="DOWNGRADE">Downgrade</SelectItem>
+                                <SelectItem value="SCRAP_DESTRUCCION">Scrap / Destrucción</SelectItem>
+                                <SelectItem value="HOLD_INVESTIGACION">Hold Investigación</SelectItem>
+                                <SelectItem value="CONCESION">Concesión</SelectItem>
+                                <SelectItem value="DEVOLUCION">Devolución</SelectItem>
+                            </SelectContent>
+                        </Select>
+
 
 
                         {/* Admin/Manager Filters: Sucursal & Producto */}
@@ -894,8 +948,14 @@ export function NCRManager() {
                                             No se encontraron casos de No Conformidad.
                                         </TableCell>
                                     </TableRow>
+                                ) : displayNCRs.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                                            No hay NCRs con la disposición seleccionada.
+                                        </TableCell>
+                                    </TableRow>
                                 ) : (
-                                    ncrs.map((ncr) => (
+                                    displayNCRs.map((ncr) => (
                                         <TableRow key={ncr.id}>
                                             <TableCell className="text-center">
                                                 <div className="relative flex items-center justify-center gap-2">
@@ -923,7 +983,7 @@ export function NCRManager() {
                                             <TableCell>{ncr.liters_involved?.toLocaleString()} L</TableCell>
                                             <TableCell>
                                                 {ncr.disposition_type && ncr.disposition_type !== '-' ? (
-                                                    <Badge variant="secondary" className="font-normal border-slate-200 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                                    <Badge variant="outline" className={`font-medium text-[11px] border ${getDispositionStyle(ncr.disposition_type)}`}>
                                                         {ncr.disposition_type.replace(/_/g, ' ')}
                                                     </Badge>
                                                 ) : (
@@ -960,8 +1020,10 @@ export function NCRManager() {
                             <div className="py-12 text-center text-muted-foreground">Cargando datos...</div>
                         ) : ncrs.length === 0 ? (
                             <div className="py-12 text-center text-muted-foreground">No se encontraron casos.</div>
+                        ) : displayNCRs.length === 0 ? (
+                            <div className="py-12 text-center text-muted-foreground">No hay NCRs con la disposición seleccionada.</div>
                         ) : (
-                            ncrs.map((ncr) => (
+                            displayNCRs.map((ncr) => (
                                 <div key={ncr.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                                     <div className="p-4 space-y-3">
                                         <div className="flex items-start justify-between">
@@ -1016,7 +1078,7 @@ export function NCRManager() {
                                         <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Disposición Final</span>
                                             {ncr.disposition_type && ncr.disposition_type !== '-' ? (
-                                                <Badge variant="secondary" className="text-[10px] h-5 py-0">
+                                                <Badge variant="outline" className={`text-[10px] h-5 py-0 border font-medium ${getDispositionStyle(ncr.disposition_type)}`}>
                                                     {ncr.disposition_type.replace(/_/g, ' ')}
                                                 </Badge>
                                             ) : (

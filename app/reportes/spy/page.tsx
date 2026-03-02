@@ -197,6 +197,7 @@ export default function SPYReportPage() {
             let scrapTotal = 0;
             let reprocessTotal = 0;
             const dispositionStatsMap = new Map<string, number>()
+            const dispositionBatchesMap = new Map<string, Set<string>>()
             const dispositionColorMap = new Map<string, string>()
 
             // El gráfico de destino de material usa TODOS los NCRs con disposición (independiente del status)
@@ -216,8 +217,14 @@ export default function SPYReportPage() {
                     : 'PENDIENTE / SIN DISPOSICION'
                 const typeUpper = typeRaw.toUpperCase()
 
-                // Registrar en el gráfico de torta (todos los NCRs con disposición)
+                // Registrar volumen
                 dispositionStatsMap.set(typeRaw, (dispositionStatsMap.get(typeRaw) || 0) + vol)
+
+                // Registrar lote único (batch_code) por disposición
+                const batchKey = item.batch_code || item.id || String(Math.random())
+                const batchSet = dispositionBatchesMap.get(typeRaw) || new Set<string>()
+                batchSet.add(batchKey)
+                dispositionBatchesMap.set(typeRaw, batchSet)
 
                 // Color map
                 if (typeUpper.includes('SCRAP') || typeUpper.includes('DESECHO') || typeUpper.includes('DESTRUCCI')) {
@@ -256,11 +263,13 @@ export default function SPYReportPage() {
 
             console.log('[SPY] scrapTotal:', scrapTotal, '| reprocessTotal:', reprocessTotal, '| baseTotal:', metricMode === 'LITROS' ? totalVolume : totalProduction)
 
-            // Format disposition data for the pie chart
+            // Format disposition data for chart
             const fullDispositionData = Array.from(dispositionStatsMap.entries())
                 .map(([name, value]) => ({
                     name,
                     value,
+                    // Número de lotes únicos (batch_code) que tuvieron esta disposición
+                    count: dispositionBatchesMap.get(name)?.size || 0,
                     color: dispositionColorMap.get(name) || '#94a3b8'
                 }))
                 .sort((a, b) => b.value - a.value)
@@ -317,22 +326,52 @@ export default function SPYReportPage() {
             })
             const radarData = Array.from(radarMap.entries()).map(([param, count]) => ({ param, count }))
             console.log('[SPY] radarData:', radarData, '| ncrData sample defect_parameter:', ncrData.slice(0, 3).map((n: any) => n.defect_parameter))
-            // Reprocess Breakdown
-            const reprocessItems = ncrWithDisposition.filter((item: any) => {
+            // Reprocess Breakdown — solo NCRs CERRADOS con disposición REPROCESO o AJUSTE
+            const reprocessItems = closedNCRs.filter((item: any) => {
                 const type = item.disposition?.disposition_type?.toUpperCase() || ''
                 return type.includes('REPROCESO') || type.includes('AJUSTE')
             })
-            const reprocessMap = new Map<string, number>()
+
+            // ─── Diagnóstico detallado ────────────────────────────────────────────────
+            console.log(`[SPY] closedNCRs total: ${closedNCRs.length}`)
+            console.log('[SPY] closedNCRs por disposición:',
+                closedNCRs.map((n: any) => ({
+                    id: n.id,
+                    status: n.status,
+                    dispType: n.disposition?.disposition_type,
+                    defectParam: n.defect_parameter,
+                    liters: n.liters_involved,
+                    dispLiters: n.disposition?.liters_involved
+                }))
+            )
+            console.log(`[SPY] reprocessItems (filtrados REPROCESO/AJUSTE): ${reprocessItems.length}`)
+            console.log('[SPY] reprocessItems detalle:',
+                reprocessItems.map((n: any) => ({
+                    id: n.id,
+                    dispType: n.disposition?.disposition_type,
+                    defectParam: n.defect_parameter,
+                    liters: n.liters_involved,
+                    dispLiters: n.disposition?.liters_involved,
+                    family: n.family
+                }))
+            )
+            // ─────────────────────────────────────────────────────────────────────────
+
+            const reprocessMap = new Map<string, { vol: number; count: number }>()
             reprocessItems.forEach((item: any) => {
                 const defect = item.defect_parameter || 'No Especificado'
                 const isPiece = PIECE_FAMILIES.includes(item.family || '')
-                const rawVol = Number(item.liters_involved) || 0
+                const dispLiters = Number(item.disposition?.liters_involved)
+                const ncrLiters = Number(item.liters_involved)
+                const rawVol = (dispLiters > 0 ? dispLiters : ncrLiters) || 0
                 const vol = metricMode === 'LITROS' ? (isPiece ? rawVol * 20 : rawVol) : 1
-                reprocessMap.set(defect, (reprocessMap.get(defect) || 0) + vol)
+                const prev = reprocessMap.get(defect) || { vol: 0, count: 0 }
+                reprocessMap.set(defect, { vol: prev.vol + vol, count: prev.count + 1 })
             })
             const reprocessPareto = Array.from(reprocessMap.entries())
-                .map(([name, value]) => ({ name, value }))
+                .map(([name, { vol, count }]) => ({ name, value: vol, count }))
                 .sort((a, b) => b.value - a.value)
+
 
             setData({
                 summary: {
@@ -355,18 +394,28 @@ export default function SPYReportPage() {
         }
     }
 
-    // Colors for charts
-    const COLORS = ['#22c55e', '#eab308', '#ef4444', '#f97316', '#3b82f6', '#a855f7', '#06b6d4', '#64748b'];
+    // ─── Paleta corporativa: #0e0c9b (azul) → #c41f1a (rojo) ───────────────────
+    // Interpolación: Azul → Índigo → Violeta → Magenta/Ciruela → Rojo
+    const CORP_BLUE = '#0e0c9b'
+    const CORP_INDIGO = '#3b3ab5'
+    const CORP_VIOLET = '#6b3ab0'
+    const CORP_PLUM = '#9c2c7a'
+    const CORP_RED = '#c41f1a'
+    const CORP_AMBER = '#a8470e'   // acento cálido intermedio para "hold/pendiente"
+
+    // Colores para gráficos en arco de 5 pasos
+    const COLORS = [CORP_BLUE, CORP_INDIGO, CORP_VIOLET, CORP_PLUM, CORP_RED, CORP_AMBER, '#1e3a8a', '#7c3aed']
+
     const DISPOSITION_COLORS: Record<string, string> = {
-        'REPROCESO': '#f97316',
-        'AJUSTE FORMULA': '#f97316',
-        'SCRAP DESTRUCCION': '#ef4444',
-        'DESECHO': '#ef4444',
-        'DOWNGRADE': '#22c55e',
-        'HOLD INVESTIGACION': '#3b82f6',
-        'CONCESION': '#a855f7',
-        'DEVOLUCION': '#64748b',
-        'PENDIENTE': '#eab308',
+        'REPROCESO': CORP_PLUM,     // magenta/ciruela
+        'AJUSTE FORMULA': CORP_VIOLET,   // violeta
+        'SCRAP DESTRUCCION': CORP_RED,      // rojo corporativo
+        'DESECHO': CORP_RED,
+        'DOWNGRADE': CORP_INDIGO,   // índigo
+        'HOLD INVESTIGACION': CORP_BLUE,     // azul corporativo
+        'CONCESION': '#1e3a8a',     // azul marino
+        'DEVOLUCION': CORP_AMBER,    // acento cálido
+        'PENDIENTE': '#6b7280',     // gris neutro
     }
 
     if (loading && !data) return (
@@ -529,7 +578,7 @@ export default function SPYReportPage() {
                         <div style={{ width: '100%', height: 340 }}>
                             {pareto.length > 0 ? (
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <ComposedChart data={pareto} margin={{ top: 20, right: 50, left: 10, bottom: 60 }}>
+                                    <ComposedChart data={pareto} margin={{ top: 20, right: 60, left: 10, bottom: 60 }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.3} />
                                         {/* Eje X: nombres de los defectos (bottom) */}
                                         <XAxis
@@ -557,40 +606,48 @@ export default function SPYReportPage() {
                                             orientation="right"
                                             domain={[0, 100]}
                                             tickFormatter={(v) => `${v}%`}
-                                            tick={{ fill: '#f97316', fontSize: 11 }}
+                                            tick={{ fill: CORP_PLUM, fontSize: 11 }}
                                             axisLine={false}
                                             tickLine={false}
                                             ticks={[0, 20, 40, 60, 80, 100]}
                                             width={42}
                                         />
                                         <Tooltip
-                                            cursor={{ fill: 'rgba(59,130,246,0.06)' }}
+                                            cursor={{ fill: 'rgba(14,12,155,0.04)' }}
                                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                             formatter={(value: any, name: string) => {
                                                 if (name === 'cumPercent') return [`${value}%`, '% Acumulado']
                                                 return [`${Number(value).toLocaleString()} ${UNIT}`, 'Cantidad']
                                             }}
                                         />
-                                        {/* Barras verticales de volumen */}
-                                        <Bar yAxisId="vol" dataKey="value" fill="#3b82f6" radius={[6, 6, 0, 0]} maxBarSize={60} />
-                                        {/* Línea de % acumulado */}
+                                        {/* Barras verticales de volumen — azul corporativo */}
+                                        <Bar yAxisId="vol" dataKey="value" fill={CORP_BLUE} radius={[6, 6, 0, 0]} maxBarSize={60} />
+                                        {/* Línea de % acumulado — rojo corporativo */}
                                         <Line
                                             yAxisId="pct"
                                             dataKey="cumPercent"
                                             type="monotone"
-                                            stroke="#f97316"
+                                            stroke={CORP_RED}
                                             strokeWidth={2.5}
-                                            dot={{ r: 4, fill: '#f97316', stroke: '#fff', strokeWidth: 2 }}
+                                            dot={{ r: 4, fill: CORP_RED, stroke: '#fff', strokeWidth: 2 }}
                                             activeDot={{ r: 6 }}
                                         />
-                                        {/* Umbral 80% — ReferenceLine (no aparece en tooltip) */}
+                                        {/* Umbral 80% — ciruela corporativo */}
                                         <ReferenceLine
                                             yAxisId="pct"
                                             y={80}
-                                            stroke="#f97316"
+                                            stroke={CORP_PLUM}
                                             strokeWidth={1.5}
                                             strokeDasharray="6 4"
-                                            label={{ value: '80%', position: 'right', fill: '#f97316', fontSize: 11, fontWeight: 700 }}
+                                            label={{
+                                                value: '— 80%',
+                                                position: 'insideTopLeft',
+                                                fill: CORP_PLUM,
+                                                fontSize: 10,
+                                                fontWeight: 700,
+                                                dy: -8,
+                                                dx: 4
+                                            }}
                                         />
                                     </ComposedChart>
                                 </ResponsiveContainer>
@@ -618,7 +675,7 @@ export default function SPYReportPage() {
                                         <PolarGrid stroke="#e2e8f0" />
                                         <PolarAngleAxis dataKey="param" tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }} />
                                         <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={{ fill: '#94a3b8', fontSize: 9 }} tickCount={4} />
-                                        <Radar name="NCRs" dataKey="count" stroke="#6366f1" fill="#6366f1" fillOpacity={0.25} strokeWidth={2} />
+                                        <Radar name="NCRs" dataKey="count" stroke={CORP_BLUE} fill={CORP_VIOLET} fillOpacity={0.2} strokeWidth={2} />
                                         <Tooltip
                                             formatter={(value: any) => [`${value} NCRs`, 'Incidencias']}
                                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
@@ -649,21 +706,35 @@ export default function SPYReportPage() {
                                 return (
                                     <div className="flex flex-col gap-3 pt-2">
                                         {sorted.map((entry: any) => (
-                                            <div key={entry.name} className="flex items-center gap-3 group">
+                                            <div key={entry.name} className="flex items-center gap-3 group relative">
                                                 {/* Etiqueta */}
                                                 <span className="w-36 text-xs font-semibold text-slate-600 dark:text-slate-400 text-right shrink-0 truncate" title={entry.name}>
                                                     {entry.name}
                                                 </span>
-                                                {/* Barra */}
-                                                <div className="flex-1 relative h-8 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+                                                {/* Barra con tooltip */}
+                                                <div className="flex-1 relative h-8 rounded-full overflow-visible bg-slate-100 dark:bg-slate-800">
                                                     <div
-                                                        className="h-full rounded-full transition-all duration-500 ease-out"
+                                                        className="h-full rounded-full transition-all duration-500 ease-out cursor-pointer"
                                                         style={{
                                                             width: `${(entry.value / maxVal) * 100}%`,
                                                             backgroundColor: entry.color,
                                                             opacity: 0.85
                                                         }}
                                                     />
+                                                    {/* Tooltip flotante */}
+                                                    <div className="
+                                                        absolute bottom-full left-1/4 mb-2 z-50
+                                                        opacity-0 group-hover:opacity-100
+                                                        transition-opacity duration-200 pointer-events-none
+                                                    ">
+                                                        <div className="bg-slate-900 text-white text-xs rounded-xl px-3 py-2 shadow-lg whitespace-nowrap">
+                                                            <p className="font-bold" style={{ color: entry.color }}>{entry.name}</p>
+                                                            <p className="mt-0.5">{Number(entry.value).toLocaleString()} {UNIT}</p>
+                                                            <p className="text-slate-400">{entry.count || 0} lote{entry.count !== 1 ? 's' : ''} comprometido{entry.count !== 1 ? 's' : ''}</p>
+                                                        </div>
+                                                        {/* Triángulo */}
+                                                        <div className="w-2 h-2 bg-slate-900 rotate-45 mx-auto -mt-1" />
+                                                    </div>
                                                 </div>
                                                 {/* Valor */}
                                                 <span className="w-24 text-xs font-bold shrink-0" style={{ color: entry.color }}>
@@ -684,40 +755,65 @@ export default function SPYReportPage() {
                 </Card>
 
 
-                {/* 5. Causas de Reproceso — mantenemos barras horizontales */}
+                {/* 5. Causas de Reproceso */}
                 <Card className="col-span-1 md:col-span-2 border-none shadow-sm rounded-[2rem] bg-white dark:bg-slate-900">
                     <CardHeader>
                         <CardTitle className="text-slate-700 dark:text-slate-200">Causas de Reproceso</CardTitle>
-                        <CardDescription>Defectos que derivaron en reproceso o ajuste ({UNIT})</CardDescription>
+                        <CardDescription>
+                            Parámetros que derivaron en reproceso o ajuste en NCRs cerrados
+                            {reprocessData.length > 0 && (
+                                <span className="ml-2 text-orange-600 font-semibold">
+                                    ({reprocessData.reduce((s: number, d: any) => s + d.count, 0)} NCRs • {reprocessData.reduce((s: number, d: any) => s + d.value, 0).toLocaleString()} {UNIT} totales)
+                                </span>
+                            )}
+                        </CardDescription>
                     </CardHeader>
-                    <CardContent className="h-[280px]">
-                        {reprocessData.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={reprocessData} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} strokeOpacity={0.3} />
-                                    <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} />
-                                    <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                                    <Tooltip
-                                        formatter={(value: any) => [`${Number(value).toLocaleString()} ${UNIT}`, 'Impacto']}
-                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                    />
-                                    <Bar dataKey="value" fill="#f97316" radius={[0, 6, 6, 0]} barSize={28}>
-                                        {reprocessData.map((_: any, idx: number) => (
-                                            <Cell key={idx} fill={idx === 0 ? '#ea580c' : '#f97316'} />
+                    <CardContent className="pb-6 pr-6">
+                        <div style={{ width: '100%', height: Math.max(200, reprocessData.length * 58) }}>
+                            {reprocessData.length > 0 ? (() => {
+                                const maxVal = reprocessData[0]?.value || 1
+                                const totalVol = reprocessData.reduce((s: number, d: any) => s + d.value, 0)
+                                return (
+                                    <div className="flex flex-col gap-4 pt-2">
+                                        {reprocessData.map((entry: any, idx: number) => (
+                                            <div key={entry.name} className="flex items-center gap-3">
+                                                {/* Etiqueta + conteo */}
+                                                <div className="w-36 shrink-0 text-right">
+                                                    <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 truncate" title={entry.name}>{entry.name}</p>
+                                                    <p className="text-[10px] text-slate-400">{entry.count} NCR{entry.count !== 1 ? 's' : ''}</p>
+                                                </div>
+                                                {/* Barra */}
+                                                <div className="flex-1 relative h-8 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+                                                    <div
+                                                        className="h-full rounded-full transition-all duration-500 ease-out"
+                                                        style={{
+                                                            width: `${(entry.value / maxVal) * 100}%`,
+                                                            background: idx === 0
+                                                                ? `linear-gradient(90deg, ${CORP_PLUM}, ${CORP_RED})`
+                                                                : `color-mix(in srgb, ${CORP_PLUM} ${Math.round(85 - idx * 12)}%, transparent)`,
+                                                        }}
+                                                    />
+                                                </div>
+                                                {/* Valor + % */}
+                                                <div className="w-28 shrink-0">
+                                                    <p className="text-xs font-bold" style={{ color: CORP_PLUM }}>{Number(entry.value).toLocaleString()} {UNIT}</p>
+                                                    <p className="text-[10px] text-slate-400">{totalVol > 0 ? Math.round((entry.value / totalVol) * 100) : 0}% del reproceso</p>
+                                                </div>
+                                            </div>
                                         ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="h-full flex items-center justify-center text-muted-foreground text-sm flex-col gap-2">
-                                <CheckCircle2 className="h-8 w-8 text-green-400 opacity-50" />
-                                <p>No hay datos de reprocesos en este periodo</p>
-                            </div>
-                        )}
+                                    </div>
+                                )
+                            })() : (
+                                <div className="h-full flex items-center justify-center text-muted-foreground text-sm flex-col gap-2">
+                                    <CheckCircle2 className="h-8 w-8 text-green-400 opacity-50" />
+                                    <p>No hay reprocesos cerrados en este periodo</p>
+                                </div>
+                            )}
+                        </div>
                     </CardContent>
                 </Card>
 
             </div>
-        </div>
+        </div >
     )
 }
