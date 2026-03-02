@@ -95,7 +95,7 @@ export default function SPYReportPage() {
             // 2. Fetch NCRs (Quality NCR)
             let fetchNCRs = supabase
                 .from('quality_ncr')
-                .select('*')
+                .select('*, quality_disposition(*)')
                 .gte('created_at', startDate)
                 .lte('created_at', endDate)
 
@@ -108,109 +108,173 @@ export default function SPYReportPage() {
             if (prodRes.error) console.error("Error fetching production:", prodRes.error)
             if (ncrRes.error) console.error("Error fetching NCRs:", ncrRes.error)
 
-            // Filter out BASES and intermediate products from TOTAL metrics if desired
-            // The user says 12 come from bases and should be separate.
-            const filteredProduction = (prodRes.data || []).filter((item: any) =>
-                !item.nombre_producto?.toUpperCase().includes('BASE')
-            )
-            const ncrData = ncrRes.data || []
+            const productionData = prodRes.data || []
+            let ncrData = ncrRes.data || []
 
-            console.log(`Fetched ${filteredProduction.length} production records (Excluding bases)`)
-            console.log(`Fetched ${ncrData.length} NCR records (Filtered)`)
+            // Fix: We need `familia_producto` for NCRs to properly calculate Pieces * 20 L.
+            // quality_ncr does not store `familia_producto`, so we must fetch it from `productionData` or from DB if missing.
+            const fetchedBatchCodes = new Set(productionData.map((p: any) => p.lote_producto))
+            const missingBatchCodes = Array.from(new Set(ncrData.map((n: any) => n.batch_code).filter((b: string) => b && !fetchedBatchCodes.has(b))))
 
-            // 3. Fetch Dispositions (Quality Disposition)
-            let dispositionData: any[] = []
-            if (ncrData.length > 0) {
-                const ncrIds = ncrData.map((n: any) => n.id)
-                console.log("Fetching dispositions for NCR IDs:", ncrIds)
-
-                const { data: dispo, error: dispoError } = await supabase
-                    .from('quality_disposition')
-                    .select('*')
-                    .in('ncr_id', ncrIds)
-
-                if (dispoError) {
-                    console.error("Error fetching dispositions:", dispoError)
-                } else {
-                    dispositionData = dispo || []
-                    console.log(`Fetched ${dispositionData.length} dispositions`)
-                }
+            let missingBatches: any[] = []
+            if (missingBatchCodes.length > 0) {
+                const { data: mData } = await supabase
+                    .from('bitacora_produccion_calidad')
+                    .select('lote_producto, familia_producto')
+                    .in('lote_producto', missingBatchCodes)
+                if (mData) missingBatches = mData
             }
 
-            // --- CALCULATIONS ---
+            const batchFamilyMap = new Map<string, string>()
+            productionData.forEach((p: any) => batchFamilyMap.set(p.lote_producto, p.familia_producto || ''))
+            missingBatches.forEach((p: any) => batchFamilyMap.set(p.lote_producto, p.familia_producto || ''))
+
+            // Append family to NCRs
+            ncrData = ncrData.map((n: any) => ({
+                ...n,
+                family: batchFamilyMap.get(n.batch_code) || ''
+            }))
+
+            console.log(`Fetched ${productionData.length} production records`)
+            console.log(`Fetched ${ncrData.length} NCR records`)
 
             // A. Volume / Count Basis
-            const totalProduction = filteredProduction.length
-            const totalVolume = filteredProduction.reduce((sum, item) => sum + (Number(item.tamano_lote) || 0), 0)
+            const PIECE_FAMILIES = ["Bases aromatizante ambiental", "Bases limpiadores liquidos multiusos", "Bases Aromatizantes"];
 
-            // B. NCR Stats
-            const totalNCRs = ncrData.length
-            const volumeAffected = ncrData.reduce((sum, item) => sum + (Number(item.liters_involved) || 0), 0)
+            // Exclude piece families from the pure "Batches" (Lotes) count
+            const totalProduction = productionData.filter((p: any) => !PIECE_FAMILIES.includes(p.familia_producto || '')).length;
+
+            // Calculate Total Volume: If family is 'Pieces', multiply by 20 Liters
+            const totalVolume = productionData.reduce((sum, item) => {
+                const isPiece = PIECE_FAMILIES.includes(item.familia_producto || '');
+                const val = Number(item.tamano_lote) || 0;
+                return sum + (isPiece ? (val * 20) : val);
+            }, 0)
+
+            // Pure "Batches" NCR count (all statuses) for FTQ — FTQ mide todo lo que tuvo problema
+            const totalNCRs = ncrData.filter((n: any) => !PIECE_FAMILIES.includes(n.family || '')).length;
+            const volumeAffected = ncrData.reduce((sum, item) => {
+                const isPiece = PIECE_FAMILIES.includes(item.family || '');
+                const val = Number(item.liters_involved) || 0;
+                return sum + (isPiece ? (val * 20) : val);
+            }, 0)
 
             // C. Disposition Breakdown
-            // Join NCR + Disposition
+            // Siempre tomar la disposición MÁS RECIENTE por NCR (no la primera [0])
             const ncrWithDisposition = ncrData.map((ncr: any) => {
-                const dispo = dispositionData.find((d: any) => d.ncr_id === ncr.id)
+                const dispositions: any[] = ncr.quality_disposition || []
+                const dispo = [...dispositions].sort((a: any, b: any) =>
+                    new Date(b.closed_at || b.created_at || 0).getTime() -
+                    new Date(a.closed_at || a.created_at || 0).getTime()
+                )[0] || null
                 return { ...ncr, disposition: dispo }
             })
 
+            // Para SPY/Final Yield y Reproceso: SOLO NCRs con status CERRADO
+            // Un NCR abierto o en investigación aún no tiene disposición final confirmada
+            const closedNCRs = ncrWithDisposition.filter((n: any) => n.status === 'CERRADO')
+
+            console.log(`[SPY] Total NCRs: ${ncrWithDisposition.length} | Cerrados: ${closedNCRs.length}`)
+            console.log('[SPY] NCRs con SCRAP_DESTRUCCION (cerrados):', closedNCRs.filter((n: any) =>
+                n.disposition?.disposition_type?.toUpperCase().includes('SCRAP')
+            ).map((n: any) => ({
+                batch: n.batch_code,
+                dispType: n.disposition?.disposition_type,
+                dispLiters: n.disposition?.liters_involved,
+                ncrLiters: n.liters_involved
+            })))
+
             // Segregate by Disposition Type
-            let volumeScrap = 0
-            let volumeReprocess = 0
-            let volumeDowngrade = 0
-            let volumeConcession = 0
-            let volumePending = 0
+            // scrapTotal y reprocessTotal: solo de NCRs CERRADOS (disposición final confirmada)
+            let scrapTotal = 0;
+            let reprocessTotal = 0;
+            const dispositionStatsMap = new Map<string, number>()
+            const dispositionColorMap = new Map<string, string>()
 
-            let countScrap = 0
-            let countReprocess = 0
-            let countDowngrade = 0
-            let countConcession = 0
-            let countPending = 0
-
+            // El gráfico de destino de material usa TODOS los NCRs con disposición (independiente del status)
             ncrWithDisposition.forEach((item: any) => {
-                const type = item.disposition?.disposition_type?.toUpperCase() || ''
-                const vol = Number(item.liters_involved) || 0
+                const isPiece = PIECE_FAMILIES.includes(item.family || '');
+                if (metricMode === 'LOTES' && isPiece) return;
 
-                if (!type) {
-                    volumePending += vol
-                    countPending++
-                } else if (type.includes('SCRAP') || type.includes('DESECHO')) {
-                    volumeScrap += vol
-                    countScrap++
-                } else if (type === 'REPROCESO') {
-                    volumeReprocess += vol
-                    countReprocess++
-                } else if (type === 'DOWNGRADE') {
-                    volumeDowngrade += vol
-                    countDowngrade++
-                } else if (type === 'CONCESION_USE_AS_IS') {
-                    volumeConcession += vol
-                    countConcession++
+                // Prioridad: litros de la disposición → litros del NCR → 0
+                const dispLiters = Number(item.disposition?.liters_involved)
+                const ncrLiters = Number(item.liters_involved)
+                const rawVol = (dispLiters > 0 ? dispLiters : ncrLiters) || 0
+
+                const vol = metricMode === 'LITROS' ? (isPiece ? rawVol * 20 : rawVol) : 1;
+
+                const typeRaw = item.disposition?.disposition_type
+                    ? item.disposition.disposition_type.replace(/_/g, ' ')
+                    : 'PENDIENTE / SIN DISPOSICION'
+                const typeUpper = typeRaw.toUpperCase()
+
+                // Registrar en el gráfico de torta (todos los NCRs con disposición)
+                dispositionStatsMap.set(typeRaw, (dispositionStatsMap.get(typeRaw) || 0) + vol)
+
+                // Color map
+                if (typeUpper.includes('SCRAP') || typeUpper.includes('DESECHO') || typeUpper.includes('DESTRUCCI')) {
+                    dispositionColorMap.set(typeRaw, '#ef4444')
+                } else if (typeUpper.includes('REPROCESO') || typeUpper.includes('AJUSTE')) {
+                    dispositionColorMap.set(typeRaw, '#f97316')
+                } else if (typeUpper.includes('CONCESION') || typeUpper.includes('DOWNGRADE') || typeUpper.includes('USE AS IS')) {
+                    dispositionColorMap.set(typeRaw, '#22c55e')
+                } else if (typeUpper.includes('HOLD') || typeUpper.includes('RETENCION')) {
+                    dispositionColorMap.set(typeRaw, '#3b82f6')
+                } else if (typeUpper.includes('PENDIENTE')) {
+                    dispositionColorMap.set(typeRaw, '#eab308')
                 } else {
-                    // Fallback for 'OTRA' or unknown
-                    volumePending += vol
-                    countPending++
+                    dispositionColorMap.set(typeRaw, '#94a3b8')
                 }
             })
 
-            // Correct Logic:
-            // FTQ (First Time Quality) = (Total - NCRs) / Total
-            // SPY (Final Yield) = (Total - Scrap) / Total  <-- This includes reprocessed/concession as "good" eventually
-            // Rework Rate = Reprocess / Total
+            // KPIs de SCRAP y REPROCESO: solo de NCRs CERRADOS
+            closedNCRs.forEach((item: any) => {
+                const isPiece = PIECE_FAMILIES.includes(item.family || '');
+                if (metricMode === 'LOTES' && isPiece) return;
+
+                const dispLiters = Number(item.disposition?.liters_involved)
+                const ncrLiters = Number(item.liters_involved)
+                const rawVol = (dispLiters > 0 ? dispLiters : ncrLiters) || 0
+                const vol = metricMode === 'LITROS' ? (isPiece ? rawVol * 20 : rawVol) : 1;
+
+                const typeUpper = (item.disposition?.disposition_type || '').toUpperCase()
+
+                if (typeUpper.includes('SCRAP') || typeUpper.includes('DESECHO') || typeUpper.includes('DESTRUCCI')) {
+                    scrapTotal += vol
+                } else if (typeUpper.includes('REPROCESO') || typeUpper.includes('AJUSTE')) {
+                    reprocessTotal += vol
+                }
+            })
+
+            console.log('[SPY] scrapTotal:', scrapTotal, '| reprocessTotal:', reprocessTotal, '| baseTotal:', metricMode === 'LITROS' ? totalVolume : totalProduction)
+
+            // Format disposition data for the pie chart
+            const fullDispositionData = Array.from(dispositionStatsMap.entries())
+                .map(([name, value]) => ({
+                    name,
+                    value,
+                    color: dispositionColorMap.get(name) || '#94a3b8'
+                }))
+                .sort((a, b) => b.value - a.value)
+                .filter(d => d.value > 0)
+
+
+            // Cálculo correcto de KPIs:
+            // FTQ = (Total - Todos los NCRs con defecto) / Total  → mide «primera vez bien»
+            // SPY = (Total - Scrap CERRADO confirmado) / Total    → mide rendimiento final real
+            // Rework Rate = Reprocesos CERRADOS / Total
 
             const baseTotal = metricMode === 'LITROS' ? totalVolume : totalProduction
             const badFirstTime = metricMode === 'LITROS' ? volumeAffected : totalNCRs
-            const scrapTotal = metricMode === 'LITROS' ? volumeScrap : countScrap
-            const reprocessTotal = metricMode === 'LITROS' ? volumeReprocess : countReprocess
 
-            // Avoid division by zero
-            // If baseTotal is 0, we can't calculate percentages.
+            const calcPercent = (val: number, total: number) => total > 0 ? (val / total) * 100 : 0
+
             const ftq = baseTotal > 0 ? ((baseTotal - badFirstTime) / baseTotal) * 100 : 100
             const spy = baseTotal > 0 ? ((baseTotal - scrapTotal) / baseTotal) * 100 : 100
-            const reworkRate = baseTotal > 0 ? (reprocessTotal / baseTotal) * 100 : 0
-            const scrapRate = baseTotal > 0 ? (scrapTotal / baseTotal) * 100 : 0
+            const reworkRate = calcPercent(reprocessTotal, baseTotal)
+            const scrapRate = calcPercent(scrapTotal, baseTotal)
 
-            console.log("Calculated Metrics:", { baseTotal, badFirstTime, scrapTotal, ftq, spy })
+            console.log('[SPY] Métricas finales:', { baseTotal, badFirstTime, scrapTotal, reprocessTotal, ftq, spy, reworkRate })
 
             // Pareto Data (Defects)
             const defectsMap = new Map<string, number>()
@@ -224,29 +288,24 @@ export default function SPYReportPage() {
                 .map(([name, value]) => ({ name, value }))
                 .sort((a, b) => b.value - a.value)
 
-            // Disposition Pie Data
-            // We want to see: Recovered (Reprocess + Downgrade + Concession), Scrap, Pending
-            const recoveredVal = metricMode === 'LITROS'
-                ? (volumeReprocess + volumeDowngrade + volumeConcession)
-                : (countReprocess + countDowngrade + countConcession)
-
-            const scrapVal = metricMode === 'LITROS' ? volumeScrap : countScrap
-            const pendingVal = metricMode === 'LITROS' ? volumePending : countPending
-
             // Reprocess Breakdown (What defects cause reprocess?)
-            // Filter only reprocessed items
-            const reprocessItems = ncrWithDisposition.filter((item: any) => item.disposition?.disposition_type === 'REPROCESO')
+            const reprocessItems = ncrWithDisposition.filter((item: any) => {
+                const type = item.disposition?.disposition_type?.toUpperCase() || ''
+                return type.includes('REPROCESO') || type.includes('AJUSTE')
+            })
+
             const reprocessMap = new Map<string, number>()
             reprocessItems.forEach((item: any) => {
                 const defect = item.defect_parameter || 'No Especificado'
-                const val = metricMode === 'LITROS' ? (Number(item.liters_involved) || 0) : 1
-                reprocessMap.set(defect, (reprocessMap.get(defect) || 0) + val)
+                const isPiece = PIECE_FAMILIES.includes(item.family || '');
+                const rawVol = Number(item.liters_involved) || 0;
+                const vol = metricMode === 'LITROS' ? (isPiece ? rawVol * 20 : rawVol) : 1;
+                reprocessMap.set(defect, (reprocessMap.get(defect) || 0) + vol)
             })
 
             const reprocessPareto = Array.from(reprocessMap.entries())
                 .map(([name, value]) => ({ name, value }))
                 .sort((a, b) => b.value - a.value)
-
 
             setData({
                 summary: {
@@ -257,11 +316,7 @@ export default function SPYReportPage() {
                     scrap_rate: scrapRate
                 },
                 pareto_data: paretoData,
-                disposition_data: [
-                    { name: 'Recuperado (Reproceso/Concesión)', value: recoveredVal, color: '#22c55e' },
-                    { name: 'Scrap / Pérdida', value: scrapVal, color: '#ef4444' },
-                    { name: 'Pendiente Disposición', value: pendingVal, color: '#eab308' } // Yellow for pending
-                ].filter(d => d.value > 0),
+                disposition_data: fullDispositionData,
                 reprocess_data: reprocessPareto
             })
 
@@ -389,7 +444,7 @@ export default function SPYReportPage() {
                                 <div className="flex-1 pr-12">
                                     <h3 className="text-base font-extrabold text-indigo-700 dark:text-indigo-400 tracking-wide mb-2 uppercase">FINAL YIELD (SPY)</h3>
                                     <div className="text-5xl font-extrabold text-slate-900 dark:text-white mt-1 leading-none">
-                                        {summary.final_yield?.toFixed(1)}%
+                                        {summary.final_yield?.toFixed(2)}%
                                     </div>
                                     <p className="text-sm text-indigo-700 dark:text-indigo-400 font-medium mt-2">Incluyendo recuperaciones</p>
                                 </div>

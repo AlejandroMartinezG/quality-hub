@@ -32,7 +32,9 @@ import {
     Eye,
     Beaker,
     Archive,
-    Trash2
+    Trash2,
+    XCircle,
+    CheckCircle2
 } from 'lucide-react'
 import { toast } from "sonner"
 import Link from 'next/link'
@@ -415,6 +417,16 @@ export function NCRManager() {
     // KPI Calculation
     const totalOpen = ncrs.filter(n => n.status !== 'CERRADO').length
 
+    // Litros SCRAP (NCRs cerrados con disposición SCRAP_DESTRUCCION)
+    const scrapLiters = ncrs
+        .filter(n => n.status === 'CERRADO' && n.disposition_type?.toUpperCase().includes('SCRAP'))
+        .reduce((sum, n) => sum + (n.liters_involved || 0), 0)
+
+    // Tasa de cierre: % de NCRs cerrados respecto al total
+    const closureRate = statusCounts.ALL > 0
+        ? Math.round((statusCounts.CERRADO / statusCounts.ALL) * 100)
+        : 0
+
     const promptDelete = (id: string) => {
         setItemToDelete(id)
     }
@@ -593,54 +605,106 @@ export function NCRManager() {
             </div>
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* NCRs Abiertos - Matches 'No Conformes' Red Style */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* NCRs Abiertos */}
                 <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/20 dark:to-red-900/10 border-[#C1272D]/20 dark:border-[#C1272D]/30">
-                    <div className="absolute top-0 right-0 p-6 opacity-10">
-                        <AlertTriangle className="w-32 h-32 text-[#C1272D]" />
+                    <div className="absolute top-0 right-0 p-5 opacity-10">
+                        <AlertTriangle className="w-24 h-24 text-[#C1272D]" />
                     </div>
-                    <CardHeader className="pb-4 pt-6 px-6 relative z-10">
-                        <CardTitle className="text-lg font-extrabold text-[#C1272D] dark:text-red-400 tracking-wide flex items-center gap-2">
-                            <div className="h-2.5 w-2.5 rounded-full bg-[#C1272D] shadow-[0_0_8px_rgba(193,39,45,0.6)]" />
+                    <CardHeader className="pb-2 pt-5 px-5 relative z-10">
+                        <CardTitle className="text-sm font-extrabold text-[#C1272D] dark:text-red-400 tracking-wide flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-[#C1272D] shadow-[0_0_8px_rgba(193,39,45,0.6)]" />
                             NCRs Abiertos
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="relative z-10 px-6 pb-6">
-                        <div className="flex flex-col gap-3">
+                    <CardContent className="relative z-10 px-5 pb-5">
+                        <div className="flex flex-col gap-1">
                             <div className="flex items-baseline gap-2">
-                                <span className="text-6xl font-extrabold text-[#C1272D] dark:text-red-400 tracking-tight">
+                                <span className="text-5xl font-extrabold text-[#C1272D] dark:text-red-400 tracking-tight">
                                     {totalOpen}
                                 </span>
-                                <span className="text-base font-medium text-[#C1272D]/80 dark:text-red-400/80">casos</span>
+                                <span className="text-sm font-medium text-[#C1272D]/80 dark:text-red-400/80">casos</span>
                             </div>
-                            <span className="text-sm font-semibold text-[#C1272D]/70 dark:text-red-300/70">
+                            <span className="text-xs font-semibold text-[#C1272D]/70 dark:text-red-300/70">
                                 Requieren atención
                             </span>
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Litros en Hold - Matches 'Semi-Conformes' Yellow/Orange Style */}
+                {/* Litros en Hold */}
                 <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-950/20 dark:to-orange-900/10 border-orange-200 dark:border-orange-900/30">
-                    <div className="absolute top-0 right-0 p-6 opacity-10">
-                        <Beaker className="w-32 h-32 text-orange-600" />
+                    <div className="absolute top-0 right-0 p-5 opacity-10">
+                        <Beaker className="w-24 h-24 text-orange-600" />
                     </div>
-                    <CardHeader className="pb-4 pt-6 px-6 relative z-10">
-                        <CardTitle className="text-lg font-extrabold text-orange-700 dark:text-orange-400 tracking-wide flex items-center gap-2">
-                            <div className="h-2.5 w-2.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)]" />
-                            Litros en Hold (MRB)
+                    <CardHeader className="pb-2 pt-5 px-5 relative z-10">
+                        <CardTitle className="text-sm font-extrabold text-orange-700 dark:text-orange-400 tracking-wide flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)]" />
+                            Litros en Hold
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="relative z-10 px-6 pb-6">
-                        <div className="flex flex-col gap-3">
+                    <CardContent className="relative z-10 px-5 pb-5">
+                        <div className="flex flex-col gap-1">
                             <div className="flex items-baseline gap-2">
-                                <span className="text-6xl font-extrabold text-orange-700 dark:text-orange-400 tracking-tight">
+                                <span className="text-5xl font-extrabold text-orange-700 dark:text-orange-400 tracking-tight">
                                     {totalLitersOnHold.toLocaleString()}
                                 </span>
-                                <span className="text-base font-medium text-orange-600/80 dark:text-orange-400/80">Litros</span>
+                                <span className="text-sm font-medium text-orange-600/80 dark:text-orange-400/80">L</span>
                             </div>
-                            <span className="text-sm font-semibold text-orange-700/70 dark:text-orange-300/70">
+                            <span className="text-xs font-semibold text-orange-700/70 dark:text-orange-300/70">
                                 Volumen detenido
+                            </span>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Litros SCRAP */}
+                <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-950/20 dark:to-slate-900/10 border-slate-200 dark:border-slate-800">
+                    <div className="absolute top-0 right-0 p-5 opacity-10">
+                        <XCircle className="w-24 h-24 text-slate-600" />
+                    </div>
+                    <CardHeader className="pb-2 pt-5 px-5 relative z-10">
+                        <CardTitle className="text-sm font-extrabold text-slate-700 dark:text-slate-300 tracking-wide flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-slate-500" />
+                            Litros SCRAP
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="relative z-10 px-5 pb-5">
+                        <div className="flex flex-col gap-1">
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-5xl font-extrabold text-slate-700 dark:text-slate-300 tracking-tight">
+                                    {scrapLiters.toLocaleString()}
+                                </span>
+                                <span className="text-sm font-medium text-slate-500">L</span>
+                            </div>
+                            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                Destruidos / confirmados
+                            </span>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Tasa de Cierre */}
+                <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-green-50 to-emerald-100/50 dark:from-green-950/20 dark:to-emerald-900/10 border-green-200 dark:border-green-900/30">
+                    <div className="absolute top-0 right-0 p-5 opacity-10">
+                        <CheckCircle2 className="w-24 h-24 text-green-600" />
+                    </div>
+                    <CardHeader className="pb-2 pt-5 px-5 relative z-10">
+                        <CardTitle className="text-sm font-extrabold text-green-700 dark:text-green-400 tracking-wide flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
+                            Tasa de Cierre
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="relative z-10 px-5 pb-5">
+                        <div className="flex flex-col gap-1">
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-5xl font-extrabold text-green-700 dark:text-green-400 tracking-tight">
+                                    {closureRate}
+                                </span>
+                                <span className="text-sm font-medium text-green-600/80 dark:text-green-400/80">%</span>
+                            </div>
+                            <span className="text-xs font-semibold text-green-700/70 dark:text-green-300/70">
+                                {statusCounts.CERRADO} de {statusCounts.ALL} NCRs resueltos
                             </span>
                         </div>
                     </CardContent>
