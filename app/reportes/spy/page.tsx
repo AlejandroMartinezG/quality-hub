@@ -26,6 +26,7 @@ import {
     Cell,
     ComposedChart,
     Line,
+    ReferenceLine,
     RadarChart,
     Radar,
     PolarGrid,
@@ -518,48 +519,88 @@ export default function SPYReportPage() {
 
             <div className="grid gap-6 md:grid-cols-2">
 
-                {/* 1. Pareto real con línea acumulada */}
+                {/* 1. Pareto real con barras verticales y línea acumulada */}
                 <Card className="col-span-1 border-none shadow-sm rounded-[2rem] bg-white dark:bg-slate-900">
                     <CardHeader>
                         <CardTitle className="text-slate-700 dark:text-slate-200">Pareto de Defectos</CardTitle>
-                        <CardDescription>Causas de No Conformidad con % acumulado — línea naranja = umbral 80%</CardDescription>
+                        <CardDescription>Causas de No Conformidad — barras de mayor a menor, línea naranja = % acumulado</CardDescription>
                     </CardHeader>
-                    <CardContent className="h-[350px]">
-                        {pareto.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <ComposedChart data={pareto} layout="vertical" margin={{ top: 5, right: 50, left: 40, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} strokeOpacity={0.3} />
-                                    <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} />
-                                    <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                                    <YAxis
-                                        yAxisId="pct"
-                                        orientation="right"
-                                        domain={[0, 100]}
-                                        tickFormatter={(v) => `${v}%`}
-                                        tick={{ fill: '#f97316', fontSize: 10 }}
-                                        axisLine={false}
-                                        tickLine={false}
-                                        width={40}
-                                    />
-                                    <Tooltip
-                                        formatter={(value: any, name: string) => [
-                                            name === 'cumPercent' ? `${value}%` : `${Number(value).toLocaleString()} ${UNIT}`,
-                                            name === 'cumPercent' ? '% Acumulado' : 'Cantidad'
-                                        ]}
-                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                    />
-                                    <Bar dataKey="value" fill="#3b82f6" radius={[0, 6, 6, 0]} barSize={22} />
-                                    <Line yAxisId="pct" dataKey="cumPercent" stroke="#f97316" strokeWidth={2} dot={{ r: 3, fill: '#f97316' }} type="monotone" />
-                                    {/* Línea de referencia 80% */}
-                                    <Line yAxisId="pct" dataKey={() => 80} stroke="#f97316" strokeWidth={1} strokeDasharray="4 4" dot={false} legendType="none" />
-                                </ComposedChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="h-full flex items-center justify-center text-muted-foreground text-sm flex-col gap-2">
-                                <CheckCircle2 className="h-8 w-8 text-green-400 opacity-50" />
-                                <p>No hay defectos en este periodo</p>
-                            </div>
-                        )}
+                    <CardContent className="pb-6 pr-4">
+                        <div style={{ width: '100%', height: 340 }}>
+                            {pareto.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <ComposedChart data={pareto} margin={{ top: 20, right: 50, left: 10, bottom: 60 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.3} />
+                                        {/* Eje X: nombres de los defectos (bottom) */}
+                                        <XAxis
+                                            dataKey="name"
+                                            tick={{ fontSize: 11, fill: '#64748b' }}
+                                            axisLine={false}
+                                            tickLine={false}
+                                            angle={-35}
+                                            textAnchor="end"
+                                            interval={0}
+                                            height={60}
+                                        />
+                                        {/* Eje Y izquierdo: volumen de defectos */}
+                                        <YAxis
+                                            yAxisId="vol"
+                                            tick={{ fill: '#94a3b8', fontSize: 11 }}
+                                            axisLine={false}
+                                            tickLine={false}
+                                            tickFormatter={(v) => Number(v).toLocaleString()}
+                                            width={55}
+                                        />
+                                        {/* Eje Y derecho: porcentaje acumulado 0-100 */}
+                                        <YAxis
+                                            yAxisId="pct"
+                                            orientation="right"
+                                            domain={[0, 100]}
+                                            tickFormatter={(v) => `${v}%`}
+                                            tick={{ fill: '#f97316', fontSize: 11 }}
+                                            axisLine={false}
+                                            tickLine={false}
+                                            ticks={[0, 20, 40, 60, 80, 100]}
+                                            width={42}
+                                        />
+                                        <Tooltip
+                                            cursor={{ fill: 'rgba(59,130,246,0.06)' }}
+                                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                            formatter={(value: any, name: string) => {
+                                                if (name === 'cumPercent') return [`${value}%`, '% Acumulado']
+                                                return [`${Number(value).toLocaleString()} ${UNIT}`, 'Cantidad']
+                                            }}
+                                        />
+                                        {/* Barras verticales de volumen */}
+                                        <Bar yAxisId="vol" dataKey="value" fill="#3b82f6" radius={[6, 6, 0, 0]} maxBarSize={60} />
+                                        {/* Línea de % acumulado */}
+                                        <Line
+                                            yAxisId="pct"
+                                            dataKey="cumPercent"
+                                            type="monotone"
+                                            stroke="#f97316"
+                                            strokeWidth={2.5}
+                                            dot={{ r: 4, fill: '#f97316', stroke: '#fff', strokeWidth: 2 }}
+                                            activeDot={{ r: 6 }}
+                                        />
+                                        {/* Umbral 80% — ReferenceLine (no aparece en tooltip) */}
+                                        <ReferenceLine
+                                            yAxisId="pct"
+                                            y={80}
+                                            stroke="#f97316"
+                                            strokeWidth={1.5}
+                                            strokeDasharray="6 4"
+                                            label={{ value: '80%', position: 'right', fill: '#f97316', fontSize: 11, fontWeight: 700 }}
+                                        />
+                                    </ComposedChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-muted-foreground text-sm flex-col gap-2">
+                                    <CheckCircle2 className="h-8 w-8 text-green-400 opacity-50" />
+                                    <p>No hay defectos en este periodo</p>
+                                </div>
+                            )}
+                        </div>
                     </CardContent>
                 </Card>
 
@@ -594,47 +635,54 @@ export default function SPYReportPage() {
                     </CardContent>
                 </Card>
 
-                {/* 4. Destino de Material — barras apiladas */}
+                {/* 3. Destino de Material — barras horizontales individuales por disposición */}
                 <Card className="col-span-1 md:col-span-2 border-none shadow-sm rounded-[2rem] bg-white dark:bg-slate-900">
                     <CardHeader>
                         <CardTitle className="text-slate-700 dark:text-slate-200">Destino de Material No Conforme</CardTitle>
-                        <CardDescription>Distribución de disposiciones registradas por tipo ({UNIT})</CardDescription>
+                        <CardDescription>Volumen ({UNIT}) por tipo de disposición — ordenado de mayor a menor impacto</CardDescription>
                     </CardHeader>
-                    <CardContent className="h-[280px]">
-                        {dispositionData.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart
-                                    data={[{ name: 'Disposiciones', ...Object.fromEntries(dispositionData.map((d: any) => [d.name, d.value])) }]}
-                                    margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
-                                >
-                                    <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.3} vertical={false} />
-                                    <XAxis dataKey="name" hide />
-                                    <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} />
-                                    <Tooltip
-                                        formatter={(value: any, name: string) => [`${Number(value).toLocaleString()} ${UNIT}`, name]}
-                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                    />
-                                    <Legend wrapperStyle={{ paddingTop: '16px', fontSize: '12px' }} />
-                                    {dispositionData.map((entry: any) => (
-                                        <Bar
-                                            key={entry.name}
-                                            dataKey={entry.name}
-                                            stackId="a"
-                                            fill={entry.color}
-                                            radius={dispositionData.indexOf(entry) === 0 ? [6, 6, 0, 0] : [0, 0, 0, 0]}
-                                            label={dispositionData.indexOf(entry) === 0 ? { position: 'top', fontSize: 11, fill: '#64748b' } : false}
-                                        />
-                                    ))}
-                                </BarChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="h-full flex items-center justify-center text-muted-foreground text-sm flex-col gap-2">
-                                <Activity className="h-8 w-8 text-slate-300" />
-                                <p>No hay datos de disposición en este periodo</p>
-                            </div>
-                        )}
+                    <CardContent className="pb-6 pr-6">
+                        <div style={{ width: '100%', height: Math.max(220, dispositionData.length * 52) }}>
+                            {dispositionData.length > 0 ? (() => {
+                                const sorted = [...dispositionData].sort((a: any, b: any) => b.value - a.value)
+                                const maxVal = sorted[0]?.value || 1
+                                return (
+                                    <div className="flex flex-col gap-3 pt-2">
+                                        {sorted.map((entry: any) => (
+                                            <div key={entry.name} className="flex items-center gap-3 group">
+                                                {/* Etiqueta */}
+                                                <span className="w-36 text-xs font-semibold text-slate-600 dark:text-slate-400 text-right shrink-0 truncate" title={entry.name}>
+                                                    {entry.name}
+                                                </span>
+                                                {/* Barra */}
+                                                <div className="flex-1 relative h-8 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+                                                    <div
+                                                        className="h-full rounded-full transition-all duration-500 ease-out"
+                                                        style={{
+                                                            width: `${(entry.value / maxVal) * 100}%`,
+                                                            backgroundColor: entry.color,
+                                                            opacity: 0.85
+                                                        }}
+                                                    />
+                                                </div>
+                                                {/* Valor */}
+                                                <span className="w-24 text-xs font-bold shrink-0" style={{ color: entry.color }}>
+                                                    {Number(entry.value).toLocaleString()} {UNIT}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )
+                            })() : (
+                                <div className="h-full flex items-center justify-center text-muted-foreground text-sm flex-col gap-2">
+                                    <Activity className="h-8 w-8 text-slate-300" />
+                                    <p>No hay datos de disposición en este periodo</p>
+                                </div>
+                            )}
+                        </div>
                     </CardContent>
                 </Card>
+
 
                 {/* 5. Causas de Reproceso — mantenemos barras horizontales */}
                 <Card className="col-span-1 md:col-span-2 border-none shadow-sm rounded-[2rem] bg-white dark:bg-slate-900">
