@@ -34,7 +34,8 @@ import {
     Archive,
     Trash2,
     XCircle,
-    CheckCircle2
+    CheckCircle2,
+    Zap
 } from 'lucide-react'
 import { toast } from "sonner"
 import Link from 'next/link'
@@ -422,6 +423,10 @@ export function NCRManager() {
         .filter(n => n.status === 'CERRADO' && n.disposition_type?.toUpperCase().includes('SCRAP'))
         .reduce((sum, n) => sum + (n.liters_involved || 0), 0)
 
+    // badFirstTime: litros totales afectados por algún NCR (todos, sin filtro de status)
+    // Equivalente al volumen que no pasó a la primera sin incidente
+    const badFirstTime = ncrs.reduce((sum, n) => sum + (n.liters_involved || 0), 0)
+
     // Tasa de cierre: % de NCRs cerrados respecto al total
     const closureRate = statusCounts.ALL > 0
         ? Math.round((statusCounts.CERRADO / statusCounts.ALL) * 100)
@@ -605,7 +610,7 @@ export function NCRManager() {
             </div>
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                 {/* NCRs Abiertos */}
                 <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/20 dark:to-red-900/10 border-[#C1272D]/20 dark:border-[#C1272D]/30">
                     <div className="absolute top-0 right-0 p-5 opacity-10">
@@ -653,6 +658,32 @@ export function NCRManager() {
                             </div>
                             <span className="text-xs font-semibold text-orange-700/70 dark:text-orange-300/70">
                                 Volumen detenido
+                            </span>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Bad First Time — Litros totales con incidencia */}
+                <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-purple-50 to-violet-100/50 dark:from-purple-950/20 dark:to-violet-900/10 border-purple-200 dark:border-purple-900/30">
+                    <div className="absolute top-0 right-0 p-5 opacity-10">
+                        <Zap className="w-24 h-24 text-purple-600" />
+                    </div>
+                    <CardHeader className="pb-2 pt-5 px-5 relative z-10">
+                        <CardTitle className="text-sm font-extrabold text-purple-700 dark:text-purple-400 tracking-wide flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.5)]" />
+                            Litros Afectados
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="relative z-10 px-5 pb-5">
+                        <div className="flex flex-col gap-1">
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-5xl font-extrabold text-purple-700 dark:text-purple-400 tracking-tight">
+                                    {badFirstTime.toLocaleString()}
+                                </span>
+                                <span className="text-sm font-medium text-purple-600/80 dark:text-purple-400/80">L</span>
+                            </div>
+                            <span className="text-xs font-semibold text-purple-700/70 dark:text-purple-300/70">
+                                Bad First Time (total NCRs)
                             </span>
                         </div>
                     </CardContent>
