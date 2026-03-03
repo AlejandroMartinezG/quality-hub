@@ -775,32 +775,35 @@ export default function SPYReportPage() {
                                 const totalVol = reprocessData.reduce((s: number, d: any) => s + d.value, 0)
                                 return (
                                     <div className="flex flex-col gap-4 pt-2">
-                                        {reprocessData.map((entry: any, idx: number) => (
-                                            <div key={entry.name} className="flex items-center gap-3">
-                                                {/* Etiqueta + conteo */}
-                                                <div className="w-36 shrink-0 text-right">
-                                                    <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 truncate" title={entry.name}>{entry.name}</p>
-                                                    <p className="text-[10px] text-slate-400">{entry.count} NCR{entry.count !== 1 ? 's' : ''}</p>
+                                        {reprocessData.map((entry: any, idx: number) => {
+                                            const palette = [CORP_BLUE, CORP_INDIGO, CORP_VIOLET, CORP_PLUM, CORP_RED]
+                                            const c1 = palette[Math.min(idx, palette.length - 1)]
+                                            const c2 = palette[Math.min(idx + 1, palette.length - 1)]
+                                            return (
+                                                <div key={entry.name} className="flex items-center gap-3">
+                                                    {/* Etiqueta + conteo */}
+                                                    <div className="w-36 shrink-0 text-right">
+                                                        <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 truncate" title={entry.name}>{entry.name}</p>
+                                                        <p className="text-[10px] font-medium" style={{ color: CORP_BLUE }}>{entry.count} NCR{entry.count !== 1 ? 's' : ''}</p>
+                                                    </div>
+                                                    {/* Barra */}
+                                                    <div className="flex-1 relative h-8 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+                                                        <div
+                                                            className="h-full rounded-full transition-all duration-500 ease-out"
+                                                            style={{
+                                                                width: `${(entry.value / maxVal) * 100}%`,
+                                                                background: `linear-gradient(90deg, ${c1}, ${c2})`,
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    {/* Valor + % */}
+                                                    <div className="w-28 shrink-0">
+                                                        <p className="text-xs font-bold" style={{ color: c1 }}>{Number(entry.value).toLocaleString()} {UNIT}</p>
+                                                        <p className="text-[10px] text-slate-400">{totalVol > 0 ? Math.round((entry.value / totalVol) * 100) : 0}% del reproceso</p>
+                                                    </div>
                                                 </div>
-                                                {/* Barra */}
-                                                <div className="flex-1 relative h-8 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-                                                    <div
-                                                        className="h-full rounded-full transition-all duration-500 ease-out"
-                                                        style={{
-                                                            width: `${(entry.value / maxVal) * 100}%`,
-                                                            background: idx === 0
-                                                                ? `linear-gradient(90deg, ${CORP_PLUM}, ${CORP_RED})`
-                                                                : `color-mix(in srgb, ${CORP_PLUM} ${Math.round(85 - idx * 12)}%, transparent)`,
-                                                        }}
-                                                    />
-                                                </div>
-                                                {/* Valor + % */}
-                                                <div className="w-28 shrink-0">
-                                                    <p className="text-xs font-bold" style={{ color: CORP_PLUM }}>{Number(entry.value).toLocaleString()} {UNIT}</p>
-                                                    <p className="text-[10px] text-slate-400">{totalVol > 0 ? Math.round((entry.value / totalVol) * 100) : 0}% del reproceso</p>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            )
+                                        })}
                                     </div>
                                 )
                             })() : (
