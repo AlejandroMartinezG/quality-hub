@@ -8,7 +8,9 @@ import { analyzeRecord, EnrichedRecord } from "@/lib/analysis-utils"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Loader2, RefreshCcw, Filter, Download, Factory, Trophy, TrendingUp, Package, Activity, AlertCircle, ChevronRight } from "lucide-react"
+import { Loader2, RefreshCcw, Filter, Download, Factory, Trophy, TrendingUp, Package, Activity, AlertCircle, ChevronRight, Printer } from "lucide-react"
+import { PrintReportWrapper } from "@/components/PrintReportWrapper"
+import { DateRangeModal } from "@/components/DateRangeModal"
 import { toast } from "sonner"
 import {
     Select,
@@ -85,6 +87,16 @@ export default function ReportesPage() {
 
     // Drill-down modal state
     const [drillDownFamily, setDrillDownFamily] = useState<string | null>(null)
+
+    // Print report state
+    const [printModal, setPrintModal] = useState<'comercial' | 'calidad' | null>(null)
+    const [printView, setPrintView] = useState<{ tab: string, dateFrom: string, dateTo: string } | null>(null)
+
+    const handlePrintConfirm = (tab: string) => (dateFrom: string, dateTo: string) => {
+        setPrintModal(null)
+        setPrintView({ tab, dateFrom, dateTo })
+    }
+
 
     // Permissions check
     useEffect(() => {
@@ -223,6 +235,18 @@ export default function ReportesPage() {
             return true
         })
     }, [records, selectedSucursal, selectedCategory, selectedProduct, selectedPreparer, selectedDateRange])
+
+    // Filter records by print date range
+    const printFilteredRecords = useMemo(() => {
+        if (!printView) return [] as EnrichedRecord[]
+        const from = new Date(printView.dateFrom + 'T00:00:00')
+        const to = new Date(printView.dateTo + 'T23:59:59')
+        return filteredRecords.filter(r => {
+            if (!r.fecha_fabricacion) return false
+            const d = new Date(r.fecha_fabricacion)
+            return d >= from && d <= to
+        })
+    }, [printView, filteredRecords])
 
     // 2. KPIs
     const kpis = useMemo(() => {
@@ -676,6 +700,7 @@ export default function ReportesPage() {
     }
 
     return (
+        <>
         <div className="space-y-6 pb-12">
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -777,6 +802,18 @@ export default function ReportesPage() {
                     </TabsContent>
 
                     <TabsContent value="calidad" className="space-y-6">
+                        {/* Print Button */}
+                        <div className="flex justify-end">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="rounded-full gap-2 text-[#0e0c9b] border-[#0e0c9b]/30 hover:bg-[#0e0c9b]/5"
+                                onClick={() => setPrintModal('calidad')}
+                            >
+                                <Printer className="h-4 w-4" />
+                                Generar Reporte
+                            </Button>
+                        </div>
                         {/* KPI Section */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             {/* KPI 1: Total Registros + Volumen Total (Merged) - Enhanced */}
@@ -1206,6 +1243,18 @@ export default function ReportesPage() {
 
                     {(!isPreparador && !isGerente) && (
                         <TabsContent value="comercial" className="space-y-6 animate-in fade-in-50 duration-500">
+                            {/* Print Button */}
+                            <div className="flex justify-end">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="rounded-full gap-2 text-[#0e0c9b] border-[#0e0c9b]/30 hover:bg-[#0e0c9b]/5"
+                                    onClick={() => setPrintModal('comercial')}
+                                >
+                                    <Printer className="h-4 w-4" />
+                                    Generar Reporte
+                                </Button>
+                            </div>
                             {/* Commercial KPIs */}
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                 {/* KPI 1: Volumen Total + Unidades (Merged) - Enhanced */}
@@ -1704,6 +1753,605 @@ export default function ReportesPage() {
                 </DialogContent>
             </Dialog>
         </div>
+
+            {/* Print Modals */}
+            <DateRangeModal
+                open={printModal === 'calidad'}
+                onClose={() => setPrintModal(null)}
+                onConfirm={handlePrintConfirm('calidad')}
+                title="Reporte First Time Quality"
+            />
+            <DateRangeModal
+                open={printModal === 'comercial'}
+                onClose={() => setPrintModal(null)}
+                onConfirm={handlePrintConfirm('comercial')}
+                title="Reporte Análisis Comercial"
+            />
+
+            {/* Print Views */}
+            {printView && printView.tab === 'calidad' && (() => {
+                const pr = printFilteredRecords
+                if (!pr || pr.length === 0) {
+                    return (
+                        <PrintReportWrapper
+                            title="Reporte First Time Quality"
+                            dateFrom={printView.dateFrom}
+                            dateTo={printView.dateTo}
+                            userName={profile?.full_name}
+                            onClose={() => setPrintView(null)}
+                        >
+                            <div className="p-8 text-center text-slate-500">
+                                No hay datos disponibles para el periodo seleccionado.
+                            </div>
+                        </PrintReportWrapper>
+                    )
+                }
+
+                const total = pr.length
+                const conformes = pr.filter(r => r.analysis.overallStatus === 'conforme').length
+                const semiConformes = pr.filter(r => r.analysis.overallStatus === 'semi-conforme').length
+                const noConformes = pr.filter(r => r.analysis.overallStatus === 'no-conforme').length
+                
+                const PIECE_FAMILIES = ["Bases aromatizante ambiental", "Bases limpiadores liquidos multiusos", "Bases Aromatizantes"]
+                const totalVol = pr.reduce((s, r) => !PIECE_FAMILIES.includes(r.familia_producto) ? s + (r.tamano_lote || 0) : s, 0)
+                
+                const conformesPH = pr.filter(r => r.analysis.phStatus === 'conforme').length
+                const noConformesPH = pr.filter(r => r.analysis.phStatus === 'no-conforme').length
+
+                // Defects summary
+                const defects = { ph: 0, solidos: 0, apariencia: 0 }
+                pr.forEach(r => {
+                    if (!r.analysis.isConform) {
+                        r.analysis.failedParams.forEach(p => {
+                            if (p === 'ph' || p === 'solidos' || p === 'apariencia') {
+                                defects[p]++
+                            }
+                        })
+                    }
+                })
+
+                const paretoChartData = [
+                    { name: 'pH', count: defects.ph },
+                    { name: 'Sólidos', count: defects.solidos },
+                    { name: 'Apariencia', count: defects.apariencia }
+                ].sort((a, b) => b.count - a.count)
+
+                const pieData = [
+                    { name: 'Conforme', value: conformes, color: '#16a34a' },
+                    { name: 'Semi-Conforme', value: semiConformes, color: '#ca8a04' },
+                    { name: 'No Conforme', value: noConformes, color: '#dc2626' }
+                ].filter(d => d.value > 0)
+
+                // Sucursal summary
+                const grouped: Record<string, { conformes: number, semi: number, noConf: number }> = {}
+                pr.forEach(r => {
+                    const s = r.sucursal || 'Sin Sucursal'
+                    if (!grouped[s]) grouped[s] = { conformes: 0, semi: 0, noConf: 0 }
+                    if (r.analysis.overallStatus === 'conforme') grouped[s].conformes++
+                    else if (r.analysis.overallStatus === 'semi-conforme') grouped[s].semi++
+                    else if (r.analysis.overallStatus === 'no-conforme') grouped[s].noConf++
+                })
+
+                // Product Family analysis
+                const familyAnalysis: Record<string, { total: number, nc: number, vol: number }> = {}
+                pr.forEach(r => {
+                    const f = r.familia_producto || 'Otros'
+                    if (!familyAnalysis[f]) familyAnalysis[f] = { total: 0, nc: 0, vol: 0 }
+                    familyAnalysis[f].total++
+                    familyAnalysis[f].vol += (r.tamano_lote || 0)
+                    if (!r.analysis.isConform) familyAnalysis[f].nc++
+                })
+                const familyTable = Object.entries(familyAnalysis)
+                    .map(([name, v]) => ({ name, ...v, ncRate: (v.nc / v.total * 100).toFixed(1) }))
+                    .sort((a, b) => b.vol - a.vol)
+                    .slice(0, 8)
+
+                // Preparer Analysis
+                const preparerRank: Record<string, { total: number, conform: number }> = {}
+                pr.forEach(r => {
+                    const p = r.preparador || 'N/A'
+                    if (!preparerRank[p]) preparerRank[p] = { total: 0, conform: 0 }
+                    preparerRank[p].total++
+                    if (r.analysis.isConform) preparerRank[p].conform++
+                })
+                const preparerTable = Object.entries(preparerRank)
+                    .map(([name, v]) => ({ name, ...v, rate: (v.conform / v.total * 100).toFixed(1) }))
+                    .sort((a, b) => b.total - a.total)
+                    .slice(0, 10)
+
+                return (
+                    <PrintReportWrapper
+                        title="Reporte First Time Quality"
+                        dateFrom={printView.dateFrom}
+                        dateTo={printView.dateTo}
+                        userName={profile?.full_name}
+                        filters={selectedSucursal !== 'all' ? `Sucursal: ${selectedSucursal}` : 'Todas las sucursales'}
+                        onClose={() => setPrintView(null)}
+                    >
+                        {/* KPIs */}
+                        <div className="print-kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px' }}>
+                            <div className="print-kpi-card">
+                                <p className="text-[10pt] text-slate-500 font-bold uppercase mb-1">Total Registros</p>
+                                <p className="text-3xl font-extrabold text-slate-900 leading-tight">{total}</p>
+                                <p className="text-[8pt] text-slate-400 font-medium">Lotes analizados</p>
+                            </div>
+                            <div className="print-kpi-card" style={{ borderLeft: '4px solid #16a34a' }}>
+                                <p className="text-[10pt] text-green-700 font-bold uppercase mb-1">Conformes</p>
+                                <p className="text-3xl font-extrabold text-green-700 leading-tight">{conformes}</p>
+                                <p className="text-[8pt] text-green-600/70 font-bold">{total > 0 ? ((conformes/total)*100).toFixed(1) : 0}% del total</p>
+                            </div>
+                            <div className="print-kpi-card" style={{ borderLeft: '4px solid #ca8a04' }}>
+                                <p className="text-[10pt] text-yellow-700 font-bold uppercase mb-1">Semi</p>
+                                <p className="text-3xl font-extrabold text-yellow-700 leading-tight">{semiConformes}</p>
+                                <p className="text-[8pt] text-yellow-600/70 font-bold">{total > 0 ? ((semiConformes/total)*100).toFixed(1) : 0}%</p>
+                            </div>
+                            <div className="print-kpi-card" style={{ borderLeft: '4px solid #dc2626' }}>
+                                <p className="text-[10pt] text-red-700 font-bold uppercase mb-1">No Conformes</p>
+                                <p className="text-3xl font-extrabold text-red-700 leading-tight">{noConformes}</p>
+                                <p className="text-[8pt] text-red-600/70 font-bold">{total > 0 ? ((noConformes/total)*100).toFixed(1) : 0}%</p>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
+                            {/* Conformity Chart */}
+                            <div className="print-no-break">
+                                <h3 className="print-section-title">Resumen de Conformidad</h3>
+                                <div style={{ height: '220px', width: '100%', display: 'flex', justifyContent: 'center' }}>
+                                    <PieChart width={300} height={220}>
+                                        <Pie
+                                            data={pieData}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={80}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                        >
+                                            {pieData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip />
+                                        <Legend verticalAlign="bottom" height={36}/>
+                                    </PieChart>
+                                </div>
+                            </div>
+
+                            {/* Defects Chart */}
+                            <div className="print-no-break">
+                                <h3 className="print-section-title">Pareto de Defectos</h3>
+                                <div style={{ height: '220px', width: '100%' }}>
+                                    <BarChart width={350} height={220} data={paretoChartData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                        <XAxis dataKey="name" fontSize={10} interval={0} />
+                                        <YAxis fontSize={10} />
+                                        <Bar dataKey="count" name="Cantidad" fill="#0e0c9b" radius={[4, 4, 0, 0]} />
+                                    </BarChart>
+                                </div>
+                            </div>
+                        </div>
+                                              {/* Tables Section */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
+                            <div className="print-no-break">
+                                <h3 className="print-section-title">Análisis por Familia (Top 8)</h3>
+                                <table className="print-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Familia</th>
+                                            <th style={{ textAlign: 'center' }}>Volumen</th>
+                                            <th style={{ textAlign: 'right' }}>% No Conf.</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {familyTable.map(f => (
+                                            <tr key={f.name}>
+                                                <td className="font-semibold">{f.name}</td>
+                                                <td style={{ textAlign: 'center' }}>{f.vol.toLocaleString()}</td>
+                                                <td style={{ textAlign: 'right', fontWeight: 'bold', color: Number(f.ncRate) > 10 ? '#dc2626' : '#64748b' }}>
+                                                    {f.ncRate}%
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div className="print-no-break">
+                                <h3 className="print-section-title">Efectividad por Preparador</h3>
+                                <table className="print-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Nombre</th>
+                                            <th style={{ textAlign: 'center' }}>Lotes</th>
+                                            <th style={{ textAlign: 'right' }}>% Calidad</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {preparerTable.map(p => (
+                                            <tr key={p.name}>
+                                                <td className="font-semibold">{p.name}</td>
+                                                <td style={{ textAlign: 'center' }}>{p.total}</td>
+                                                <td style={{ textAlign: 'right', fontWeight: 'bold', color: '#16a34a' }}>
+                                                    {p.rate}%
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* Conformity by Sucursal Table */}
+                        <div className="print-no-break" style={{ marginTop: '20px' }}>
+                            <h3 className="print-section-title">Desglose por Sucursal</h3>
+                            <table className="print-table">
+                                <thead>
+                                    <tr>
+                                        <th>Sucursal</th>
+                                        <th style={{ textAlign: 'center' }}>Conformes</th>
+                                        <th style={{ textAlign: 'center' }}>Semi</th>
+                                        <th style={{ textAlign: 'center' }}>No Conformes</th>
+                                        <th style={{ textAlign: 'center' }}>Total</th>
+                                        <th style={{ textAlign: 'right' }}>% Calidad</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {Object.entries(grouped).sort((a, b) => (b[1].conformes + b[1].semi + b[1].noConf) - (a[1].conformes + a[1].semi + a[1].noConf)).map(([suc, v]) => {
+                                        const t = v.conformes + v.semi + v.noConf
+                                        const qualityScore = t > 0 ? ((v.conformes / t) * 100).toFixed(1) : 0
+                                        return (
+                                            <tr key={suc}>
+                                                <td className="font-semibold">{suc}</td>
+                                                <td style={{ textAlign: 'center', color: '#16a34a' }}>{v.conformes}</td>
+                                                <td style={{ textAlign: 'center', color: '#ca8a04' }}>{v.semi}</td>
+                                                <td style={{ textAlign: 'center', color: '#dc2626' }}>{v.noConf}</td>
+                                                <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{t}</td>
+                                                <td style={{ textAlign: 'right', fontWeight: 'bold', color: Number(qualityScore) > 90 ? '#16a34a' : '#0e0c9b' }}>{qualityScore}%</td>
+                                            </tr>
+                                        )
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </PrintReportWrapper>
+                )
+            })()}
+
+            {printView && printView.tab === 'comercial' && (() => {
+                const pr = printFilteredRecords
+                if (!pr || pr.length === 0) {
+                    return (
+                        <PrintReportWrapper
+                            title="Reporte Análisis Comercial"
+                            dateFrom={printView.dateFrom}
+                            dateTo={printView.dateTo}
+                            userName={profile?.full_name}
+                            onClose={() => setPrintView(null)}
+                        >
+                            <div className="p-8 text-center text-slate-500">
+                                No hay datos disponibles para el periodo seleccionado.
+                            </div>
+                        </PrintReportWrapper>
+                    )
+                }
+
+                const PIECE_FAMILIES = ["Bases aromatizante ambiental", "Bases limpiadores liquidos multiusos", "Bases Aromatizantes"]
+                const totalVol = pr.reduce((sum, r) => !PIECE_FAMILIES.includes(r.familia_producto) ? sum + (r.tamano_lote || 0) : sum, 0)
+                const totalPcs = pr.reduce((sum, r) => PIECE_FAMILIES.includes(r.familia_producto) ? sum + (r.tamano_lote || 0) : sum, 0)
+
+                // By sucursal
+                const bySuc: Record<string, number> = {}
+                pr.forEach(r => {
+                    const s = r.sucursal || 'Sin Sucursal'
+                    if (!PIECE_FAMILIES.includes(r.familia_producto)) {
+                        bySuc[s] = (bySuc[s] || 0) + (r.tamano_lote || 0)
+                    }
+                })
+                const sucursalBarData = Object.entries(bySuc).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value)
+                
+                // Color gradient from red to blue
+                const getGradientColor = (index: number, total: number) => {
+                    const r = Math.round(193 - (index / total) * (193 - 14)) // From #C1272D to #0E0C9B
+                    const g = Math.round(39 - (index / total) * (39 - 12))
+                    const b = Math.round(45 - (index / total) * (45 - 155))
+                    return `rgb(${r}, ${g}, ${b})`
+                }
+                const sucursalChartData = sucursalBarData.map((d, i) => ({ ...d, color: getGradientColor(i, sucursalBarData.length) }))
+
+                // By category
+                const byCat: Record<string, number> = {}
+                pr.forEach(r => {
+                    const cat = (r as any).categoria_producto || r.familia_producto || 'Otros'
+                    byCat[cat] = (byCat[cat] || 0) + (r.tamano_lote || 0)
+                })
+                const categoryPieData = Object.entries(byCat).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value)
+
+                // High level groups for Image 3
+                const groupMapping: Record<string, string> = {
+                    'Detergente líquido para ropa': 'Lavandería',
+                    'Suavizante de telas': 'Lavandería',
+                    'Línea de especialidades': 'Lavandería',
+                    'Limpiador liquido multiusos': 'Cuidado del Hogar',
+                    'Detergente liquido para trastes': 'Cuidado del Hogar',
+                    'Desengrasante': 'Cuidado del Hogar',
+                    'Jabón liquido para manos': 'Cuidado Personal',
+                    'Shampoo': 'Cuidado Personal',
+                    'Corporal': 'Cuidado Personal',
+                    'Antibacteriales': 'Línea Antibacterial',
+                    'Gel Antibacterial': 'Línea Antibacterial'
+                }
+                const groupedData: Record<string, { total: number, sub: Record<string, number> }> = {}
+                pr.forEach(r => {
+                    const fam = r.familia_producto || 'Otros'
+                    const group = groupMapping[fam] || 'Otros'
+                    if (!groupedData[group]) groupedData[group] = { total: 0, sub: {} }
+                    groupedData[group].total += (r.tamano_lote || 0)
+                    groupedData[group].sub[fam] = (groupedData[group].sub[fam] || 0) + (r.tamano_lote || 0)
+                })
+
+                // Top Products by Sucursal
+                const topBySuc: Record<string, any[]> = {}
+                pr.forEach(r => {
+                    const s = r.sucursal || 'Sin Sucursal'
+                    if (!topBySuc[s]) topBySuc[s] = []
+                    topBySuc[s].push({ name: r.nombre_producto, value: r.tamano_lote })
+                })
+                const topProductsSucursal = Object.entries(topBySuc).map(([suc, items]) => {
+                    const sorted = items.reduce((acc, curr) => {
+                        const existing = acc.find((i: any) => i.name === curr.name)
+                        if (existing) existing.value += curr.value
+                        else acc.push({ ...curr })
+                        return acc
+                    }, []).sort((a: any, b: any) => b.value - a.value).slice(0, 3)
+                    return { suc, products: sorted }
+                }).sort((a, b) => b.products.reduce((s: number, i: any) => s + i.value, 0) - a.products.reduce((s: number, i: any) => s + i.value, 0))
+
+                // By product variant (codigo)
+                const byProdCode: Record<string, number> = {}
+                pr.forEach(r => {
+                    const code = r.codigo_producto || 'N/A'
+                    byProdCode[code] = (byProdCode[code] || 0) + (r.tamano_lote || 0)
+                })
+                const variantChartData = Object.entries(byProdCode)
+                    .map(([name, value], i) => ({ name, value }))
+                    .sort((a, b) => b.value - a.value)
+                    .slice(0, 20)
+                    .map((d, i) => ({ ...d, color: getGradientColor(i, 20) }))
+
+                const topProds = Object.entries(byProdCode).sort((a, b) => b[1] - a[1]).slice(0, 10)
+
+                return (
+                    <PrintReportWrapper
+                        title="Reporte Análisis Comercial"
+                        dateFrom={printView.dateFrom}
+                        dateTo={printView.dateTo}
+                        userName={profile?.full_name}
+                        filters={selectedSucursal !== 'all' ? `Sucursal: ${selectedSucursal}` : 'Todas las sucursales'}
+                        onClose={() => setPrintView(null)}
+                    >
+                        {/* KPIs */}
+                        <div className="print-kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
+                            <div className="print-kpi-card" style={{ borderTop: '4px solid #0e0c9b' }}>
+                                <p className="text-[10pt] text-slate-500 font-bold uppercase mb-1">Volumen Líquidos</p>
+                                <p className="text-3xl font-extrabold text-[#0e0c9b] tracking-tight">{totalVol.toLocaleString()} L</p>
+                                <p className="text-[8pt] text-slate-400 font-medium">Producción acumulada</p>
+                            </div>
+                            <div className="print-kpi-card" style={{ borderTop: '4px solid #c1272d' }}>
+                                <p className="text-[10pt] text-slate-500 font-bold uppercase mb-1">Bases / Piezas</p>
+                                <p className="text-3xl font-extrabold text-[#c1272d] tracking-tight">{totalPcs.toLocaleString()} pzas</p>
+                                <p className="text-[8pt] text-slate-400 font-medium">{ (totalPcs * 20).toLocaleString() } L equiv.</p>
+                            </div>
+                            <div className="print-kpi-card" style={{ borderTop: '4px solid #64748b' }}>
+                                <p className="text-[10pt] text-slate-500 font-bold uppercase mb-1">Total Registros</p>
+                                <p className="text-3xl font-extrabold text-slate-900 tracking-tight">{pr.length}</p>
+                                <p className="text-[8pt] text-slate-400 font-medium">Lotes registrados</p>
+                            </div>
+                        </div>
+
+                        {/* Image 1: Production by Branch (Vertical Bars) */}
+                        <div className="print-no-break" style={{ marginTop: '30px', paddingBottom: '20px', borderBottom: '1px solid #f1f5f9' }}>
+                            <h3 style={{ fontSize: '14pt', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>Producción Total por Sucursal (Litros)</h3>
+                            <p className="text-[9pt] text-slate-500 mb-6">Comparativa de volumen de producción entre todas las sucursales</p>
+                            <div style={{ height: '320px', width: '100%' }}>
+                                <BarChart width={750} height={300} data={sucursalChartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                    <XAxis 
+                                        dataKey="name" 
+                                        interval={0} 
+                                        angle={-45} 
+                                        textAnchor="end" 
+                                        fontSize={9} 
+                                        fontWeight={700}
+                                        tick={{ fill: '#475569' }}
+                                    />
+                                    <YAxis fontSize={10} tick={{ fill: '#475569' }} />
+                                    <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={35}>
+                                        {sucursalChartData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </div>
+                        </div>
+
+                        {/* Image 2: Distribution by Variant (Horizontal Bars) */}
+                        <div className="print-break print-no-break" style={{ marginTop: '30px', paddingBottom: '20px', borderBottom: '1px solid #f1f5f9' }}>
+                            <h3 style={{ fontSize: '14pt', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>Distribución de Productos por Variante</h3>
+                            <p className="text-[9pt] text-slate-500 mb-6">Proporción de todos los productos por SKU/Código (Top 20)</p>
+                            <div style={{ height: '550px', width: '100%' }}>
+                                <BarChart 
+                                    width={750} 
+                                    height={520} 
+                                    data={variantChartData} 
+                                    layout="vertical" 
+                                    margin={{ top: 5, right: 50, left: 80, bottom: 5 }}
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
+                                    <XAxis type="number" fontSize={10} hide />
+                                    <YAxis 
+                                        dataKey="name" 
+                                        type="category" 
+                                        fontSize={10} 
+                                        width={70} 
+                                        fontWeight={800} 
+                                        tick={{ fill: '#334155' }}
+                                    />
+                                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={18}>
+                                        {variantChartData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </div>
+                        </div>
+
+                        {/* Image 3: Ranking and Category Donut Charts */}
+                        <div className="print-break" style={{ marginTop: '30px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '30px' }}>
+                                {/* Global Ranking */}
+                                <div className="print-no-break bg-slate-50/50 p-6 rounded-xl border border-slate-100">
+                                    <h3 style={{ fontSize: '13pt', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>Ranking de Productos</h3>
+                                    <p className="text-[8pt] text-slate-500 mb-6">Los más producidos globalmente</p>
+                                    <div className="space-y-5">
+                                        {topProds.map(([code, val], i) => (
+                                            <div key={code}>
+                                                <div className="flex justify-between items-end mb-1">
+                                                    <span className="text-[9pt] font-bold text-slate-700">
+                                                        <span className="text-slate-400 mr-2">#{i + 1}</span>
+                                                        {code}
+                                                    </span>
+                                                    <span className="text-[9pt] font-extrabold text-[#0e0c9b]">{val.toLocaleString()} <span className="text-[7pt] text-slate-400">L</span></span>
+                                                </div>
+                                                <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                                                    <div 
+                                                        className="h-full bg-[#0e0c9b]" 
+                                                        style={{ width: `${(val / Number(topProds[0][1])) * 100}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Category Donuts - Dynamic for all groups */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                    {Object.entries(groupedData)
+                                        .sort((a,b) => b[1].total - a[1].total)
+                                        .map(([group, data]) => {
+                                            const subData = Object.entries(data.sub).map(([name, value], i) => ({ 
+                                                name, 
+                                                value,
+                                                color: COLORS[i % COLORS.length]
+                                            })).sort((a,b) => b.value - a.value)
+
+                                            return (
+                                                <div key={group} className="print-no-break bg-white p-4 rounded-xl border border-slate-100 shadow-sm relative overflow-hidden">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <div>
+                                                            <h4 className="text-[10pt] font-black text-[#0f172a]">{group}</h4>
+                                                            <p className="text-[7pt] text-slate-500 uppercase font-bold tracking-wider">Total: {data.total.toLocaleString()} L</p>
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ height: '160px', width: '100%', position: 'relative' }}>
+                                                        <PieChart width={200} height={160}>
+                                                            <Pie
+                                                                data={subData}
+                                                                cx="50%"
+                                                                cy="50%"
+                                                                innerRadius={40}
+                                                                outerRadius={55}
+                                                                paddingAngle={4}
+                                                                dataKey="value"
+                                                                stroke="none"
+                                                            >
+                                                                {subData.map((entry, index) => (
+                                                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                                                ))}
+                                                            </Pie>
+                                                            <Tooltip />
+                                                        </PieChart>
+                                                        <div style={{ 
+                                                            position: 'absolute', 
+                                                            top: '50%', 
+                                                            left: '50%', 
+                                                            transform: 'translate(-50%, -50%)',
+                                                            textAlign: 'center',
+                                                            pointerEvents: 'none'
+                                                        }}>
+                                                            <p className="text-[6pt] font-bold text-slate-400 uppercase leading-none">Líder</p>
+                                                            <p className="text-[7pt] font-black text-[#0f172a] max-w-[60px] truncate leading-tight mt-1">{subData[0]?.name.split(' ')[0]}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        {subData.slice(0, 3).map(d => (
+                                                            <div key={d.name} className="flex items-center gap-1.5 overflow-hidden">
+                                                                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />
+                                                                <span className="text-[6.5pt] text-slate-500 truncate">{d.name}</span>
+                                                                <span className="text-[6.5pt] font-black text-slate-800 ml-auto">{((d.value / data.total) * 100).toFixed(0)}%</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Improved Bottom Info - Performance Summary instead of repeats */}
+                        <div className="print-break print-no-break" style={{ marginTop: '40px' }}>
+                            <h3 style={{ fontSize: '14pt', fontWeight: 900, color: '#0e0c9b', borderLeft: '4px solid #0e0c9b', paddingLeft: '12px', marginBottom: '20px' }}>Resumen de Rendimiento Comercial Detallado</h3>
+                            
+                            <table className="print-table">
+                                <thead>
+                                    <tr>
+                                        <th style={{ width: '40px', textAlign: 'center' }}>Pos</th>
+                                        <th>Producto / Referencia</th>
+                                        <th style={{ textAlign: 'center' }}>Categoría</th>
+                                        <th style={{ textAlign: 'right' }}>Volumen Total</th>
+                                        <th style={{ textAlign: 'right' }}>% Dist.</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {Object.entries(byProdCode).sort((a,b) => b[1] - a[1]).slice(0, 15).map(([code, vol], i) => {
+                                        const prodInfo = pr.find(r => r.codigo_producto === code)
+                                        return (
+                                            <tr key={code}>
+                                                <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#64748b' }}>{i + 1}</td>
+                                                <td>
+                                                    <div style={{ fontWeight: 800, color: '#0f172a' }}>{code}</div>
+                                                    <div style={{ fontSize: '7pt', color: '#64748b' }}>{prodInfo?.nombre_producto}</div>
+                                                </td>
+                                                <td style={{ textAlign: 'center', fontSize: '7pt' }}>{prodInfo?.familia_producto}</td>
+                                                <td style={{ textAlign: 'right', fontWeight: 900, color: '#0e0c9b' }}>{vol.toLocaleString()} <span className="text-[6pt] font-normal">L</span></td>
+                                                <td style={{ textAlign: 'right', fontWeight: 700 }}>{((vol / totalVol) * 100).toFixed(1)}%</td>
+                                            </tr>
+                                        )
+                                    })}
+                                </tbody>
+                            </table>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '30px' }}>
+                                <div className="p-4 rounded-xl border-2 border-slate-100 bg-slate-50">
+                                    <h4 className="text-[9pt] font-black text-slate-800 uppercase mb-2">Análisis de Distribución Geográfica</h4>
+                                    <p className="text-[8pt] text-slate-600 leading-relaxed">
+                                        La sucursal <strong className="text-[#0e0c9b]">{sucursalBarData[0]?.name}</strong> lidera el volumen con un <strong>{((sucursalBarData[0]?.value / totalVol) * 100).toFixed(1)}%</strong> de la producción total, seguida por {sucursalBarData[1]?.name}. La diversidad de variantes activas asciende a {variantChartData.length} SKUs principales.
+                                    </p>
+                                </div>
+                                <div className="p-4 rounded-xl border-2 border-slate-100 bg-slate-50">
+                                    <h4 className="text-[9pt] font-black text-slate-800 uppercase mb-2">Glosario y Notas Técnicas</h4>
+                                    <ul className="space-y-1">
+                                        <li className="text-[7pt] text-slate-500">• <strong>Volumen L:</strong> Medición en litros para productos líquidos.</li>
+                                        <li className="text-[7pt] text-slate-500">• <strong>L equiv:</strong> Conversión estimada de bases a producto final.</li>
+                                        <li className="text-[7pt] text-slate-500">• <strong>Pos:</strong> Posición en el ranking de producción global.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </PrintReportWrapper>
+                )
+            })()}
+        </>
     )
 }
 

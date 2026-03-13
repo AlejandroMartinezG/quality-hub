@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import "./globals.css"
+import "./print.css"
 import { AppShell } from "@/components/AppShell"
 
 import { ThemeProvider } from "@/components/theme-provider"

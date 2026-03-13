@@ -45,8 +45,11 @@ import {
     Scale,
     Package,
     Factory,
-    XCircle
+    XCircle,
+    Printer
 } from 'lucide-react'
+import { PrintReportWrapper } from '@/components/PrintReportWrapper'
+import { DateRangeModal } from '@/components/DateRangeModal'
 import { format, subDays, startOfDay, endOfDay } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -60,6 +63,10 @@ export default function SPYReportPage() {
     // Filters
     const [timeRange, setTimeRange] = useState('30') // days
     const [metricMode, setMetricMode] = useState<'LOTES' | 'LITROS'>('LITROS')
+
+    // Print state
+    const [showPrintModal, setShowPrintModal] = useState(false)
+    const [printView, setPrintView] = useState<{ dateFrom: string, dateTo: string } | null>(null)
 
     useEffect(() => {
         if (user && profile) {
@@ -436,6 +443,7 @@ export default function SPYReportPage() {
     const radarData = data?.radar_data || []
 
     return (
+        <>
         <div className="space-y-6 pb-12">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -477,6 +485,16 @@ export default function SPYReportPage() {
                             Por Litros
                         </button>
                     </div>
+
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full gap-2 text-[#0e0c9b] border-[#0e0c9b]/30 hover:bg-[#0e0c9b]/5"
+                        onClick={() => setShowPrintModal(true)}
+                    >
+                        <Printer className="h-4 w-4" />
+                        Generar Reporte
+                    </Button>
                 </div>
             </div>
 
@@ -818,5 +836,210 @@ export default function SPYReportPage() {
 
             </div>
         </div >
+
+        {/* Print Modal */}
+        <DateRangeModal
+            open={showPrintModal}
+            onClose={() => setShowPrintModal(false)}
+            onConfirm={(dateFrom, dateTo) => {
+                setShowPrintModal(false)
+                setPrintView({ dateFrom, dateTo })
+            }}
+            title="Reporte SPY (Yield)"
+        />
+
+        {/* Print View */}
+        {printView && data && (() => {
+            const s = data.summary || {}
+            const paretoItems = data.pareto_data || []
+            const dispItems = data.disposition_data || []
+            const reprocessItems = data.reprocess_data || []
+            const unit = metricMode === 'LITROS' ? 'L' : 'Lotes'
+
+            const yieldPieData = [
+                { name: 'First Pass (FTQ)', value: s.first_pass_yield || 0, color: '#16a34a' },
+                { name: 'Final Yield (SPY)', value: (s.final_yield || 0) - (s.first_pass_yield || 0), color: '#0e0c9b' },
+                { name: 'Scrap / Perdida', value: 100 - (s.final_yield || 0), color: '#dc2626' }
+            ].filter(d => d.value > 0)
+
+            const paretoChartData = paretoItems.slice(0, 8).map((d: any) => ({
+                name: d.name,
+                value: d.value
+            }))
+
+            const recoveryOpportunity = 100 - (s.first_pass_yield || 0)
+            const recoveredCount = (s.final_yield || 0) - (s.first_pass_yield || 0)
+            const efficiency = recoveryOpportunity > 0 ? (recoveredCount / recoveryOpportunity * 100).toFixed(1) : '0'
+
+            // Top Products with NCRs
+            const productNCRs: Record<string, number> = {}
+            if (data.raw_ncrs) {
+                data.raw_ncrs.forEach((n: any) => {
+                    const p = n.nombre_producto || 'Desconocido'
+                    productNCRs[p] = (productNCRs[p] || 0) + (n.tamano_lote || 1)
+                })
+            }
+            const topProducts = Object.entries(productNCRs)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .map(([name, value]) => ({ name, value }))
+
+            return (
+                <PrintReportWrapper
+                    title="Reporte SPY (Second Pass Yield)"
+                    dateFrom={printView.dateFrom}
+                    dateTo={printView.dateTo}
+                    userName={profile?.full_name}
+                    onClose={() => setPrintView(null)}
+                >
+                    {/* KPIs */}
+                    <div className="print-kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px' }}>
+                        <div className="print-kpi-card">
+                            <p className="text-[10pt] text-slate-500 font-bold uppercase mb-1">Volumen Total</p>
+                            <p className="text-3xl font-extrabold text-slate-900 leading-tight">{s.total_input?.toLocaleString()} <span className="text-lg opacity-60">{unit}</span></p>
+                            <p className="text-[8pt] text-slate-400 font-medium">Insumo total</p>
+                        </div>
+                        <div className="print-kpi-card" style={{ borderLeft: '4px solid #16a34a' }}>
+                            <p className="text-[10pt] text-green-700 font-bold uppercase mb-1">Yield (FTQ)</p>
+                            <p className="text-3xl font-extrabold text-green-700 leading-tight">{s.first_pass_yield?.toFixed(1)}%</p>
+                            <p className="text-[8pt] text-green-600/70 font-bold">Primer paso</p>
+                        </div>
+                        <div className="print-kpi-card" style={{ borderLeft: '4px solid #0e0c9b' }}>
+                            <p className="text-[10pt] text-[#0e0c9b] font-bold uppercase mb-1">Yield (SPY)</p>
+                            <p className="text-3xl font-extrabold text-[#0e0c9b] leading-tight">{s.final_yield?.toFixed(1)}%</p>
+                            <p className="text-[8pt] text-[#0e0c9b]/70 font-bold">Después de retrabajo</p>
+                        </div>
+                        <div className="print-kpi-card" style={{ borderLeft: '4px solid #f59e0b' }}>
+                            <p className="text-[10pt] text-amber-700 font-bold uppercase mb-1">Eficiencia de Rec.</p>
+                            <p className="text-3xl font-extrabold text-amber-600 leading-tight">{efficiency}%</p>
+                            <p className="text-[8pt] text-amber-600/70 font-bold">Recuperación vs Fallo</p>
+                        </div>
+                    </div>
+
+                    {/* Charts Row */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
+                        <div className="print-no-break">
+                            <h3 className="print-section-title">Distribución de Rendimiento</h3>
+                            <div style={{ height: '220px', width: '100%', display: 'flex', justifyContent: 'center' }}>
+                                <PieChart width={300} height={220}>
+                                    <Pie
+                                        data={yieldPieData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={80}
+                                        paddingAngle={5}
+                                        dataKey="value"
+                                    >
+                                        {yieldPieData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip formatter={(val: number) => `${val.toFixed(1)}%`} />
+                                    <Legend verticalAlign="bottom" height={36}/>
+                                </PieChart>
+                            </div>
+                        </div>
+
+                        <div className="print-no-break">
+                            <h3 className="print-section-title">Pareto de NCRs (Top 8)</h3>
+                            <div style={{ height: '220px', width: '100%' }}>
+                                <BarChart width={380} height={220} data={paretoChartData} margin={{ top: 10, right: 30, left: 40, bottom: 20 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    <XAxis dataKey="name" fontSize={9} interval={0} angle={-30} textAnchor="end" height={50} />
+                                    <YAxis fontSize={10} />
+                                    <Bar dataKey="value" name={`Volumen (${unit})`} fill="#0e0c9b" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Tables Row */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
+                        {/* Disposition Summary */}
+                        <div className="print-no-break">
+                            <h3 className="print-section-title">Resumen de Disposiciones</h3>
+                            <table className="print-table">
+                                <thead>
+                                    <tr><th>Disposición</th><th style={{ textAlign: 'right' }}>Volumen ({unit})</th></tr>
+                                </thead>
+                                <tbody>
+                                    {dispItems.slice(0, 10).map((d: any) => (
+                                        <tr key={d.name}>
+                                            <td className="font-semibold">{d.name}</td>
+                                            <td style={{ textAlign: 'right' }}>{d.value?.toLocaleString()}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            
+                            {topProducts.length > 0 && (
+                                <div style={{ marginTop: '20px' }}>
+                                    <h3 className="print-section-title">Top 5 Productos con Incidencias</h3>
+                                    <table className="print-table">
+                                        <thead>
+                                            <tr><th>Producto</th><th style={{ textAlign: 'right' }}>NCRs ({unit})</th></tr>
+                                        </thead>
+                                        <tbody>
+                                            {topProducts.map(p => (
+                                                <tr key={p.name}>
+                                                    <td className="font-semibold">{p.name}</td>
+                                                    <td style={{ textAlign: 'right' }}>{p.value.toLocaleString()}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Reprocess Causes */}
+                        <div className="print-no-break">
+                            <h3 className="print-section-title">Causas de Reproceso</h3>
+                            <table className="print-table">
+                                <thead>
+                                    <tr><th>Causa</th><th style={{ textAlign: 'center' }}>Casos</th><th style={{ textAlign: 'right' }}>{unit}</th></tr>
+                                </thead>
+                                <tbody>
+                                    {reprocessItems.slice(0, 10).map((d: any) => (
+                                        <tr key={d.name}>
+                                            <td className="font-semibold">{d.name}</td>
+                                            <td style={{ textAlign: 'center' }}>{d.count}</td>
+                                            <td style={{ textAlign: 'right' }}>{d.value?.toLocaleString()}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Full Pareto Table */}
+                    <div className="print-no-break" style={{ marginTop: '20px' }}>
+                        <h3 className="print-section-title">Detalle de NCRs por Defecto</h3>
+                        <table className="print-table">
+                            <thead>
+                                <tr>
+                                    <th>Defecto</th>
+                                    <th style={{ textAlign: 'right' }}>Volumen ({unit})</th>
+                                    <th style={{ textAlign: 'right' }}>% del Total</th>
+                                    <th style={{ textAlign: 'right' }}>% Acumulado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {paretoItems.map((d: any, i: number) => (
+                                    <tr key={d.name}>
+                                        <td className="font-semibold">{d.name}</td>
+                                        <td style={{ textAlign: 'right' }}>{d.value?.toLocaleString()}</td>
+                                        <td style={{ textAlign: 'right' }}>{i === 0 ? d.cumPercent : (Number(d.cumPercent) - Number(paretoItems[i-1].cumPercent)).toFixed(1)}%</td>
+                                        <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{d.cumPercent}%</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </PrintReportWrapper>
+            )
+        })()}
+    </>
     )
 }

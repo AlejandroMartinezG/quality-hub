@@ -1,0 +1,168 @@
+/* ===========================================
+   PRINT STYLES — Quality Hub GINEZ®
+   =========================================== */
+
+@media print {
+  /* CRITICAL: Hide EVERYTHING first */
+  body > * {
+    display: none !important;
+  }
+
+  /* Then show ONLY the print overlay */
+  body > .print-overlay-root,
+  .print-overlay-root {
+    display: block !important;
+    position: static !important;
+    overflow: visible !important;
+  }
+
+  /* Also hide specific elements that may leak through */
+  .no-print,
+  .sidebar,
+  nav,
+  header:not(.print-header),
+  [data-sidebar],
+  [data-radix-popper-content-wrapper],
+  .app-shell-sidebar {
+    display: none !important;
+  }
+
+  /* Ensure colors print correctly */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Page setup */
+  @page {
+    margin: 1cm 1.5cm;
+    size: letter portrait;
+  }
+
+  /* Background and text */
+  body {
+    background: white !important;
+    color: #1e293b !important;
+    font-size: 10pt !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Remove all shadows for cleaner print */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* Page breaks */
+  .print-break {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  .print-no-break {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Print header */
+  .print-header {
+    border-bottom: 3px solid #0e0c9b !important;
+    padding-bottom: 10px;
+    margin-bottom: 16px;
+  }
+
+  /* Print footer on each page */
+  .print-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 7pt;
+    color: #94a3b8;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 4px;
+  }
+
+  /* KPI cards in print */
+  .print-kpi-grid {
+    display: grid !important;
+    gap: 10px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .print-kpi-card {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 6px !important;
+    padding: 10px !important;
+    background: #f8fafc !important;
+  }
+
+  /* Charts — ensure they render properly */
+  .print-chart-container {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: 16px;
+  }
+
+  .recharts-wrapper,
+  .recharts-surface {
+    page-break-inside: avoid !important;
+  }
+
+  svg {
+    max-width: 100% !important;
+  }
+
+  /* Table styles for print */
+  .print-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8pt;
+    margin-bottom: 12px;
+  }
+
+  .print-table th {
+    background: #0e0c9b !important;
+    color: white !important;
+    padding: 5px 8px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 7.5pt;
+  }
+
+  .print-table td {
+    padding: 4px 8px;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 8pt;
+  }
+
+  .print-table tr:nth-child(even) td {
+    background: #f8fafc !important;
+  }
+
+  /* Section titles */
+  .print-section-title {
+    font-size: 11pt;
+    font-weight: 700;
+    color: #0e0c9b;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    margin-top: 16px;
+    border-bottom: 2px solid #0e0c9b;
+    padding-bottom: 4px;
+  }
+}
+
+/* ============================================
+   SCREEN-ONLY STYLES for print view overlay
+   ============================================ */
+.print-overlay-root {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: white;
+  overflow-y: auto;
+  color-scheme: light;
+}
