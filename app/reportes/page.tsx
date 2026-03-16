@@ -8,7 +8,7 @@ import { analyzeRecord, EnrichedRecord } from "@/lib/analysis-utils"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Loader2, RefreshCcw, Filter, Download, Factory, Trophy, TrendingUp, Package, Activity, AlertCircle, ChevronRight, Printer } from "lucide-react"
+import { Loader2, RefreshCcw, Filter, Download, Factory, Trophy, TrendingUp, Package, Activity, AlertCircle, ChevronRight, Printer, Box, AlertTriangle } from "lucide-react"
 import { PrintReportWrapper } from "@/components/PrintReportWrapper"
 import { DateRangeModal } from "@/components/DateRangeModal"
 import { toast } from "sonner"
@@ -1798,39 +1798,68 @@ export default function ReportesPage() {
                 const conformesPH = pr.filter(r => r.analysis.phStatus === 'conforme').length
                 const noConformesPH = pr.filter(r => r.analysis.phStatus === 'no-conforme').length
 
-                // Defects summary
+                // Quality Detail Processing for Images 3 & 4
+                const solidsStats = { ok: 0, semi: 0, nc: 0 }
+                const phStats = { ok: 0, nc: 0 }
+                
+                pr.forEach(r => {
+                    // Solids
+                    if (r.analysis.solidsStatus === 'conforme') solidsStats.ok++
+                    else if (r.analysis.solidsStatus === 'semi-conforme') solidsStats.semi++
+                    else if (r.analysis.solidsStatus === 'no-conforme') solidsStats.nc++
+                    // pH
+                    if (r.analysis.phStatus === 'conforme') phStats.ok++
+                    else if (r.analysis.phStatus === 'no-conforme') phStats.nc++
+                })
+
+                // Defects Pareto Processing for Image 1
                 const defects = { ph: 0, solidos: 0, apariencia: 0 }
                 pr.forEach(r => {
                     if (!r.analysis.isConform) {
-                        r.analysis.failedParams.forEach(p => {
+                        r.analysis.failedParams?.forEach(p => {
                             if (p === 'ph' || p === 'solidos' || p === 'apariencia') {
-                                defects[p]++
+                                defects[p as keyof typeof defects]++
                             }
                         })
                     }
                 })
 
-                const paretoChartData = [
-                    { name: 'pH', count: defects.ph },
+                const sortedDefects = [
                     { name: 'Sólidos', count: defects.solidos },
+                    { name: 'pH', count: defects.ph },
                     { name: 'Apariencia', count: defects.apariencia }
                 ].sort((a, b) => b.count - a.count)
 
-                const pieData = [
-                    { name: 'Conforme', value: conformes, color: '#16a34a' },
-                    { name: 'Semi-Conforme', value: semiConformes, color: '#ca8a04' },
-                    { name: 'No Conforme', value: noConformes, color: '#dc2626' }
-                ].filter(d => d.value > 0)
+                const totalDefects = sortedDefects.reduce((s, d) => s + d.count, 0)
+                let cumulativeCount = 0
+                const paretoData = sortedDefects.map(d => {
+                    cumulativeCount += d.count
+                    return {
+                        ...d,
+                        percent: totalDefects > 0 ? Math.round((cumulativeCount / totalDefects) * 100) : 0
+                    }
+                })
 
-                // Sucursal summary
-                const grouped: Record<string, { conformes: number, semi: number, noConf: number }> = {}
+                // Sucursal Conformity Processing for Image 2
+                const grouped: Record<string, { conformes: number, semi: number, noConf: number, total: number }> = {}
                 pr.forEach(r => {
                     const s = r.sucursal || 'Sin Sucursal'
-                    if (!grouped[s]) grouped[s] = { conformes: 0, semi: 0, noConf: 0 }
+                    if (!grouped[s]) grouped[s] = { conformes: 0, semi: 0, noConf: 0, total: 0 }
+                    grouped[s].total += (r.tamano_lote || 0)
                     if (r.analysis.overallStatus === 'conforme') grouped[s].conformes++
                     else if (r.analysis.overallStatus === 'semi-conforme') grouped[s].semi++
                     else if (r.analysis.overallStatus === 'no-conforme') grouped[s].noConf++
                 })
+
+                const sucursalBarDataFTQ = Object.entries(grouped)
+                    .map(([name, v]) => ({ 
+                        name, 
+                        conformes: v.conformes, 
+                        semi: v.semi, 
+                        noConf: v.noConf,
+                        sum: v.conformes + v.semi + v.noConf
+                    }))
+                    .sort((a, b) => b.sum - a.sum)
 
                 // Product Family analysis
                 const familyAnalysis: Record<string, { total: number, nc: number, vol: number }> = {}
@@ -1844,20 +1873,7 @@ export default function ReportesPage() {
                 const familyTable = Object.entries(familyAnalysis)
                     .map(([name, v]) => ({ name, ...v, ncRate: (v.nc / v.total * 100).toFixed(1) }))
                     .sort((a, b) => b.vol - a.vol)
-                    .slice(0, 8)
-
-                // Preparer Analysis
-                const preparerRank: Record<string, { total: number, conform: number }> = {}
-                pr.forEach(r => {
-                    const p = r.preparador || 'N/A'
-                    if (!preparerRank[p]) preparerRank[p] = { total: 0, conform: 0 }
-                    preparerRank[p].total++
-                    if (r.analysis.isConform) preparerRank[p].conform++
-                })
-                const preparerTable = Object.entries(preparerRank)
-                    .map(([name, v]) => ({ name, ...v, rate: (v.conform / v.total * 100).toFixed(1) }))
-                    .sort((a, b) => b.total - a.total)
-                    .slice(0, 10)
+                    .slice(0, 15)
 
                 return (
                     <PrintReportWrapper
@@ -1868,151 +1884,199 @@ export default function ReportesPage() {
                         filters={selectedSucursal !== 'all' ? `Sucursal: ${selectedSucursal}` : 'Todas las sucursales'}
                         onClose={() => setPrintView(null)}
                     >
-                        {/* KPIs */}
-                        <div className="print-kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px' }}>
-                            <div className="print-kpi-card">
-                                <p className="text-[10pt] text-slate-500 font-bold uppercase mb-1">Total Registros</p>
-                                <p className="text-3xl font-extrabold text-slate-900 leading-tight">{total}</p>
-                                <p className="text-[8pt] text-slate-400 font-medium">Lotes analizados</p>
+                        {/* Horizontal KPI Grid - Matching Comercial Style */}
+                        <div className="print-kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', marginTop: '20px' }}>
+                            <div className="print-kpi-card" style={{ borderTop: '5px solid #0e0c9b' }}>
+                                <p className="text-[10pt] text-slate-500 font-black uppercase mb-1">Volumen Líquidos</p>
+                                <p className="text-3xl font-black text-[#0e0c9b] tracking-tightLeading leading-none mb-1">{totalVol.toLocaleString()} L</p>
+                                <p className="text-[8pt] text-slate-400 font-bold uppercase tracking-wider">Producción acumulada</p>
                             </div>
-                            <div className="print-kpi-card" style={{ borderLeft: '4px solid #16a34a' }}>
-                                <p className="text-[10pt] text-green-700 font-bold uppercase mb-1">Conformes</p>
-                                <p className="text-3xl font-extrabold text-green-700 leading-tight">{conformes}</p>
-                                <p className="text-[8pt] text-green-600/70 font-bold">{total > 0 ? ((conformes/total)*100).toFixed(1) : 0}% del total</p>
+                            <div className="print-kpi-card" style={{ borderTop: '5px solid #16a34a' }}>
+                                <p className="text-[10pt] text-slate-500 font-black uppercase mb-1">Eficiencia FTQ</p>
+                                <p className="text-3xl font-black text-[#16a34a] leading-none mb-1">{total > 0 ? ((conformes/total)*100).toFixed(1) : 0}%</p>
+                                <p className="text-[8pt] text-slate-400 font-bold uppercase tracking-wider">{conformes} Lotes conformes</p>
                             </div>
-                            <div className="print-kpi-card" style={{ borderLeft: '4px solid #ca8a04' }}>
-                                <p className="text-[10pt] text-yellow-700 font-bold uppercase mb-1">Semi</p>
-                                <p className="text-3xl font-extrabold text-yellow-700 leading-tight">{semiConformes}</p>
-                                <p className="text-[8pt] text-yellow-600/70 font-bold">{total > 0 ? ((semiConformes/total)*100).toFixed(1) : 0}%</p>
-                            </div>
-                            <div className="print-kpi-card" style={{ borderLeft: '4px solid #dc2626' }}>
-                                <p className="text-[10pt] text-red-700 font-bold uppercase mb-1">No Conformes</p>
-                                <p className="text-3xl font-extrabold text-red-700 leading-tight">{noConformes}</p>
-                                <p className="text-[8pt] text-red-600/70 font-bold">{total > 0 ? ((noConformes/total)*100).toFixed(1) : 0}%</p>
+                            <div className="print-kpi-card" style={{ borderTop: '5px solid #64748b' }}>
+                                <p className="text-[10pt] text-slate-500 font-black uppercase mb-1">Total Registros</p>
+                                <p className="text-3xl font-black text-slate-900 leading-none mb-1">{total}</p>
+                                <p className="text-[8pt] text-slate-400 font-bold uppercase tracking-wider">Lotes registrados</p>
                             </div>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
-                            {/* Conformity Chart */}
-                            <div className="print-no-break">
-                                <h3 className="print-section-title">Resumen de Conformidad</h3>
-                                <div style={{ height: '220px', width: '100%', display: 'flex', justifyContent: 'center' }}>
-                                    <PieChart width={300} height={220}>
-                                        <Pie
-                                            data={pieData}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={60}
-                                            outerRadius={80}
-                                            paddingAngle={5}
-                                            dataKey="value"
-                                        >
-                                            {pieData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.color} />
-                                            ))}
-                                        </Pie>
+                        {/* Image 1: Pareto Chart (Full Width) */}
+                        <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm grow" style={{ marginTop: '25px' }}>
+                            <h3 style={{ fontSize: '15pt', fontWeight: 900, color: '#0f172a', marginBottom: '4px' }}>Pareto de Defectos</h3>
+                            <p className="text-[9pt] text-slate-500 mb-8 font-medium">Frecuencia de fallos por parámetro de calidad</p>
+                            <div style={{ height: '280px', width: '100%', display: 'flex', justifyContent: 'center' }}>
+                                <ComposedChart width={750} height={280} data={paretoData} margin={{ top: 10, right: 40, left: 10, bottom: 20 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                    <XAxis dataKey="name" fontSize={11} fontWeight={900} tick={{ fill: '#334155' }} axisLine={false} tickLine={false} dy={12} />
+                                    <YAxis yAxisId="left" fontSize={10} axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} label={{ value: 'Frecuencia', angle: -90, position: 'insideLeft', fontSize: 9, fontWeight: 900 }} />
+                                    <YAxis yAxisId="right" orientation="right" fontSize={10} axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} unit="%" label={{ value: 'Acumulado %', angle: 90, position: 'insideRight', fontSize: 9, fontWeight: 900 }} />
+                                    <Tooltip />
+                                    <Bar yAxisId="left" dataKey="count" fill="#C1272D" radius={[6, 6, 0, 0]} barSize={50} />
+                                    <Line yAxisId="right" type="monotone" dataKey="percent" stroke="#0e0c9b" strokeWidth={4} dot={{ r: 5, fill: '#0e0c9b', strokeWidth: 2, stroke: '#fff' }} />
+                                </ComposedChart>
+                            </div>
+                        </div>
+
+                        {/* Image 2: Stacked Bars by Sucursal */}
+                        <div className="print-break print-no-break" style={{ marginTop: '30px', padding: '30px', background: 'white', borderRadius: '2rem', border: '1px solid #f1f5f9' }}>
+                            <h3 style={{ fontSize: '15pt', fontWeight: 900, color: '#0f172a', marginBottom: '4px' }}>Conformidad por Sucursal</h3>
+                            <p className="text-[9pt] text-slate-500 mb-8 font-medium">Volumen de producción conforme vs no conforme</p>
+                            <div style={{ height: '350px', width: '100%', display: 'flex', justifyContent: 'center' }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={sucursalBarDataFTQ} margin={{ top: 10, right: 10, left: 0, bottom: 90 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                        <XAxis 
+                                            dataKey="name" 
+                                            interval={0} 
+                                            angle={-45}
+                                            textAnchor="end"
+                                            fontSize={8} 
+                                            fontWeight={800} 
+                                            tick={{ fill: '#475569' }} 
+                                            axisLine={false}
+                                            tickLine={false}
+                                            dy={10}
+                                        />
+                                        <YAxis fontSize={10} axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} label={{ value: 'Lotes', angle: -90, position: 'insideLeft', fontSize: 9, fontWeight: 900 }} />
                                         <Tooltip />
-                                        <Legend verticalAlign="bottom" height={36}/>
-                                    </PieChart>
-                                </div>
-                            </div>
-
-                            {/* Defects Chart */}
-                            <div className="print-no-break">
-                                <h3 className="print-section-title">Pareto de Defectos</h3>
-                                <div style={{ height: '220px', width: '100%' }}>
-                                    <BarChart width={350} height={220} data={paretoChartData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                        <XAxis dataKey="name" fontSize={10} interval={0} />
-                                        <YAxis fontSize={10} />
-                                        <Bar dataKey="count" name="Cantidad" fill="#0e0c9b" radius={[4, 4, 0, 0]} />
+                                        <Bar dataKey="conformes" stackId="a" fill="#22c55e" radius={[0, 0, 0, 0]} />
+                                        <Bar dataKey="semi" stackId="a" fill="#eab308" radius={[0, 0, 0, 0]} />
+                                        <Bar dataKey="noConf" stackId="a" fill="#C1272D" radius={[4, 4, 0, 0]} />
                                     </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                            <div className="flex justify-center gap-8 mt-4">
+                                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-sm bg-[#22c55e]" /> <span className="text-[9pt] font-black text-slate-600 uppercase">Conformes</span></div>
+                                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-sm bg-[#eab308]" /> <span className="text-[9pt] font-black text-slate-600 uppercase">Semi-Conformes</span></div>
+                                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-sm bg-[#C1272D]" /> <span className="text-[9pt] font-black text-slate-600 uppercase">No Conformes</span></div>
+                            </div>
+                        </div>
+
+                        {/* Image 3: Solids Conformity Cards */}
+                        <div className="print-break" style={{ marginTop: '30px' }}>
+                            <h3 style={{ fontSize: '14pt', fontWeight: 900, color: '#0f172a', marginBottom: '4px' }}>Conformidad del % de sólidos</h3>
+                            <p className="text-[9pt] text-slate-500 mb-6 font-medium">Desglose de lotes según cumplimiento de especificaciones de sólidos.</p>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
+                                <div className="bg-[#f0fdf4] p-6 rounded-3xl border border-green-100 relative overflow-hidden group">
+                                    <div className="absolute top-4 right-4 bg-white p-2 rounded-xl border border-green-200 text-green-600 shadow-sm group-hover:scale-110 transition-transform">
+                                        <TrendingUp size={20} />
+                                    </div>
+                                    <p className="text-[9pt] font-black text-green-800 uppercase tracking-tight mb-2">TOTAL CONFORMES</p>
+                                    <p className="text-5xl font-black text-slate-800 leading-tight">{solidsStats.ok}</p>
+                                    <p className="text-[8pt] font-bold text-green-700/60 uppercase mb-4">registros</p>
+                                    <p className="text-2xl font-black text-green-700 leading-none">{total > 0 ? ((solidsStats.ok / total) * 100).toFixed(1) : 0}% <span className="text-[10pt] font-bold text-green-700/40">del total</span></p>
+                                </div>
+
+                                <div className="bg-[#fffbeb] p-6 rounded-3xl border border-yellow-100 relative overflow-hidden group">
+                                    <div className="absolute top-4 right-4 bg-white p-2 rounded-xl border border-yellow-200 text-yellow-600 shadow-sm group-hover:scale-110 transition-transform">
+                                        <AlertTriangle size={20} />
+                                    </div>
+                                    <p className="text-[9pt] font-black text-yellow-800 uppercase tracking-tight mb-2">SEMI-CONFORMES</p>
+                                    <p className="text-5xl font-black text-slate-800 leading-tight">{solidsStats.semi}</p>
+                                    <p className="text-[8pt] font-bold text-yellow-700/60 uppercase mb-4">registros</p>
+                                    <p className="text-2xl font-black text-yellow-700 leading-none">{total > 0 ? ((solidsStats.semi / total) * 100).toFixed(1) : 0}% <span className="text-[10pt] font-bold text-yellow-700/40">del total</span></p>
+                                </div>
+
+                                <div className="bg-[#fef2f2] p-6 rounded-3xl border border-red-100 relative overflow-hidden group">
+                                    <div className="absolute top-4 right-4 bg-white p-2 rounded-xl border border-red-200 text-red-600 shadow-sm group-hover:scale-110 transition-transform">
+                                        <Activity size={20} />
+                                    </div>
+                                    <p className="text-[9pt] font-black text-red-800 uppercase tracking-tight mb-2">NO CONFORMES</p>
+                                    <p className="text-5xl font-black text-slate-800 leading-tight">{solidsStats.nc}</p>
+                                    <p className="text-[8pt] font-bold text-red-700/60 uppercase mb-4">registros</p>
+                                    <p className="text-2xl font-black text-red-700 leading-none">{total > 0 ? ((solidsStats.nc / total) * 100).toFixed(1) : 0}% <span className="text-[10pt] font-bold text-red-700/40">del total</span></p>
                                 </div>
                             </div>
                         </div>
-                                              {/* Tables Section */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
-                            <div className="print-no-break">
-                                <h3 className="print-section-title">Análisis por Familia (Top 8)</h3>
-                                <table className="print-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Familia</th>
-                                            <th style={{ textAlign: 'center' }}>Volumen</th>
-                                            <th style={{ textAlign: 'right' }}>% No Conf.</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {familyTable.map(f => (
-                                            <tr key={f.name}>
-                                                <td className="font-semibold">{f.name}</td>
-                                                <td style={{ textAlign: 'center' }}>{f.vol.toLocaleString()}</td>
-                                                <td style={{ textAlign: 'right', fontWeight: 'bold', color: Number(f.ncRate) > 10 ? '#dc2626' : '#64748b' }}>
-                                                    {f.ncRate}%
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
 
-                            <div className="print-no-break">
-                                <h3 className="print-section-title">Efectividad por Preparador</h3>
-                                <table className="print-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Nombre</th>
-                                            <th style={{ textAlign: 'center' }}>Lotes</th>
-                                            <th style={{ textAlign: 'right' }}>% Calidad</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {preparerTable.map(p => (
-                                            <tr key={p.name}>
-                                                <td className="font-semibold">{p.name}</td>
-                                                <td style={{ textAlign: 'center' }}>{p.total}</td>
-                                                <td style={{ textAlign: 'right', fontWeight: 'bold', color: '#16a34a' }}>
-                                                    {p.rate}%
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                        {/* Image 4: pH Conformity Cards */}
+                        <div className="print-no-break" style={{ marginTop: '30px' }}>
+                            <h3 style={{ fontSize: '14pt', fontWeight: 900, color: '#0f172a', marginBottom: '4px' }}>Conformidad de pH</h3>
+                            <p className="text-[9pt] text-slate-500 mb-6 font-medium">Desglose de lotes según cumplimiento de especificaciones de pH.</p>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                <div className="bg-[#f0fdf4] p-6 rounded-3xl border border-green-100 relative overflow-hidden group">
+                                    <div className="absolute top-4 right-4 bg-white p-2 rounded-xl border border-green-200 text-green-600 shadow-sm group-hover:scale-110 transition-transform">
+                                        <TrendingUp size={20} />
+                                    </div>
+                                    <p className="text-[9pt] font-black text-green-800 uppercase tracking-tight mb-2">TOTAL CONFORMES</p>
+                                    <p className="text-5xl font-black text-slate-800 leading-tight">{phStats.ok}</p>
+                                    <p className="text-[8pt] font-bold text-green-700/60 uppercase mb-4">registros</p>
+                                    <p className="text-2xl font-black text-green-700 leading-none">{total > 0 ? ((phStats.ok / total) * 100).toFixed(1) : 0}% <span className="text-[10pt] font-bold text-green-700/40">del total</span></p>
+                                </div>
+
+                                <div className="bg-[#fef2f2] p-6 rounded-3xl border border-red-100 relative overflow-hidden group">
+                                    <div className="absolute top-4 right-4 bg-white p-2 rounded-xl border border-red-200 text-red-600 shadow-sm group-hover:scale-110 transition-transform">
+                                        <Activity size={20} />
+                                    </div>
+                                    <p className="text-[9pt] font-black text-red-800 uppercase tracking-tight mb-2">NO CONFORMES</p>
+                                    <p className="text-5xl font-black text-slate-800 leading-tight">{phStats.nc}</p>
+                                    <p className="text-[8pt] font-bold text-red-700/60 uppercase mb-4">registros</p>
+                                    <p className="text-2xl font-black text-red-700 leading-none">{total > 0 ? ((phStats.nc / total) * 100).toFixed(1) : 0}% <span className="text-[10pt] font-bold text-red-700/40">del total</span></p>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Conformity by Sucursal Table */}
-                        <div className="print-no-break" style={{ marginTop: '20px' }}>
-                            <h3 className="print-section-title">Desglose por Sucursal</h3>
+                        {/* Top Product Families with High Impact Visuals */}
+                        <div className="print-break print-no-break" style={{ marginTop: '40px' }}>
+                            <h3 style={{ fontSize: '14pt', fontWeight: 900, color: '#0e0c9b', borderLeft: '5px solid #0e0c9b', paddingLeft: '15px', marginBottom: '20px' }}>Resumen de Calidad por Familia de Productos</h3>
                             <table className="print-table">
                                 <thead>
                                     <tr>
-                                        <th>Sucursal</th>
-                                        <th style={{ textAlign: 'center' }}>Conformes</th>
-                                        <th style={{ textAlign: 'center' }}>Semi</th>
-                                        <th style={{ textAlign: 'center' }}>No Conformes</th>
-                                        <th style={{ textAlign: 'center' }}>Total</th>
-                                        <th style={{ textAlign: 'right' }}>% Calidad</th>
+                                        <th>Familia de Producto</th>
+                                        <th style={{ textAlign: 'center' }}>Volumen (L)</th>
+                                        <th style={{ textAlign: 'center' }}>Total Lotes</th>
+                                        <th style={{ textAlign: 'center' }}>Lotes NC</th>
+                                        <th style={{ textAlign: 'right' }}>Efectividad FTQ</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {Object.entries(grouped).sort((a, b) => (b[1].conformes + b[1].semi + b[1].noConf) - (a[1].conformes + a[1].semi + a[1].noConf)).map(([suc, v]) => {
-                                        const t = v.conformes + v.semi + v.noConf
-                                        const qualityScore = t > 0 ? ((v.conformes / t) * 100).toFixed(1) : 0
-                                        return (
-                                            <tr key={suc}>
-                                                <td className="font-semibold">{suc}</td>
-                                                <td style={{ textAlign: 'center', color: '#16a34a' }}>{v.conformes}</td>
-                                                <td style={{ textAlign: 'center', color: '#ca8a04' }}>{v.semi}</td>
-                                                <td style={{ textAlign: 'center', color: '#dc2626' }}>{v.noConf}</td>
-                                                <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{t}</td>
-                                                <td style={{ textAlign: 'right', fontWeight: 'bold', color: Number(qualityScore) > 90 ? '#16a34a' : '#0e0c9b' }}>{qualityScore}%</td>
-                                            </tr>
-                                        )
-                                    })}
+                                    {familyTable.map(f => (
+                                        <tr key={f.name}>
+                                            <td className="font-extrabold text-[#0f172a]">{f.name}</td>
+                                            <td style={{ textAlign: 'center' }}>{f.vol.toLocaleString()}</td>
+                                            <td style={{ textAlign: 'center' }}>{f.total}</td>
+                                            <td style={{ textAlign: 'center', color: f.nc > 0 ? '#C1272D' : '#64748b', fontWeight: 'bold' }}>{f.nc}</td>
+                                            <td style={{ textAlign: 'right' }}>
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                        <div className="h-full bg-[#16a34a]" style={{ width: `${100 - Number(f.ncRate)}%` }} />
+                                                    </div>
+                                                    <span className="font-black text-slate-800">{(100 - Number(f.ncRate)).toFixed(1)}%</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Technical Glossary for FTQ */}
+                        <div className="print-no-break" style={{ marginTop: '40px', padding: '20px', backgroundColor: '#f8fafc', borderRadius: '1.5rem', border: '1px solid #e2e8f0' }}>
+                            <div className="flex items-center gap-2 mb-3">
+                                <Activity className="text-[#0e0c9b]" size={18} />
+                                <h3 style={{ fontSize: '11pt', fontWeight: 900, color: '#0f172a', margin: 0 }}>Metodología de Cálculo FTQ</h3>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px' }}>
+                                <div className="space-y-3">
+                                    <div>
+                                        <p className="text-[8pt] font-black text-[#0e0c9b] uppercase mb-0.5">Eficiencia FTQ (First Time Quality)</p>
+                                        <p className="text-[7.5pt] text-slate-600 leading-tight"><strong>Lógica:</strong> (Lotes Totales - Lotes No Conformes) / Lotes Totales. Mide la capacidad de entregar producto correcto sin reprocesos en la primera inspección.</p>
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    <div>
+                                        <p className="text-[8pt] font-black text-[#0e0c9b] uppercase mb-0.5">Volumen Líquidos (L)</p>
+                                        <p className="text-[7.5pt] text-slate-600 leading-tight"><strong>Definición:</strong> Suma de litros de producción acumulada para familias de producto terminado líquido.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                     </PrintReportWrapper>
                 )
             })()}
@@ -2339,11 +2403,11 @@ export default function ReportesPage() {
                                     </p>
                                 </div>
                                 <div className="p-4 rounded-xl border-2 border-slate-100 bg-slate-50">
-                                    <h4 className="text-[9pt] font-black text-slate-800 uppercase mb-2">Glosario y Notas Técnicas</h4>
-                                    <ul className="space-y-1">
-                                        <li className="text-[7pt] text-slate-500">• <strong>Volumen L:</strong> Medición en litros para productos líquidos.</li>
-                                        <li className="text-[7pt] text-slate-500">• <strong>L equiv:</strong> Conversión estimada de bases a producto final.</li>
-                                        <li className="text-[7pt] text-slate-500">• <strong>Pos:</strong> Posición en el ranking de producción global.</li>
+                                    <h4 className="text-[9pt] font-black text-slate-800 uppercase mb-2">Glosario y Lógica de Cálculo</h4>
+                                    <ul className="space-y-2">
+                                        <li className="text-[7.5pt] text-slate-600 leading-tight">• <strong>Volumen Líquidos:</strong> Suma total de litros producidos en familias de productos líquidos terminados.</li>
+                                        <li className="text-[7.5pt] text-slate-600 leading-tight">• <strong>Bases / Piezas (Equivalencia):</strong> Las bases se contabilizan por pieza. La equivalencia en litros se calcula con factor de 20L por pieza.</li>
+                                        <li className="text-[7.5pt] text-slate-600 leading-tight">• <strong>% Dist. (Distribución):</strong> Porcentaje de aportación de cada SKU o Sucursal sobre el volumen total del periodo.</li>
                                     </ul>
                                 </div>
                             </div>

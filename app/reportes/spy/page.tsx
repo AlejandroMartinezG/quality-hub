@@ -68,6 +68,8 @@ export default function SPYReportPage() {
     const [showPrintModal, setShowPrintModal] = useState(false)
     const [printView, setPrintView] = useState<{ dateFrom: string, dateTo: string } | null>(null)
 
+    const PIECE_FAMILIES = ["Bases aromatizante ambiental", "Bases limpiadores liquidos multiusos", "Bases Aromatizantes"];
+
     useEffect(() => {
         if (user && profile) {
             fetchSPYData()
@@ -135,26 +137,36 @@ export default function SPYReportPage() {
             if (missingBatchCodes.length > 0) {
                 const { data: mData } = await supabase
                     .from('bitacora_produccion_calidad')
-                    .select('lote_producto, familia_producto')
+                    .select('lote_producto, familia_producto, nombre_producto')
                     .in('lote_producto', missingBatchCodes)
                 if (mData) missingBatches = mData
             }
 
             const batchFamilyMap = new Map<string, string>()
-            productionData.forEach((p: any) => batchFamilyMap.set(p.lote_producto, p.familia_producto || ''))
-            missingBatches.forEach((p: any) => batchFamilyMap.set(p.lote_producto, p.familia_producto || ''))
-
-            // Append family to NCRs
+            const batchProductNameMap = new Map<string, string>()
+            
+            productionData.forEach((p: any) => {
+                batchFamilyMap.set(p.lote_producto, p.familia_producto || '')
+                batchProductNameMap.set(p.lote_producto, p.nombre_producto || '')
+            })
+            
+            missingBatches.forEach((p: any) => {
+                batchFamilyMap.set(p.lote_producto, p.familia_producto || '')
+                batchProductNameMap.set(p.lote_producto, p.nombre_producto || '')
+            })
+            
+            // Append family and product name to NCRs
             ncrData = ncrData.map((n: any) => ({
                 ...n,
-                family: batchFamilyMap.get(n.batch_code) || ''
+                family: batchFamilyMap.get(n.batch_code) || '',
+                nombre_producto: batchProductNameMap.get(n.batch_code) || 'Prod. No Encontrado'
             }))
 
             console.log(`Fetched ${productionData.length} production records`)
             console.log(`Fetched ${ncrData.length} NCR records`)
 
             // A. Volume / Count Basis
-            const PIECE_FAMILIES = ["Bases aromatizante ambiental", "Bases limpiadores liquidos multiusos", "Bases Aromatizantes"];
+
 
             // Exclude piece families from the pure "Batches" (Lotes) count
             const totalProduction = productionData.filter((p: any) => !PIECE_FAMILIES.includes(p.familia_producto || '')).length;
@@ -391,7 +403,8 @@ export default function SPYReportPage() {
                 pareto_data: paretoWithCumulative,
                 disposition_data: fullDispositionData,
                 reprocess_data: reprocessPareto,
-                radar_data: radarData
+                radar_data: radarData,
+                raw_ncrs: ncrWithDisposition
             })
 
         } catch (error) {
@@ -871,12 +884,17 @@ export default function SPYReportPage() {
             const recoveredCount = (s.final_yield || 0) - (s.first_pass_yield || 0)
             const efficiency = recoveryOpportunity > 0 ? (recoveredCount / recoveryOpportunity * 100).toFixed(1) : '0'
 
-            // Top Products with NCRs
+            // Top 5 Products with Inconsistencies (Sense-making data)
             const productNCRs: Record<string, number> = {}
             if (data.raw_ncrs) {
                 data.raw_ncrs.forEach((n: any) => {
-                    const p = n.nombre_producto || 'Desconocido'
-                    productNCRs[p] = (productNCRs[p] || 0) + (n.tamano_lote || 1)
+                    const p = n.nombre_producto || 'No Identificado'
+                    const isPiece = PIECE_FAMILIES.includes(n.family || '')
+                    const dispLiters = Number(n.disposition?.liters_involved)
+                    const ncrLiters = Number(n.liters_involved)
+                    const rawVol = (dispLiters > 0 ? dispLiters : ncrLiters) || 0
+                    const vol = metricMode === 'LITROS' ? (isPiece ? rawVol * 20 : rawVol) : 1
+                    productNCRs[p] = (productNCRs[p] || 0) + vol
                 })
             }
             const topProducts = Object.entries(productNCRs)
@@ -892,150 +910,173 @@ export default function SPYReportPage() {
                     userName={profile?.full_name}
                     onClose={() => setPrintView(null)}
                 >
-                    {/* KPIs */}
-                    <div className="print-kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px' }}>
-                        <div className="print-kpi-card">
-                            <p className="text-[10pt] text-slate-500 font-bold uppercase mb-1">Volumen Total</p>
-                            <p className="text-3xl font-extrabold text-slate-900 leading-tight">{s.total_input?.toLocaleString()} <span className="text-lg opacity-60">{unit}</span></p>
-                            <p className="text-[8pt] text-slate-400 font-medium">Insumo total</p>
+                    {/* Horizontal KPI Grid - Standardized Style */}
+                    <div className="print-kpi-grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', marginTop: '20px' }}>
+                        <div className="print-kpi-card" style={{ borderTop: '5px solid #64748b' }}>
+                            <p className="text-[9pt] text-slate-500 font-black uppercase mb-1">Volumen Total</p>
+                            <p className="text-2xl font-black text-slate-900 leading-none mb-1">{s.total_input?.toLocaleString()} <span className="text-xs opacity-40">{unit}</span></p>
+                            <p className="text-[7pt] text-slate-400 font-bold uppercase tracking-wider">Insumo total</p>
                         </div>
-                        <div className="print-kpi-card" style={{ borderLeft: '4px solid #16a34a' }}>
-                            <p className="text-[10pt] text-green-700 font-bold uppercase mb-1">Yield (FTQ)</p>
-                            <p className="text-3xl font-extrabold text-green-700 leading-tight">{s.first_pass_yield?.toFixed(1)}%</p>
-                            <p className="text-[8pt] text-green-600/70 font-bold">Primer paso</p>
+                        <div className="print-kpi-card" style={{ borderTop: '5px solid #16a34a' }}>
+                            <p className="text-[9pt] text-slate-500 font-black uppercase mb-1">Yield (FTQ)</p>
+                            <p className="text-2xl font-black text-[#16a34a] leading-none mb-1">{s.first_pass_yield?.toFixed(1)}%</p>
+                            <p className="text-[7pt] text-slate-400 font-bold uppercase tracking-wider">Eficiencia 1er paso</p>
                         </div>
-                        <div className="print-kpi-card" style={{ borderLeft: '4px solid #0e0c9b' }}>
-                            <p className="text-[10pt] text-[#0e0c9b] font-bold uppercase mb-1">Yield (SPY)</p>
-                            <p className="text-3xl font-extrabold text-[#0e0c9b] leading-tight">{s.final_yield?.toFixed(1)}%</p>
-                            <p className="text-[8pt] text-[#0e0c9b]/70 font-bold">Después de retrabajo</p>
+                        <div className="print-kpi-card" style={{ borderTop: '5px solid #0e0c9b' }}>
+                            <p className="text-[9pt] text-slate-500 font-black uppercase mb-1">Yield (SPY)</p>
+                            <p className="text-2xl font-black text-[#0e0c9b] leading-none mb-1">{s.final_yield?.toFixed(1)}%</p>
+                            <p className="text-[7pt] text-slate-400 font-bold uppercase tracking-wider">Eficiencia Final</p>
                         </div>
-                        <div className="print-kpi-card" style={{ borderLeft: '4px solid #f59e0b' }}>
-                            <p className="text-[10pt] text-amber-700 font-bold uppercase mb-1">Eficiencia de Rec.</p>
-                            <p className="text-3xl font-extrabold text-amber-600 leading-tight">{efficiency}%</p>
-                            <p className="text-[8pt] text-amber-600/70 font-bold">Recuperación vs Fallo</p>
+                        <div className="print-kpi-card" style={{ borderTop: '5px solid #9c2c7a' }}>
+                            <p className="text-[9pt] text-slate-500 font-black uppercase mb-1">Reproceso</p>
+                            <p className="text-2xl font-black text-[#9c2c7a] leading-none mb-1">{s.rework_rate?.toFixed(1)}%</p>
+                            <p className="text-[7pt] text-slate-400 font-bold uppercase tracking-wider">Tasa de Reproceso</p>
                         </div>
-                    </div>
-
-                    {/* Charts Row */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
-                        <div className="print-no-break">
-                            <h3 className="print-section-title">Distribución de Rendimiento</h3>
-                            <div style={{ height: '220px', width: '100%', display: 'flex', justifyContent: 'center' }}>
-                                <PieChart width={300} height={220}>
-                                    <Pie
-                                        data={yieldPieData}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={80}
-                                        paddingAngle={5}
-                                        dataKey="value"
-                                    >
-                                        {yieldPieData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip formatter={(val: number) => `${val.toFixed(1)}%`} />
-                                    <Legend verticalAlign="bottom" height={36}/>
-                                </PieChart>
-                            </div>
-                        </div>
-
-                        <div className="print-no-break">
-                            <h3 className="print-section-title">Pareto de NCRs (Top 8)</h3>
-                            <div style={{ height: '220px', width: '100%' }}>
-                                <BarChart width={380} height={220} data={paretoChartData} margin={{ top: 10, right: 30, left: 40, bottom: 20 }}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                    <XAxis dataKey="name" fontSize={9} interval={0} angle={-30} textAnchor="end" height={50} />
-                                    <YAxis fontSize={10} />
-                                    <Bar dataKey="value" name={`Volumen (${unit})`} fill="#0e0c9b" radius={[4, 4, 0, 0]} />
-                                </BarChart>
-                            </div>
+                        <div className="print-kpi-card" style={{ borderTop: '5px solid #f59e0b' }}>
+                            <p className="text-[9pt] text-slate-500 font-black uppercase mb-1">Recuperación</p>
+                            <p className="text-2xl font-black text-[#f59e0b] leading-none mb-1">{efficiency}%</p>
+                            <p className="text-[7pt] text-slate-400 font-bold uppercase tracking-wider">Tasa éxito rec.</p>
                         </div>
                     </div>
 
-                    {/* Tables Row */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
-                        {/* Disposition Summary */}
-                        <div className="print-no-break">
-                            <h3 className="print-section-title">Resumen de Disposiciones</h3>
-                            <table className="print-table">
-                                <thead>
-                                    <tr><th>Disposición</th><th style={{ textAlign: 'right' }}>Volumen ({unit})</th></tr>
-                                </thead>
-                                <tbody>
-                                    {dispItems.slice(0, 10).map((d: any) => (
-                                        <tr key={d.name}>
-                                            <td className="font-semibold">{d.name}</td>
-                                            <td style={{ textAlign: 'right' }}>{d.value?.toLocaleString()}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            
-                            {topProducts.length > 0 && (
-                                <div style={{ marginTop: '20px' }}>
-                                    <h3 className="print-section-title">Top 5 Productos con Incidencias</h3>
-                                    <table className="print-table">
-                                        <thead>
-                                            <tr><th>Producto</th><th style={{ textAlign: 'right' }}>NCRs ({unit})</th></tr>
-                                        </thead>
-                                        <tbody>
-                                            {topProducts.map(p => (
-                                                <tr key={p.name}>
-                                                    <td className="font-semibold">{p.name}</td>
-                                                    <td style={{ textAlign: 'right' }}>{p.value.toLocaleString()}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                    {/* Pareto Section - Full Width */}
+                    <div className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm print-no-break" style={{ marginTop: '20px' }}>
+                        <h3 style={{ fontSize: '13pt', fontWeight: 900, color: '#0f172a', marginBottom: '2px' }}>Pareto de Defectos</h3>
+                        <p className="text-[8pt] text-slate-500 mb-6 font-medium uppercase tracking-tight">Análisis de Causas de No Conformidad - Frecuencia Acumulada</p>
+                        <div style={{ height: '300px', width: '100%' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <ComposedChart data={data.pareto_data} margin={{ top: 5, right: 30, left: 0, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                    <XAxis dataKey="name" fontSize={9} fontWeight={900} tick={{ fill: '#475569' }} axisLine={false} tickLine={false} />
+                                    <YAxis yAxisId="left" fontSize={9} axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
+                                    <YAxis yAxisId="right" orientation="right" fontSize={9} axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
+                                    <Bar yAxisId="left" dataKey="value" fill="#0e0c9b" radius={[4, 4, 0, 0]} barSize={40} />
+                                    <Line yAxisId="right" type="monotone" dataKey="cumPercent" stroke="#c41f1a" strokeWidth={3} dot={{ r: 4, fill: '#c41f1a', strokeWidth: 1.5, stroke: '#fff' }} />
+                                    <ReferenceLine yAxisId="right" y={80} stroke="#9c2c7a" strokeDasharray="5 5" strokeWidth={1.5} />
+                                </ComposedChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    {/* Radar Section - Full Width */}
+                    <div className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm print-no-break" style={{ marginTop: '20px' }}>
+                        <h3 style={{ fontSize: '13pt', fontWeight: 900, color: '#0f172a', marginBottom: '2px' }}>Parámetros Críticos</h3>
+                        <p className="text-[8pt] text-slate-500 mb-6 font-medium uppercase tracking-tight">Frecuencia de incidencias por parámetro (# NCRs)</p>
+                        <div style={{ height: '320px', width: '100%', display: 'flex', justifyContent: 'center' }}>
+                            <RadarChart data={data.radar_data} cx="50%" cy="50%" outerRadius="80%" width={500} height={320}>
+                                <PolarGrid stroke="#e2e8f0" />
+                                <PolarAngleAxis dataKey="param" tick={{ fill: '#64748b', fontSize: 10, fontWeight: 900 }} />
+                                <Radar name="NCRs" dataKey="count" stroke="#0e0c9b" fill="#6b3ba0" fillOpacity={0.1} strokeWidth={2} />
+                            </RadarChart>
+                        </div>
+                    </div>
+
+                    {/* Destination & Reprocess Section - Full Widths */}
+                    <div className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm print-no-break" style={{ marginTop: '20px' }}>
+                        <h3 style={{ fontSize: '13pt', fontWeight: 900, color: '#0f172a', marginBottom: '2px' }}>Destino de Material No Conforme</h3>
+                        <p className="text-[8pt] text-slate-500 mb-6 font-medium uppercase tracking-tight">Distribución por volumen y tipo de disposición ({unit})</p>
+                        <div className="space-y-4">
+                            {data.disposition_data.map((d: any) => (
+                                <div key={d.name} className="flex items-center gap-3">
+                                    <span className="w-40 text-[9pt] font-black text-slate-600 text-right shrink-0 truncate uppercase">{d.name}</span>
+                                    <div className="flex-1 h-6 bg-slate-50 rounded-full overflow-hidden">
+                                        <div 
+                                            className="h-full rounded-full opacity-80" 
+                                            style={{ 
+                                                width: `${Math.max(2, (d.value / (data.disposition_data[0]?.value || 1)) * 100)}%`,
+                                                backgroundColor: DISPOSITION_COLORS[d.name.toUpperCase()] || d.color 
+                                            }} 
+                                        />
+                                    </div>
+                                    <span className="w-24 text-[9pt] font-black text-slate-900 shrink-0">{d.value.toLocaleString()} {unit}</span>
                                 </div>
-                            )}
-                        </div>
-
-                        {/* Reprocess Causes */}
-                        <div className="print-no-break">
-                            <h3 className="print-section-title">Causas de Reproceso</h3>
-                            <table className="print-table">
-                                <thead>
-                                    <tr><th>Causa</th><th style={{ textAlign: 'center' }}>Casos</th><th style={{ textAlign: 'right' }}>{unit}</th></tr>
-                                </thead>
-                                <tbody>
-                                    {reprocessItems.slice(0, 10).map((d: any) => (
-                                        <tr key={d.name}>
-                                            <td className="font-semibold">{d.name}</td>
-                                            <td style={{ textAlign: 'center' }}>{d.count}</td>
-                                            <td style={{ textAlign: 'right' }}>{d.value?.toLocaleString()}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                            ))}
                         </div>
                     </div>
 
-                    {/* Full Pareto Table */}
-                    <div className="print-no-break" style={{ marginTop: '20px' }}>
-                        <h3 className="print-section-title">Detalle de NCRs por Defecto</h3>
+                    <div className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm print-no-break" style={{ marginTop: '20px' }}>
+                        <h3 style={{ fontSize: '13pt', fontWeight: 900, color: '#0f172a', marginBottom: '2px' }}>Causas Detalladas de Reproceso</h3>
+                        <p className="text-[8pt] text-slate-500 mb-6 font-medium uppercase tracking-tight">Parámetros Críticos en NCRs con Reproceso/Ajuste</p>
+                        <div className="space-y-5">
+                            {data.reprocess_data.map((d: any, idx: number) => {
+                                const palette = [CORP_BLUE, CORP_INDIGO, CORP_VIOLET, CORP_PLUM, CORP_RED]
+                                const c = palette[idx % palette.length]
+                                return (
+                                    <div key={d.name}>
+                                        <div className="flex justify-between items-end mb-1.5">
+                                            <span className="text-[10pt] font-black text-slate-700 uppercase tracking-tight">{d.name}</span>
+                                            <div className="flex items-baseline gap-2">
+                                                <span className="text-[8pt] text-slate-400 font-bold uppercase">Impacto:</span>
+                                                <span className="text-[11pt] font-black" style={{ color: c }}>{d.value.toLocaleString()} {unit}</span>
+                                            </div>
+                                        </div>
+                                        <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                                            <div className="h-full rounded-full shadow-inner" style={{ width: `${(d.value / (data.reprocess_data[0]?.value || 1)) * 100}%`, backgroundColor: c }} />
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Final Detail Table (Full Pareto Detail) */}
+                    <div className="print-no-break" style={{ marginTop: '30px' }}>
+                        <h3 style={{ fontSize: '14pt', fontWeight: 900, color: '#0e0c9b', borderLeft: '4px solid #0e0c9b', paddingLeft: '12px', marginBottom: '15px' }}>Detalle Analítico de Defectos por Parámetro</h3>
                         <table className="print-table">
                             <thead>
-                                <tr>
-                                    <th>Defecto</th>
-                                    <th style={{ textAlign: 'right' }}>Volumen ({unit})</th>
-                                    <th style={{ textAlign: 'right' }}>% del Total</th>
-                                    <th style={{ textAlign: 'right' }}>% Acumulado</th>
+                                <tr style={{ background: '#f8fafc' }}>
+                                    <th style={{ textAlign: 'left', padding: '12px' }}>Defecto / Parámetro</th>
+                                    <th style={{ textAlign: 'right', padding: '12px' }}>Volumen ({unit})</th>
+                                    <th style={{ textAlign: 'right', padding: '12px' }}>% Contribución</th>
+                                    <th style={{ textAlign: 'right', padding: '12px' }}>% Acumulado</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {paretoItems.map((d: any, i: number) => (
-                                    <tr key={d.name}>
-                                        <td className="font-semibold">{d.name}</td>
-                                        <td style={{ textAlign: 'right' }}>{d.value?.toLocaleString()}</td>
-                                        <td style={{ textAlign: 'right' }}>{i === 0 ? d.cumPercent : (Number(d.cumPercent) - Number(paretoItems[i-1].cumPercent)).toFixed(1)}%</td>
-                                        <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{d.cumPercent}%</td>
-                                    </tr>
-                                ))}
+                                {data.pareto_data.map((d: any, i: number) => {
+                                    const prevPct = i > 0 ? Number(data.pareto_data[i-1].cumPercent) : 0
+                                    const contrib = (Number(d.cumPercent) - prevPct).toFixed(1)
+                                    return (
+                                        <tr key={d.name} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                            <td className="font-bold text-slate-700" style={{ padding: '10px 12px' }}>{d.name}</td>
+                                            <td style={{ textAlign: 'right', padding: '10px 12px', color: '#0e0c9b', fontWeight: 800 }}>{d.value?.toLocaleString()}</td>
+                                            <td style={{ textAlign: 'right', padding: '10px 12px', color: '#64748b' }}>{contrib}%</td>
+                                            <td style={{ textAlign: 'right', padding: '10px 12px', fontWeight: 900, color: Number(d.cumPercent) > 80 ? '#c41f1a' : '#0f172a' }}>{d.cumPercent}%</td>
+                                        </tr>
+                                    )
+                                })}
                             </tbody>
                         </table>
+                    </div>
+
+                    {/* Technical Glossary Section */}
+                    <div className="print-no-break" style={{ marginTop: '40px', padding: '20px', backgroundColor: '#f8fafc', borderRadius: '1.5rem', border: '1px solid #e2e8f0' }}>
+                        <div className="flex items-center gap-2 mb-3">
+                            <Activity className="text-[#0e0c9b]" size={18} />
+                            <h3 style={{ fontSize: '11pt', fontWeight: 900, color: '#0f172a', margin: 0 }}>Glosario Técnico y Lógica de Cálculo</h3>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px' }}>
+                            <div className="space-y-3">
+                                <div>
+                                    <p className="text-[8pt] font-black text-[#0e0c9b] uppercase mb-0.5">Yield (FTQ) - Primera Vez Bien</p>
+                                    <p className="text-[7.5pt] text-slate-600 leading-tight"><strong>Fórmula:</strong> (Total - Volumen con Defecto) / Total. Mide el producto que cumple especificaciones desde el primer paso sin intervenciones.</p>
+                                </div>
+                                <div>
+                                    <p className="text-[8pt] font-black text-[#0e0c9b] uppercase mb-0.5">Yield (SPY) - Rendimiento Final</p>
+                                    <p className="text-[7.5pt] text-slate-600 leading-tight"><strong>Fórmula:</strong> (Total - Volumen Scrap) / Total. Representa la eficiencia real tras procesos de recuperación y filtrado de mermas.</p>
+                                </div>
+                            </div>
+                            <div className="space-y-3">
+                                <div>
+                                    <p className="text-[8pt] font-black text-[#0e0c9b] uppercase mb-0.5">Tasa de Reproceso</p>
+                                    <p className="text-[7.5pt] text-slate-600 leading-tight"><strong>Fórmula:</strong> Volumen con disposición 'Reproceso' o 'Ajuste' / Total. Refleja el porcentaje de la producción que requirió retrabajo.</p>
+                                </div>
+                                <div>
+                                    <p className="text-[8pt] font-black text-[#0e0c9b] uppercase mb-0.5">Eficiencia de Recuperación</p>
+                                    <p className="text-[7.5pt] text-slate-600 leading-tight"><strong>Fórmula:</strong> Volumen Rescatado / Oportunidad de Mejora (Total NCRs). Evalúa la efectividad operativa para evitar el desperdicio.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <p className="text-[6pt] text-slate-400 mt-4 uppercase font-bold text-center border-t border-slate-200 pt-3 italic">** Nota: Los cálculos en Litros consideran la conversión de Piezas x 20L para bases de aromatizante.</p>
                     </div>
                 </PrintReportWrapper>
             )
