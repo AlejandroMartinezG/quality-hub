@@ -1068,7 +1068,7 @@ export default function SPYReportPage() {
                             <div className="space-y-3">
                                 <div>
                                     <p className="text-[8pt] font-black text-[#0e0c9b] uppercase mb-0.5">Tasa de Reproceso</p>
-                                    <p className="text-[7.5pt] text-slate-600 leading-tight"><strong>Fórmula:</strong> Volumen con disposición 'Reproceso' o 'Ajuste' / Total. Refleja el porcentaje de la producción que requirió retrabajo.</p>
+                                    <p className="text-[7.5pt] text-slate-600 leading-tight"><strong>Fórmula:</strong> Volumen con disposición &apos;Reproceso&apos; o &apos;Ajuste&apos; / Total. Refleja el porcentaje de la producción que requirió retrabajo.</p>
                                 </div>
                                 <div>
                                     <p className="text-[8pt] font-black text-[#0e0c9b] uppercase mb-0.5">Eficiencia de Recuperación</p>

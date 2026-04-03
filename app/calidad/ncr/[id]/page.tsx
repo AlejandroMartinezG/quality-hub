@@ -562,7 +562,7 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
                                 <div className="space-y-2">
                                     <Label className="text-slate-500 text-xs uppercase tracking-wider font-bold">Observación de Bitácora (Origen)</Label>
                                     <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-xl border border-blue-100 dark:border-blue-900/20 text-sm text-blue-900 dark:text-blue-200 italic">
-                                        "{bitacoraObs}"
+                                        &ldquo;{bitacoraObs}&rdquo;
                                     </div>
                                 </div>
                             )}
