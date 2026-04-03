@@ -2158,7 +2158,7 @@ export default function ReportesPage() {
                 pr.forEach(r => {
                     const s = r.sucursal || 'Sin Sucursal'
                     if (!topBySuc[s]) topBySuc[s] = []
-                    topBySuc[s].push({ name: r.nombre_producto, value: r.tamano_lote })
+                    topBySuc[s].push({ name: (r as any).nombre_producto, value: r.tamano_lote })
                 })
                 const topProductsSucursal = Object.entries(topBySuc).map(([suc, items]) => {
                     const sorted = items.reduce((acc, curr) => {
