@@ -19,8 +19,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
         // the auth code is bound to a code_verifier that only
         // the original client knows, preventing interception attacks.
         flowType: 'pkce',
-        // Storage defaults to localStorage which is fine for a static SPA.
-        // Supabase JS v2+ handles secure token storage internally.
+        // Change storage key to reset potentially corrupted locks from development
+        storageKey: 'qh_auth_token',
     },
 })
 

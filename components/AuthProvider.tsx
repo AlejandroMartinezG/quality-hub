@@ -79,18 +79,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         const initializeAuth = async () => {
             try {
-                // Check active session
                 console.log("AuthProvider: Checking active session...")
                 const { data, error } = await supabase.auth.getSession()
 
-                if (error) {
-                    // Ignore AbortError which can happen in strict mode/dev
-                    if (error.message && error.message.includes('AbortError')) {
-                        console.warn("AuthProvider: Session check aborted (likely harmless in dev).")
-                        return
-                    }
-                    console.error("AuthProvider: Error getting session:", error)
-                    // Don't throw, just proceed as logged out
+                if (error && error.message && error.message.includes('AbortError')) {
+                    console.warn("AuthProvider: Session check aborted.")
+                    return
                 }
 
                 if (mounted) {
@@ -98,12 +92,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         console.log("AuthProvider: Session found.")
                         setSession(data.session)
                         setUser(data.session.user)
-                        // Fetch profile immediately if session exists
                         await fetchProfile(data.session.user.id)
                     } else {
                         console.warn("AuthProvider: No session found during init.")
                         if (window.location.pathname !== '/login') {
-                            console.log("AuthProvider: Redirecting to login...")
                             router.push('/login')
                         }
                     }
@@ -118,23 +110,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         initializeAuth()
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            console.log("Auth state change:", event)
-
             if (!mounted) return
+            // Evitar la colisión de carrera con initializeAuth()
+            if (event === 'INITIAL_SESSION') return
 
+            console.log("Auth state change:", event)
             setSession(session)
             setUser(session?.user ?? null)
 
             if (session) {
                 await fetchProfile(session.user.id)
+                if (mounted) setLoading(false)
             } else {
                 setProfile(null)
+                if (mounted) setLoading(false)
+                
                 if (window.location.pathname !== '/login') {
                     router.push('/login')
                 }
             }
-
-            setLoading(false)
         })
 
         return () => {
