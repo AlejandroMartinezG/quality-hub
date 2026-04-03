@@ -2384,7 +2384,7 @@ export default function ReportesPage() {
                                                 <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#64748b' }}>{i + 1}</td>
                                                 <td>
                                                     <div style={{ fontWeight: 800, color: '#0f172a' }}>{code}</div>
-                                                    <div style={{ fontSize: '7pt', color: '#64748b' }}>{prodInfo?.nombre_producto}</div>
+                                                    <div style={{ fontSize: '7pt', color: '#64748b' }}>{(prodInfo as any)?.nombre_producto}</div>
                                                 </td>
                                                 <td style={{ textAlign: 'center', fontSize: '7pt' }}>{prodInfo?.familia_producto}</td>
                                                 <td style={{ textAlign: 'right', fontWeight: 900, color: '#0e0c9b' }}>{vol.toLocaleString()} <span className="text-[6pt] font-normal">L</span></td>
