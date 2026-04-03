@@ -646,10 +646,10 @@ export default function SPYReportPage() {
                                         <Tooltip
                                             cursor={{ fill: 'rgba(14,12,155,0.04)' }}
                                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                            formatter={(value: any, name: string) => {
+                                            formatter={((value: any, name: string) => {
                                                 if (name === 'cumPercent') return [`${value}%`, '% Acumulado']
                                                 return [`${Number(value).toLocaleString()} ${UNIT}`, 'Cantidad']
-                                            }}
+                                            }) as any}
                                         />
                                         {/* Barras verticales de volumen — azul corporativo */}
                                         <Bar yAxisId="vol" dataKey="value" fill={CORP_BLUE} radius={[6, 6, 0, 0]} maxBarSize={60} />

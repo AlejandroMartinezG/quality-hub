@@ -139,7 +139,7 @@ export default function ReportesPage() {
                 .select('*')
 
             if (isPreparador) {
-                query = query.eq('user_id', user.id)
+                query = query.eq('user_id', user?.id)
             } else if (isGerente && profile?.sucursal) {
                 query = query.eq('sucursal', profile.sucursal)
             }
