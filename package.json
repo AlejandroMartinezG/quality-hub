@@ -49,7 +49,7 @@
     "@types/react-dom": "^18",
     "autoprefixer": "^10.0.1",
     "eslint": "^8",
-    "eslint-config-next": "^16.1.6",
+    "eslint-config-next": "14.2.35",
     "papaparse": "^5.4.1",
     "postcss": "^8",
     "tailwindcss": "^3.3.0",
