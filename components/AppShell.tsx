@@ -162,7 +162,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         )}
 
                         {/* Control Calidad: Hide for administrative/sales roles */}
-                        {!['gerente_sucursal', 'gerente', 'director_operaciones', 'mostrador', 'cajera', 'vendedor', 'director_compras'].includes(profile?.role?.toLowerCase() || '') && (
+                        {!['director_operaciones', 'mostrador', 'cajera', 'vendedor', 'director_compras'].includes(profile?.role?.toLowerCase() || '') && (
                             <NavItem href="/calidad" icon={Microscope} label="Control Calidad" />
                         )}
 

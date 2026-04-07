@@ -109,7 +109,7 @@ export default function CalidadPage() {
     useEffect(() => {
         if (!authLoading && profile) {
             const role = profile.role?.toLowerCase() || ''
-            const forbiddenRoles = ['gerente_sucursal', 'gerente', 'director_operaciones', 'mostrador', 'cajera', 'vendedor', 'director_compras']
+            const forbiddenRoles = ['director_operaciones', 'mostrador', 'cajera', 'vendedor', 'director_compras']
             if (forbiddenRoles.includes(role)) {
                 toast.error("Acceso restringido", {
                     description: "No tienes permisos para acceder al módulo de Control de Calidad."

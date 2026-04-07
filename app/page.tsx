@@ -20,7 +20,7 @@ export default function HomePage() {
     const role = profile?.role?.toLowerCase() || ''
 
     // Bitácora and Calidad Visibility Rules (Production roles only)
-    const forbiddenProduction = ['gerente_sucursal', 'gerente', 'director_operaciones', 'mostrador', 'cajera', 'vendedor', 'director_compras']
+    const forbiddenProduction = ['mostrador', 'cajera', 'vendedor', 'director_compras']
     const showProduction = !forbiddenProduction.includes(role)
 
     // Reportes Visibility Rules - Now includes preparador
