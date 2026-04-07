@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useEffect, useState, useRef } from "react"
 import { supabase } from "@/lib/supabase"
 import { User, Session } from "@supabase/supabase-js"
 import { useRouter, usePathname } from "next/navigation"
@@ -38,11 +38,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [profile, setProfile] = useState<Profile | null>(null)
     const [session, setSession] = useState<Session | null>(null)
     const [loading, setLoading] = useState(true)
+    const initialized = useRef(false)
     const router = useRouter()
     const pathname = usePathname()
 
     useEffect(() => {
         let mounted = true
+
+        // Cache the last user ID we fetched a profile for to avoid redundant calls
+        let lastFetchedProfileId: string | null = null;
 
         const fetchProfile = async (userId: string): Promise<Profile | null> => {
             try {
@@ -60,7 +64,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 if (mounted && profileData) {
                     // Check if user is approved
                     if (!profileData.approved) {
-                        console.warn("User not approved, signing out.")
+                        console.warn("AuthProvider: User not approved, signing out.")
                         await supabase.auth.signOut()
                         setUser(null)
                         setProfile(null)
@@ -68,6 +72,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         return null
                     }
                     setProfile(profileData)
+                    lastFetchedProfileId = userId // Mark as fetched
                     return profileData
                 }
                 return null
@@ -78,30 +83,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         const initializeAuth = async () => {
+            if (initialized.current) return
+            initialized.current = true
+
             try {
-                console.log("AuthProvider: Checking active session...")
+                console.log("AuthProvider: Initializing...")
                 const { data, error } = await supabase.auth.getSession()
 
-                if (error && error.message && error.message.includes('AbortError')) {
-                    console.warn("AuthProvider: Session check aborted.")
-                    return
+                if (error) {
+                    console.error("AuthProvider: getSession error:", error)
                 }
 
                 if (mounted) {
                     if (data?.session) {
-                        console.log("AuthProvider: Session found.")
                         setSession(data.session)
                         setUser(data.session.user)
                         await fetchProfile(data.session.user.id)
                     } else {
-                        console.warn("AuthProvider: No session found during init.")
-                        if (window.location.pathname !== '/login') {
+                        if (pathname !== '/login') {
                             router.push('/login')
                         }
                     }
                 }
             } catch (error) {
-                console.error("Auth initialization exception:", error)
+                console.error("AuthProvider: Init exception:", error)
             } finally {
                 if (mounted) setLoading(false)
             }
@@ -109,23 +114,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         initializeAuth()
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
             if (!mounted) return
-            // Evitar la colisión de carrera con initializeAuth()
-            if (event === 'INITIAL_SESSION') return
+            
+            // Ignore initial check processed by initializeAuth to prevent double-processing
+            if (event === 'INITIAL_SESSION' && initialized.current) return
 
-            console.log("Auth state change:", event)
-            setSession(session)
-            setUser(session?.user ?? null)
+            console.log(`AuthProvider: Auth Event - ${event}`)
+            
+            setSession(currentSession)
+            setUser(currentSession?.user ?? null)
 
-            if (session) {
-                await fetchProfile(session.user.id)
+            if (currentSession) {
+                // Only fetch if session user changed or profile not loaded
+                if (currentSession.user.id !== lastFetchedProfileId) {
+                    await fetchProfile(currentSession.user.id)
+                }
                 if (mounted) setLoading(false)
             } else {
                 setProfile(null)
+                lastFetchedProfileId = null
                 if (mounted) setLoading(false)
                 
-                if (window.location.pathname !== '/login') {
+                if (pathname !== '/login') {
                     router.push('/login')
                 }
             }
