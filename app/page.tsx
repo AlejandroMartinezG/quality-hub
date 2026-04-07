@@ -19,9 +19,11 @@ export default function HomePage() {
     const { profile } = useAuth()
     const role = profile?.role?.toLowerCase() || ''
 
-    // Bitácora and Calidad Visibility Rules (Production roles only)
-    const forbiddenProduction = ['mostrador', 'cajera', 'vendedor', 'director_compras']
-    const showProduction = !forbiddenProduction.includes(role)
+    // Bitácora and Calidad Visibility Rules
+    const forbiddenBitacora = ['gerente_sucursal', 'gerente', 'director_operaciones', 'mostrador', 'cajera', 'vendedor', 'director_compras']
+    const showBitacora = !forbiddenBitacora.includes(role)
+    const forbiddenCalidad = ['mostrador', 'cajera', 'vendedor', 'director_compras']
+    const showCalidad = !forbiddenCalidad.includes(role)
 
     // Reportes Visibility Rules - Now includes preparador
     const showReportes = ['admin', 'gerente_calidad', 'coordinador', 'gerente_sucursal', 'gerente', 'preparador'].includes(role)
@@ -46,7 +48,7 @@ export default function HomePage() {
             {/* Modules Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* 1. Bitácora de Producción */}
-                {showProduction && (
+                {showBitacora && (
                     <Link href="/bitacora" className="group block">
                         <Card className="h-full border-2 border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-sm hover:shadow-md hover:border-blue-500/50 transition-all bg-[#FFFBF7] dark:bg-slate-900">
                             <CardContent className="p-8 flex flex-col items-start gap-4 h-full">
@@ -70,7 +72,7 @@ export default function HomePage() {
                 )}
 
                 {/* 2. Control de Calidad */}
-                {showProduction && (
+                {showCalidad && (
                     <Link href="/calidad" className="group block">
                         <Card className="h-full border-2 border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-sm hover:shadow-md hover:border-blue-500/50 transition-all bg-[#FFFBF7] dark:bg-slate-900">
                             <CardContent className="p-8 flex flex-col items-start gap-4 h-full relative">
@@ -168,7 +170,7 @@ export default function HomePage() {
                 </Link>
 
                 {/* 6. Manual de Formulación (Disabled) */}
-                {showProduction && (
+                {showBitacora && (
                     <Card className="h-full border-2 border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-sm bg-[#FFFBF7] dark:bg-slate-900 opacity-60">
                         <CardContent className="p-8 flex flex-col items-start gap-4 h-full relative">
                             <Badge className="absolute top-6 right-6 bg-slate-200 text-slate-600 border-none px-3 font-bold rounded-full">
