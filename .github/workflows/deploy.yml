@@ -1,0 +1,76 @@
+name: Deploy to VPS
+
+on:
+  workflow_dispatch:  # Solo se ejecuta cuando tú lo ordenas manualmente
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    name: Build imagen Docker y subir a GHCR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Login a GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extraer metadata de la imagen
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+
+      - name: Build y push imagen Docker
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          build-args: |
+            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+            NEXT_PUBLIC_BASE_PATH=
+
+  deploy:
+    name: Desplegar en VPS
+    runs-on: ubuntu-latest
+    needs: build-and-push
+
+    steps:
+      - name: SSH al VPS y actualizar contenedor
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: root
+          password: ${{ secrets.VPS_PASSWORD }}
+          script: |
+            # Login a GHCR desde el VPS
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # Ir a la carpeta de la app
+            cd /opt/quality-hub
+
+            # Descargar la imagen más reciente
+            docker compose pull
+
+            # Reiniciar el contenedor con la nueva imagen
+            docker compose up -d --remove-orphans
+
+            # Eliminar imágenes antiguas para liberar espacio
+            docker image prune -f
+
+            echo "Deploy completado."

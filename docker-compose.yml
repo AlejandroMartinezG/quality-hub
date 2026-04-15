@@ -1,0 +1,19 @@
+services:
+  quality-hub:
+    image: ghcr.io/AlejandroMartinezG/quality-hub-ginez:latest
+    container_name: quality-hub
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+    env_file:
+      - .env.production
+    networks:
+      - web
+
+networks:
+  web:
+    driver: bridge
