@@ -22,6 +22,8 @@ const cspContent = [
     "frame-ancestors 'none'",
 ].join("; ")
 
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
     title: "Quality Hub GINEZ",
     description: "Sistema de Gestión: Calidad y Documentación",
