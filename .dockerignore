@@ -1,0 +1,32 @@
+# Dependencias (se instalan dentro del container)
+node_modules
+npm-debug.log*
+
+# Build output
+.next
+out
+dist
+
+# Archivos de entorno locales
+.env
+.env.local
+.env.development
+.env.production
+
+# Git
+.git
+.gitignore
+
+# Docs y configs locales
+README.md
+*.md
+.gemini
+
+# IDE
+.vscode
+.idea
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db

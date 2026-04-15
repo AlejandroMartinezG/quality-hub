@@ -3,7 +3,7 @@ const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // output: 'export', // Disabled to allow dynamic routes for NCR details
+  output: 'standalone', // Required for Docker/VPS deployment
   basePath: basePath,
   assetPrefix: basePath,
   trailingSlash: true,
