@@ -242,15 +242,15 @@ export default function ConfigurationPage() {
             // 1. Update Profile (Table) - Using UPSERT to handle missing profile rows
             const { error: profileError } = await supabase
                 .from('profiles')
-                .upsert({
-                    id: user.id,
+                .update({
                     full_name: sanitizeText(myProfileData.full_name),
                     position: sanitizeText(myProfileData.position),
                     sucursal: myProfileData.sucursal,
                     area: sanitizeText(myProfileData.area),
-                    email: myProfileData.email, // Required field
+                    email: myProfileData.email,
                     updated_at: new Date().toISOString()
                 })
+                .eq('id', user.id)
                 .select()
 
             if (profileError) {
