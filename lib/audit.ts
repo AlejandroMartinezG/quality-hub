@@ -6,8 +6,13 @@ export async function logDownload(params: {
     skuCode?: string
 }) {
     try {
+        console.log("[audit] logDownload called:", params)
         const { data: { session } } = await supabase.auth.getSession()
-        if (!session) return
+        if (!session) {
+            console.warn("[audit] No session — aborting log")
+            return
+        }
+        console.log("[audit] Session OK, user:", session.user.id)
 
         // Fetch user profile info for logging (denormalized log)
         const { data: profile } = await supabase
