@@ -260,16 +260,15 @@ export default function ConfigurationPage() {
             // 2. Update Auth (Email/Password) - ADMIN ONLY
             if (profile?.is_admin) {
                 const updates: { email?: string, password?: string } = {}
-                if (myProfileData.email && myProfileData.email !== user.email) updates.email = myProfileData.email
-                if (myProfileData.password && myProfileData.password.trim() !== "") updates.password = myProfileData.password
+                if (myProfileData.email && myProfileData.email.trim().toLowerCase() !== user.email?.trim().toLowerCase()) updates.email = myProfileData.email.trim()
+                const newPass = myProfileData.password?.trim() ?? ""
+                if (newPass.length >= 6) updates.password = newPass
 
                 if (Object.keys(updates).length > 0) {
                     const { error: authError } = await supabase.auth.updateUser(updates)
                     if (authError) {
-                        throw new Error("Perfil actualizado, pero error en credenciales: " + authError.message)
-                    }
-
-                    if (updates.email) {
+                        alert("Perfil guardado, pero error al actualizar credenciales: " + authError.message)
+                    } else if (updates.email) {
                         alert("Perfil actualizado.\n\nIMPORTANTE: Se ha enviado un correo de confirmación a " + updates.email + ". Debes confirmar el cambio para acceder con el nuevo correo.")
                     } else {
                         alert("Perfil y contraseña actualizados correctamente.")
@@ -285,7 +284,9 @@ export default function ConfigurationPage() {
             window.location.reload()
 
         } catch (error: any) {
-            alert("Ocurrió un error al actualizar el perfil. Intenta de nuevo.")
+            console.error('Profile update error:', error)
+            const msg = error?.message || ''
+            alert("Ocurrió un error al actualizar el perfil.\n\n" + msg)
         } finally {
             setSaveLoading(false)
         }
