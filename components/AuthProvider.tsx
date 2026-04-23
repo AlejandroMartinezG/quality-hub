@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, useRef } from "react"
+import { createContext, useContext, useEffect, useState, useRef, useCallback } from "react"
 import { supabase } from "@/lib/supabase"
 import { User, Session } from "@supabase/supabase-js"
 import { useRouter, usePathname } from "next/navigation"
@@ -23,6 +23,7 @@ interface AuthContextType {
     session: Session | null
     loading: boolean
     signOut: () => Promise<void>
+    refreshProfile: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -31,6 +32,7 @@ const AuthContext = createContext<AuthContextType>({
     session: null,
     loading: true,
     signOut: async () => { },
+    refreshProfile: async () => { },
 })
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -39,48 +41,53 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [session, setSession] = useState<Session | null>(null)
     const [loading, setLoading] = useState(true)
     const initialized = useRef(false)
+    const lastFetchedProfileId = useRef<string | null>(null)
     const router = useRouter()
     const pathname = usePathname()
 
-    useEffect(() => {
-        let mounted = true
+    const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
+        try {
+            const { data: profileData, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', userId)
+                .single()
 
-        // Cache the last user ID we fetched a profile for to avoid redundant calls
-        let lastFetchedProfileId: string | null = null;
-
-        const fetchProfile = async (userId: string): Promise<Profile | null> => {
-            try {
-                const { data: profileData, error } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', userId)
-                    .single()
-
-                if (error) {
-                    console.error("Error fetching profile:", error)
-                    return null
-                }
-
-                if (mounted && profileData) {
-                    // Check if user is approved
-                    if (!profileData.approved) {
-                        console.warn("AuthProvider: User not approved, signing out.")
-                        await supabase.auth.signOut()
-                        setUser(null)
-                        setProfile(null)
-                        setSession(null)
-                        return null
-                    }
-                    setProfile(profileData)
-                    lastFetchedProfileId = userId // Mark as fetched
-                    return profileData
-                }
-                return null
-            } catch (err) {
-                console.error("Exception fetching profile:", err)
+            if (error) {
+                console.error("Error fetching profile:", error)
                 return null
             }
+
+            if (profileData) {
+                if (!profileData.approved) {
+                    console.warn("AuthProvider: User not approved, signing out.")
+                    await supabase.auth.signOut()
+                    setUser(null)
+                    setProfile(null)
+                    setSession(null)
+                    return null
+                }
+                setProfile(profileData)
+                lastFetchedProfileId.current = userId
+                return profileData
+            }
+            return null
+        } catch (err) {
+            console.error("Exception fetching profile:", err)
+            return null
         }
+    }, [])
+
+    const refreshProfile = useCallback(async () => {
+        const { data } = await supabase.auth.getSession()
+        if (data?.session?.user) {
+            lastFetchedProfileId.current = null // force re-fetch
+            await fetchProfile(data.session.user.id)
+        }
+    }, [fetchProfile])
+
+    useEffect(() => {
+        let mounted = true
 
         const initializeAuth = async () => {
             if (initialized.current) return
@@ -124,26 +131,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
             if (!mounted) return
-            
-            // Ignore initial check processed by initializeAuth to prevent double-processing
+
             if (event === 'INITIAL_SESSION' && initialized.current) return
 
             console.log(`AuthProvider: Auth Event - ${event}`)
-            
+
             setSession(currentSession)
             setUser(currentSession?.user ?? null)
 
             if (currentSession) {
-                // Only fetch if session user changed or profile not loaded
-                if (currentSession.user.id !== lastFetchedProfileId) {
+                if (currentSession.user.id !== lastFetchedProfileId.current) {
                     await fetchProfile(currentSession.user.id)
                 }
                 if (mounted) setLoading(false)
             } else {
                 setProfile(null)
-                lastFetchedProfileId = null
+                lastFetchedProfileId.current = null
                 if (mounted) setLoading(false)
-                
+
                 if (pathname !== '/login') {
                     router.push('/login')
                 }
@@ -154,7 +159,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             mounted = false
             subscription.unsubscribe()
         }
-    }, [router])
+    }, [router, fetchProfile, pathname])
 
     const signOut = async () => {
         console.log("AuthProvider: Cerrando sesión...")
@@ -173,7 +178,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     return (
-        <AuthContext.Provider value={{ user, profile, session, loading, signOut }}>
+        <AuthContext.Provider value={{ user, profile, session, loading, signOut, refreshProfile }}>
             {children}
         </AuthContext.Provider>
     )

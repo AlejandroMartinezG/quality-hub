@@ -61,7 +61,7 @@ interface Profile {
 }
 
 export default function ConfigurationPage() {
-    const { user, profile, loading } = useAuth()
+    const { user, profile, loading, refreshProfile } = useAuth()
     const [activeTab, setActiveTab] = useState("profile")
 
     // Logs state
@@ -281,8 +281,7 @@ export default function ConfigurationPage() {
             }
 
             setMyProfileData(prev => ({ ...prev, password: "" }))
-            // Reload to reflect changes
-            window.location.reload()
+            await refreshProfile()
 
         } catch (error: any) {
             console.error('Profile update error:', error)
