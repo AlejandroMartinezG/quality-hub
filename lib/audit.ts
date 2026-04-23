@@ -16,7 +16,7 @@ export async function logDownload(params: {
             .eq('id', session.user.id)
             .single()
 
-        await supabase.from('download_logs').insert({
+        const { error } = await supabase.from('download_logs').insert({
             user_id: session.user.id,
             full_name: profile?.full_name || session.user.email,
             area: profile?.area || 'N/A',
@@ -24,6 +24,7 @@ export async function logDownload(params: {
             file_type: params.fileType,
             sku_code: params.skuCode,
         })
+        if (error) console.error("Error inserting download_log:", error.message)
     } catch (error) {
         console.error("Error logging download:", error)
     }
