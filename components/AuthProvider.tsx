@@ -86,6 +86,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (initialized.current) return
             initialized.current = true
 
+            const safetyTimer = setTimeout(() => {
+                if (mounted) {
+                    console.warn("AuthProvider: Safety timeout — forcing loading false")
+                    setLoading(false)
+                }
+            }, 8000)
+
             try {
                 console.log("AuthProvider: Initializing...")
                 const { data, error } = await supabase.auth.getSession()
@@ -108,6 +115,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             } catch (error) {
                 console.error("AuthProvider: Init exception:", error)
             } finally {
+                clearTimeout(safetyTimer)
                 if (mounted) setLoading(false)
             }
         }

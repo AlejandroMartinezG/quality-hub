@@ -280,6 +280,7 @@ export default function ConfigurationPage() {
                 alert("Perfil actualizado correctamente.")
             }
 
+            setMyProfileData(prev => ({ ...prev, password: "" }))
             // Reload to reflect changes
             window.location.reload()
 
@@ -1053,6 +1054,7 @@ export default function ConfigurationPage() {
                                     <Input
                                         id="my-password"
                                         type="password"
+                                        autoComplete="new-password"
                                         placeholder="Dejar vacío para no cambiar"
                                         value={myProfileData.password}
                                         onChange={(e) => setMyProfileData({ ...myProfileData, password: e.target.value })}
