@@ -32,7 +32,7 @@ export function NotificationBell() {
     useEffect(() => {
         loadNotifications()
 
-        // Realtime subscription
+        // Realtime subscription — remove channel on error to stop reconnection flood
         const channel = supabase
             .channel('notifications_bell')
             .on('postgres_changes', {
@@ -41,17 +41,14 @@ export function NotificationBell() {
                 table: 'notifications'
             }, (payload) => {
                 const newNotif = payload.new as Notification
-                // Only if it belongs to current user (RLS should handle this but filter client side too just in case)
-                // Actually Realtime respects RLS if 'broadcast' is not used?
-                // No, standard postgres_changes sends all unless filtered by row level security?
-                // If RLS is enabled, realtime respects it? 
-                // YES, if the user is subscribed with auth token.
-                // Our supabase client handles auth.
-
                 setNotifications(prev => [newNotif, ...prev])
                 setUnreadCount(prev => prev + 1)
             })
-            .subscribe()
+            .subscribe((status) => {
+                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    supabase.removeChannel(channel)
+                }
+            })
 
         return () => { supabase.removeChannel(channel) }
     }, [])
