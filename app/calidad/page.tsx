@@ -235,8 +235,8 @@ export default function CalidadPage() {
                     batch_code: ncrRecord.lote_producto,
                     sucursal: ncrRecord.sucursal,
                     product_id: ncrRecord.codigo_producto,
-                    preparer_user_id: null, // To be assigned later or if we link preparer user but we dont have that link yet
-                    preparer_name: ncrRecord.nombre_preparador, // Store name at least
+                    preparer_user_id: null,
+                    nombre_preparador: ncrRecord.nombre_preparador,
                     defect_parameter: ncrParam,
                     severity: ncrSeverity,
                     defect_detail: ncrDetail,
