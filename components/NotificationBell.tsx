@@ -32,25 +32,9 @@ export function NotificationBell() {
     useEffect(() => {
         loadNotifications()
 
-        // Realtime subscription — remove channel on error to stop reconnection flood
-        const channel = supabase
-            .channel('notifications_bell')
-            .on('postgres_changes', {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'notifications'
-            }, (payload) => {
-                const newNotif = payload.new as Notification
-                setNotifications(prev => [newNotif, ...prev])
-                setUnreadCount(prev => prev + 1)
-            })
-            .subscribe((status) => {
-                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                    supabase.removeChannel(channel)
-                }
-            })
-
-        return () => { supabase.removeChannel(channel) }
+        // Poll every 30s instead of realtime — WebSocket (wss) not available via Kong
+        const interval = setInterval(loadNotifications, 30_000)
+        return () => clearInterval(interval)
     }, [])
 
     async function loadNotifications() {
