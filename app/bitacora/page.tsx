@@ -262,18 +262,45 @@ export default function BitacoraPage() {
                     .join('. ')
             }
 
-            const { error: insertError } = await supabase
+            const { data: insertedRecord, error: insertError } = await supabase
                 .from('bitacora_produccion_calidad')
                 .insert([recordToInsert])
+                .select()
+                .single()
 
             if (insertError) throw insertError
 
+            // Auto-create NCR when NO CONFORME
+            if (estado_calidad === 'NO CONFORME' && insertedRecord) {
+                const failedParams = evaluations
+                    .filter(e => e.status === 'error')
+                    .map(e => e.type)
+                    .join(', ')
+
+                const { error: ncrError } = await supabase.from('quality_ncr').insert({
+                    measurement_id: insertedRecord.id,
+                    batch_code: lotNumber,
+                    sucursal: formData.sucursal,
+                    product_id: formData.codigo_producto,
+                    preparer_user_id: null,
+                    nombre_preparador: formData.nombre_preparador,
+                    defect_parameter: failedParams,
+                    severity: 'MAYOR',
+                    defect_detail: recordToInsert.observaciones_calidad,
+                    liters_involved: parseNum(formData.tamano_lote) || 0,
+                    status: 'ABIERTO',
+                    author_user_id: user.id
+                })
+
+                if (ncrError) console.error('Error creating auto NCR:', ncrError.message)
+            }
+
             // Custom Toast based on Status
             if (estado_calidad === 'NO CONFORME') {
-                toast.error('⚠️ Producto No Conforme', {
-                    description: `Lote ${lotNumber} requiere revisión inmediata.`,
+                toast.error('⚠️ Producto No Conforme — NCR Abierto', {
+                    description: `Lote ${lotNumber} requiere revisión inmediata. Se abrió un caso NCR automáticamente.`,
                     duration: 8000,
-                    action: { label: 'Ver detalles', onClick: () => window.location.href = "/calidad" }
+                    action: { label: 'Ver NCRs', onClick: () => window.location.href = "/calidad" }
                 })
             } else if (estado_calidad === 'RETENER') {
                 toast.warning('⚠️ Producto en Tolerancia (Retener)', {
