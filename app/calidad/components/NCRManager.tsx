@@ -122,102 +122,13 @@ export function NCRManager() {
     useEffect(() => {
         fetchNCRs()
 
-        // Realtime subscription for updates
-        const channel = supabase
-            .channel('ncr_manager')
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'quality_ncr'
-            }, (payload) => {
-                const event = payload.eventType;
-                const newNcr = payload.new as any;
-                const oldNcr = payload.old as any;
+        // Poll every 30s — WebSocket (wss) not available via Kong
+        const interval = setInterval(() => {
+            fetchNCRs()
+            fetchStatusCounts()
+        }, 30_000)
 
-                const role = profileRef.current?.role?.toLowerCase() || '';
-                const isGlobalRole = ['admin', 'administrador', 'coordinador', 'gerente_calidad', 'director_operaciones'].includes(role);
-                const isMySucursal =
-                    newNcr?.sucursal?.toLowerCase() === profileRef.current?.sucursal?.toLowerCase() ||
-                    SUCURSAL_ACRONYMS[profileRef.current?.sucursal || ''] === newNcr?.sucursal;
-
-                const shouldNotify = isGlobalRole || isMySucursal;
-
-                if (shouldNotify && event === 'INSERT') {
-                    toast.info(`🚨 Nuevo NCR: ${newNcr.batch_code}`, {
-                        description: `Se ha reportado un problema en ${newNcr.sucursal}: ${newNcr.defect_parameter}`,
-                        action: {
-                            label: 'Ver',
-                            onClick: () => window.location.href = `/calidad/ncr/${newNcr.id}`
-                        }
-                    });
-                } else if (shouldNotify && event === 'UPDATE' && oldNcr && oldNcr.status !== newNcr.status) {
-                    toast.success(`🔄 Estado Actualizado: ${newNcr.batch_code}`, {
-                        description: `El estado ha cambiado de ${oldNcr.status} a ${newNcr.status}`,
-                        action: {
-                            label: 'Ver',
-                            onClick: () => window.location.href = `/calidad/ncr/${newNcr.id}`
-                        }
-                    });
-                }
-
-                fetchNCRs()
-                fetchStatusCounts()
-            })
-            .on('postgres_changes', {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'quality_ncr_comments'
-            }, (payload) => {
-                const newComment = payload.new as any;
-                if (newComment.author_user_id !== profileRef.current?.id) {
-                    const ncr = ncrsRef.current.find(n => n.id === newComment.ncr_id);
-                    if (ncr) {
-                        toast.info(`💬 Nuevo mensaje en lote ${ncr.batch_code}`, {
-                            description: newComment.message.substring(0, 50) + (newComment.message.length > 50 ? '...' : ''),
-                            action: {
-                                label: 'Ver',
-                                onClick: () => {
-                                    window.location.href = `/calidad/ncr/${newComment.ncr_id}`;
-                                }
-                            }
-                        });
-
-                        if ("Notification" in window && Notification.permission === "granted") {
-                            new Notification(`Nuevo mensaje en NCR: ${ncr.batch_code}`, {
-                                body: newComment.message.substring(0, 100),
-                                icon: '/favicon.ico'
-                            });
-                        }
-                    }
-                }
-                fetchNCRs()
-            })
-            .on('postgres_changes', {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'quality_disposition'
-            }, (payload) => {
-                const newDisp = payload.new as any;
-                const ncr = ncrsRef.current.find(n => n.id === newDisp.ncr_id);
-                if (ncr) {
-                    toast.success(`📋 Disposición Registrada: ${ncr.batch_code}`, {
-                        description: `Se ha determinado: ${newDisp.disposition_type}`,
-                        action: {
-                            label: 'Ver',
-                            onClick: () => window.location.href = `/calidad/ncr/${ncr.id}`
-                        }
-                    });
-                }
-                fetchNCRs()
-            })
-            .subscribe()
-
-        // Request notification permission
-        if ("Notification" in window && Notification.permission === "default") {
-            Notification.requestPermission();
-        }
-
-        return () => { supabase.removeChannel(channel) }
+        return () => clearInterval(interval)
     }, [statusFilter, sucursalFilter, productFilter, searchQuery, profile])
 
     async function fetchFilterOptions() {

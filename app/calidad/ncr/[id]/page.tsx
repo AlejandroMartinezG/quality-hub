@@ -81,58 +81,10 @@ export default function NCRDetailPage({ params }: NCRDetailProps) {
     useEffect(() => {
         fetchNCRDetail()
 
-        const channel = supabase
-            .channel(`ncr_detail_${params.id}`)
-            .on('postgres_changes', {
-                event: 'INSERT', // Only trigger on INSERT for notifications
-                schema: 'public',
-                table: 'quality_ncr_comments',
-                filter: `ncr_id=eq.${params.id}`
-            }, (payload) => {
-                const newComment = payload.new as any;
-                if (newComment.author_user_id !== profileRef.current?.id) {
-                    toast.info('💬 Nuevo comentario recibido');
-                }
-                fetchNCRDetail(true) // Silent refresh on new comment
-                markNotificationsAsRead()
-            })
-            .on('postgres_changes', {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'quality_ncr_comments',
-                filter: `ncr_id=eq.${params.id}`
-            }, () => {
-                fetchNCRDetail(true)
-                markNotificationsAsRead()
-            })
-            .on('postgres_changes', {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'quality_ncr',
-                filter: `id=eq.${params.id}`
-            }, (payload) => {
-                const oldNcr = payload.old as any;
-                const newNcr = payload.new as any;
-                if (oldNcr && oldNcr.status !== newNcr.status) {
-                    toast.success(`🔄 Estado actualizado a ${newNcr.status}`);
-                }
-                fetchNCRDetail()
-            })
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'quality_disposition',
-                filter: `ncr_id=eq.${params.id}`
-            }, (payload) => {
-                if (payload.eventType === 'INSERT') {
-                    toast.success('📋 Disposición registrada');
-                }
-                fetchNCRDetail(true) // Silent refresh on disposition
-                markNotificationsAsRead()
-            })
-            .subscribe()
+        // Poll every 30s — WebSocket (wss) not available via Kong
+        const interval = setInterval(() => fetchNCRDetail(true), 30_000)
 
-        return () => { supabase.removeChannel(channel) }
+        return () => clearInterval(interval)
     }, [params.id])
 
     useEffect(() => {
