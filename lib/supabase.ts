@@ -9,10 +9,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
-        // PKCE flow provides CSRF protection by default —
-        // the auth code is bound to a code_verifier that only
-        // the original client knows, preventing interception attacks.
-        flowType: 'pkce',
+        flowType: 'implicit',
         // Change storage key to reset potentially corrupted locks from development
         storageKey: 'qh_auth_token',
     },
