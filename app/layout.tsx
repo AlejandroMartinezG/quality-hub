@@ -5,6 +5,7 @@ import { AppShell } from "@/components/AppShell"
 
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/AuthProvider"
+import { ChunkErrorHandler } from "@/components/ChunkErrorHandler"
 import { Toaster } from "sonner"
 
 // CSP policy — static export can't use HTTP headers, so we use meta tags
@@ -54,6 +55,7 @@ export default function RootLayout({
                     disableTransitionOnChange
                 >
                     <AuthProvider>
+                        <ChunkErrorHandler />
                         <AppShell>{children}</AppShell>
                         <Toaster position="top-right" richColors />
                     </AuthProvider>
