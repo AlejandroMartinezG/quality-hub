@@ -71,6 +71,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 lastFetchedProfileId.current = userId
                 return profileData
             }
+
+            // No profile — invited user needs to complete setup
+            if (pathname !== '/auth/invite') {
+                router.push('/auth/invite')
+            }
             return null
         } catch (err) {
             console.error("Exception fetching profile:", err)
