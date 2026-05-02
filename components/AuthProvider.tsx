@@ -152,7 +152,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 lastFetchedProfileId.current = null
                 if (mounted) setLoading(false)
 
-                if (pathname !== '/login' && pathname !== '/auth/invite') {
+                const normalizedPath = pathname.replace(/\/$/, '')
+                if (normalizedPath !== '/login' && normalizedPath !== '/auth/invite') {
                     router.push('/login')
                 }
             }
