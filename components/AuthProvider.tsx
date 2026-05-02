@@ -114,7 +114,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                         setUser(data.session.user)
                         await fetchProfile(data.session.user.id)
                     } else {
-                        if (pathname !== '/login') {
+                        if (pathname !== '/login' && pathname !== '/auth/invite') {
                             router.push('/login')
                         }
                     }
@@ -149,7 +149,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 lastFetchedProfileId.current = null
                 if (mounted) setLoading(false)
 
-                if (pathname !== '/login') {
+                if (pathname !== '/login' && pathname !== '/auth/invite') {
                     router.push('/login')
                 }
             }
