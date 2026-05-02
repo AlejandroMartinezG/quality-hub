@@ -41,6 +41,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [session, setSession] = useState<Session | null>(null)
     const [loading, setLoading] = useState(true)
     const initialized = useRef(false)
+    const initFoundSession = useRef(false)
     const lastFetchedProfileId = useRef<string | null>(null)
     const router = useRouter()
     const pathname = usePathname()
@@ -72,21 +73,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 return profileData
             }
 
-            // No profile — invited user needs to complete setup
-            if (pathname !== '/auth/invite') {
-                router.push('/auth/invite')
-            }
+            // No profile — invited user, redirect to setup page
+            router.push('/auth/invite')
             return null
         } catch (err) {
             console.error("Exception fetching profile:", err)
             return null
         }
-    }, [])
+    }, [router])
 
     const refreshProfile = useCallback(async () => {
         const { data } = await supabase.auth.getSession()
         if (data?.session?.user) {
-            lastFetchedProfileId.current = null // force re-fetch
+            lastFetchedProfileId.current = null
             await fetchProfile(data.session.user.id)
         }
     }, [fetchProfile])
@@ -97,12 +96,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const initializeAuth = async () => {
             if (initialized.current) return
             initialized.current = true
-
-            // If there's an invite/magic-link token in the hash, let onAuthStateChange handle it
-            if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
-                if (mounted) setLoading(false)
-                return
-            }
 
             const safetyTimer = setTimeout(() => {
                 if (mounted) {
@@ -121,14 +114,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
                 if (mounted) {
                     if (data?.session) {
+                        initFoundSession.current = true
                         setSession(data.session)
                         setUser(data.session.user)
                         await fetchProfile(data.session.user.id)
-                    } else {
-                        if (pathname !== '/login' && pathname !== '/auth/invite') {
-                            router.push('/login')
-                        }
                     }
+                    // No session: don't redirect here — let onAuthStateChange handle it
                 }
             } catch (error) {
                 console.error("AuthProvider: Init exception:", error)
@@ -143,7 +134,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
             if (!mounted) return
 
-            if (event === 'INITIAL_SESSION' && initialized.current) return
+            // Only skip INITIAL_SESSION if initializeAuth already found and handled a session
+            if (event === 'INITIAL_SESSION' && initFoundSession.current) return
 
             console.log(`AuthProvider: Auth Event - ${event}`)
 
