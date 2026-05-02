@@ -37,16 +37,25 @@ export default function InvitePage() {
     })
 
     useEffect(() => {
-        const checkSession = async () => {
-            const { data } = await supabase.auth.getSession()
-            if (!data.session) {
-                router.push('/login')
-                return
+        // Check immediately in case session is already available
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session) {
+                setUserEmail(session.user.email ?? null)
+                setLoading(false)
             }
-            setUserEmail(data.session.user.email ?? null)
-            setLoading(false)
-        }
-        checkSession()
+        })
+
+        // Also listen for session arriving via PKCE exchange
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            if (session) {
+                setUserEmail(session.user.email ?? null)
+                setLoading(false)
+            } else if (!loading) {
+                router.push('/login')
+            }
+        })
+
+        return () => subscription.unsubscribe()
     }, [router])
 
     const handleSubmit = async (e: React.FormEvent) => {

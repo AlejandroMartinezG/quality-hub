@@ -21,24 +21,17 @@ export default function LoginPage() {
     })
 
     useEffect(() => {
-        const checkInviteSession = async () => {
-            const { data: { session } } = await supabase.auth.getSession()
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
             if (!session) return
-
             const { data: profile } = await supabase
                 .from('profiles')
                 .select('id')
                 .eq('id', session.user.id)
                 .single()
-
-            if (!profile) {
-                router.push('/auth/invite')
-            } else {
-                router.push('/')
-            }
-        }
-        checkInviteSession()
-    }, [])
+            router.push(profile ? '/' : '/auth/invite')
+        })
+        return () => subscription.unsubscribe()
+    }, [router])
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault()
