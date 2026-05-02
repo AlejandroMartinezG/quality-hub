@@ -98,6 +98,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (initialized.current) return
             initialized.current = true
 
+            // If there's an invite/magic-link token in the hash, let onAuthStateChange handle it
+            if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
+                if (mounted) setLoading(false)
+                return
+            }
+
             const safetyTimer = setTimeout(() => {
                 if (mounted) {
                     console.warn("AuthProvider: Safety timeout — forcing loading false")
