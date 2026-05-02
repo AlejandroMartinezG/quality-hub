@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2, Lock, User, Building2, Briefcase, ShieldCheck } from "lucide-react"
+import { Loader2, Lock, User, Building2, Briefcase, ShieldCheck, Mail, KeyRound } from "lucide-react"
 import { SUCURSALES } from "@/lib/production-constants"
 import { sanitizeText } from "@/lib/sanitize"
 
@@ -21,13 +21,16 @@ const ROLES = [
     { key: 'director_compras', name: 'Director de Compras' },
 ]
 
+type PageState = 'verifying' | 'otp' | 'setup'
+
 export default function InvitePage() {
-    const [loading, setLoading] = useState(true)
+    const [pageState, setPageState] = useState<PageState>('verifying')
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [userEmail, setUserEmail] = useState<string | null>(null)
     const router = useRouter()
 
+    const [otpData, setOtpData] = useState({ email: '', code: '' })
     const [formData, setFormData] = useState({
         full_name: "",
         role: "preparador",
@@ -37,28 +40,48 @@ export default function InvitePage() {
     })
 
     useEffect(() => {
-        // Check immediately in case session is already available
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (session) {
                 setUserEmail(session.user.email ?? null)
-                setLoading(false)
+                setPageState('setup')
+            } else {
+                setPageState('otp')
             }
         })
 
-        // Also listen for session arriving via PKCE exchange
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             if (session) {
                 setUserEmail(session.user.email ?? null)
-                setLoading(false)
-            } else if (!loading) {
-                router.push('/login')
+                setPageState('setup')
             }
         })
 
         return () => subscription.unsubscribe()
-    }, [router])
+    }, [])
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleOtpVerify = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setSubmitting(true)
+        setError(null)
+        try {
+            const { data, error } = await supabase.auth.verifyOtp({
+                email: otpData.email,
+                token: otpData.code,
+                type: 'invite'
+            })
+            if (error) throw error
+            if (data.session) {
+                setUserEmail(data.session.user.email ?? null)
+                setPageState('setup')
+            }
+        } catch (err: any) {
+            setError(err.message || "Código incorrecto o expirado")
+        } finally {
+            setSubmitting(false)
+        }
+    }
+
+    const handleSetup = async (e: React.FormEvent) => {
         e.preventDefault()
         if (formData.password !== formData.confirm_password) {
             setError("Las contraseñas no coinciden")
@@ -109,7 +132,7 @@ export default function InvitePage() {
         }
     }
 
-    if (loading) {
+    if (pageState === 'verifying') {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-blue-900" />
@@ -127,119 +150,166 @@ export default function InvitePage() {
                         </div>
                     </div>
                     <h2 className="text-3xl font-bold text-slate-900 dark:text-white">
-                        Configura tu cuenta
+                        {pageState === 'otp' ? 'Activar invitación' : 'Configura tu cuenta'}
                     </h2>
                     <p className="text-slate-600 dark:text-slate-400">
-                        Fuiste invitado como <strong>{userEmail}</strong>. Completa tu perfil para acceder al sistema.
+                        {pageState === 'otp'
+                            ? 'Ingresa tu correo y el código que recibiste en el email de invitación'
+                            : <>Fuiste invitado como <strong>{userEmail}</strong>. Completa tu perfil para acceder.</>
+                        }
                     </p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
-                    <div className="space-y-2">
-                        <Label htmlFor="full_name" className="text-slate-700 dark:text-slate-300 font-medium">
-                            Nombre Completo
-                        </Label>
-                        <div className="relative">
-                            <User className="absolute left-3 top-3.5 h-5 w-5 text-slate-400" />
-                            <Input
-                                id="full_name"
-                                placeholder="Juan Pérez"
-                                className="pl-11 h-12 bg-white dark:bg-slate-900"
-                                value={formData.full_name}
-                                onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                                required
-                            />
+                {pageState === 'otp' && (
+                    <form onSubmit={handleOtpVerify} className="space-y-5">
+                        <div className="space-y-2">
+                            <Label htmlFor="email" className="text-slate-700 dark:text-slate-300 font-medium">
+                                Correo electrónico
+                            </Label>
+                            <div className="relative">
+                                <Mail className="absolute left-3 top-3.5 h-5 w-5 text-slate-400" />
+                                <Input
+                                    id="email"
+                                    type="email"
+                                    placeholder="tu@correo.com"
+                                    className="pl-11 h-12 bg-white dark:bg-slate-900"
+                                    value={otpData.email}
+                                    onChange={(e) => setOtpData({ ...otpData, email: e.target.value })}
+                                    required
+                                />
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="role" className="text-slate-700 dark:text-slate-300 font-medium">
-                            Rol / Puesto
-                        </Label>
-                        <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
-                            <SelectTrigger id="role" className="h-12 bg-white dark:bg-slate-900">
-                                <Briefcase className="h-5 w-5 text-slate-400 mr-2" />
-                                <SelectValue placeholder="Selecciona tu rol" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {ROLES.map((role) => (
-                                    <SelectItem key={role.key} value={role.key}>{role.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="sucursal" className="text-slate-700 dark:text-slate-300 font-medium">
-                            Sucursal
-                        </Label>
-                        <Select value={formData.sucursal} onValueChange={(value) => setFormData({ ...formData, sucursal: value })}>
-                            <SelectTrigger id="sucursal" className="h-12 bg-white dark:bg-slate-900">
-                                <Building2 className="h-5 w-5 text-slate-400 mr-2" />
-                                <SelectValue placeholder="Selecciona tu sucursal" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {SUCURSALES.map((s) => (
-                                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="password" className="text-slate-700 dark:text-slate-300 font-medium">
-                            Nueva Contraseña
-                        </Label>
-                        <div className="relative">
-                            <Lock className="absolute left-3 top-3.5 h-5 w-5 text-slate-400" />
-                            <Input
-                                id="password"
-                                type="password"
-                                placeholder="Mínimo 8 caracteres"
-                                className="pl-11 h-12 bg-white dark:bg-slate-900"
-                                value={formData.password}
-                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                required
-                            />
+                        <div className="space-y-2">
+                            <Label htmlFor="code" className="text-slate-700 dark:text-slate-300 font-medium">
+                                Código de invitación
+                            </Label>
+                            <div className="relative">
+                                <KeyRound className="absolute left-3 top-3.5 h-5 w-5 text-slate-400" />
+                                <Input
+                                    id="code"
+                                    placeholder="Ej: 435071"
+                                    className="pl-11 h-12 bg-white dark:bg-slate-900 tracking-widest text-lg"
+                                    value={otpData.code}
+                                    onChange={(e) => setOtpData({ ...otpData, code: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <p className="text-xs text-slate-500">
+                                Encuéntralo en el correo de invitación donde dice "Como alternativa, introduzca el código"
+                            </p>
                         </div>
-                    </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="confirm_password" className="text-slate-700 dark:text-slate-300 font-medium">
-                            Confirmar Contraseña
-                        </Label>
-                        <div className="relative">
-                            <Lock className="absolute left-3 top-3.5 h-5 w-5 text-slate-400" />
-                            <Input
-                                id="confirm_password"
-                                type="password"
-                                placeholder="Repite tu contraseña"
-                                className="pl-11 h-12 bg-white dark:bg-slate-900"
-                                value={formData.confirm_password}
-                                onChange={(e) => setFormData({ ...formData, confirm_password: e.target.value })}
-                                required
-                            />
-                        </div>
-                    </div>
-
-                    {error && (
-                        <div className="p-4 rounded-lg text-sm font-medium bg-red-50 text-red-700 border border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800">
-                            {error}
-                        </div>
-                    )}
-
-                    <Button
-                        type="submit"
-                        className="w-full h-12 bg-blue-900 hover:bg-blue-800 text-white font-semibold shadow-lg"
-                        disabled={submitting}
-                    >
-                        {submitting ? (
-                            <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Configurando...</>
-                        ) : (
-                            "Activar mi cuenta"
+                        {error && (
+                            <div className="p-4 rounded-lg text-sm font-medium bg-red-50 text-red-700 border border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800">
+                                {error}
+                            </div>
                         )}
-                    </Button>
-                </form>
+
+                        <Button
+                            type="submit"
+                            className="w-full h-12 bg-blue-900 hover:bg-blue-800 text-white font-semibold shadow-lg"
+                            disabled={submitting}
+                        >
+                            {submitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Verificando...</> : "Verificar código"}
+                        </Button>
+                    </form>
+                )}
+
+                {pageState === 'setup' && (
+                    <form onSubmit={handleSetup} className="space-y-5">
+                        <div className="space-y-2">
+                            <Label htmlFor="full_name" className="text-slate-700 dark:text-slate-300 font-medium">Nombre Completo</Label>
+                            <div className="relative">
+                                <User className="absolute left-3 top-3.5 h-5 w-5 text-slate-400" />
+                                <Input
+                                    id="full_name"
+                                    placeholder="Juan Pérez"
+                                    className="pl-11 h-12 bg-white dark:bg-slate-900"
+                                    value={formData.full_name}
+                                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="role" className="text-slate-700 dark:text-slate-300 font-medium">Rol / Puesto</Label>
+                            <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
+                                <SelectTrigger id="role" className="h-12 bg-white dark:bg-slate-900">
+                                    <Briefcase className="h-5 w-5 text-slate-400 mr-2" />
+                                    <SelectValue placeholder="Selecciona tu rol" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {ROLES.map((role) => (
+                                        <SelectItem key={role.key} value={role.key}>{role.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="sucursal" className="text-slate-700 dark:text-slate-300 font-medium">Sucursal</Label>
+                            <Select value={formData.sucursal} onValueChange={(value) => setFormData({ ...formData, sucursal: value })}>
+                                <SelectTrigger id="sucursal" className="h-12 bg-white dark:bg-slate-900">
+                                    <Building2 className="h-5 w-5 text-slate-400 mr-2" />
+                                    <SelectValue placeholder="Selecciona tu sucursal" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {SUCURSALES.map((s) => (
+                                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="password" className="text-slate-700 dark:text-slate-300 font-medium">Nueva Contraseña</Label>
+                            <div className="relative">
+                                <Lock className="absolute left-3 top-3.5 h-5 w-5 text-slate-400" />
+                                <Input
+                                    id="password"
+                                    type="password"
+                                    placeholder="Mínimo 8 caracteres"
+                                    className="pl-11 h-12 bg-white dark:bg-slate-900"
+                                    value={formData.password}
+                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="confirm_password" className="text-slate-700 dark:text-slate-300 font-medium">Confirmar Contraseña</Label>
+                            <div className="relative">
+                                <Lock className="absolute left-3 top-3.5 h-5 w-5 text-slate-400" />
+                                <Input
+                                    id="confirm_password"
+                                    type="password"
+                                    placeholder="Repite tu contraseña"
+                                    className="pl-11 h-12 bg-white dark:bg-slate-900"
+                                    value={formData.confirm_password}
+                                    onChange={(e) => setFormData({ ...formData, confirm_password: e.target.value })}
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        {error && (
+                            <div className="p-4 rounded-lg text-sm font-medium bg-red-50 text-red-700 border border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800">
+                                {error}
+                            </div>
+                        )}
+
+                        <Button
+                            type="submit"
+                            className="w-full h-12 bg-blue-900 hover:bg-blue-800 text-white font-semibold shadow-lg"
+                            disabled={submitting}
+                        >
+                            {submitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Configurando...</> : "Activar mi cuenta"}
+                        </Button>
+                    </form>
+                )}
             </div>
         </div>
     )
