@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
@@ -19,6 +19,26 @@ export default function LoginPage() {
         email: "",
         password: "",
     })
+
+    useEffect(() => {
+        const checkInviteSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session) return
+
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('id', session.user.id)
+                .single()
+
+            if (!profile) {
+                router.push('/auth/invite')
+            } else {
+                router.push('/')
+            }
+        }
+        checkInviteSession()
+    }, [])
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault()
