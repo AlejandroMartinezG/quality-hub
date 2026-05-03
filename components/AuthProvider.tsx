@@ -47,6 +47,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const pathname = usePathname()
 
     const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
+        // On the invite page the user has no profile yet — don't interfere
+        if (pathname.replace(/\/$/, '') === '/auth/invite') return null
+
         try {
             const { data: profileData, error } = await supabase
                 .from('profiles')
@@ -80,7 +83,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             console.error("Exception fetching profile:", err)
             return null
         }
-    }, [router])
+    }, [router, pathname])
 
     const refreshProfile = useCallback(async () => {
         const { data } = await supabase.auth.getSession()
@@ -153,7 +156,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 if (mounted) setLoading(false)
 
                 const normalizedPath = pathname.replace(/\/$/, '')
-                if (normalizedPath !== '/login' && normalizedPath !== '/auth/invite') {
+                const hasAuthHash = typeof window !== 'undefined' &&
+                    window.location.hash.includes('access_token')
+
+                if (!hasAuthHash && normalizedPath !== '/login' && normalizedPath !== '/auth/invite') {
                     router.push('/login')
                 }
             }
