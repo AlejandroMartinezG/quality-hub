@@ -43,6 +43,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const initialized = useRef(false)
     const initFoundSession = useRef(false)
     const lastFetchedProfileId = useRef<string | null>(null)
+    // Captured at render time, before Supabase cleans the URL hash
+    const hadAuthHash = useRef(
+        typeof window !== 'undefined' && window.location.hash.includes('access_token')
+    )
     const router = useRouter()
     const pathname = usePathname()
 
@@ -146,6 +150,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setUser(currentSession?.user ?? null)
 
             if (currentSession) {
+                hadAuthHash.current = false
                 if (currentSession.user.id !== lastFetchedProfileId.current) {
                     await fetchProfile(currentSession.user.id)
                 }
@@ -156,10 +161,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 if (mounted) setLoading(false)
 
                 const normalizedPath = pathname.replace(/\/$/, '')
-                const hasAuthHash = typeof window !== 'undefined' &&
-                    window.location.hash.includes('access_token')
-
-                if (!hasAuthHash && normalizedPath !== '/login' && normalizedPath !== '/auth/invite') {
+                if (!hadAuthHash.current && normalizedPath !== '/login' && normalizedPath !== '/auth/invite') {
                     router.push('/login')
                 }
             }
