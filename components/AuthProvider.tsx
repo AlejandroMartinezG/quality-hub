@@ -174,18 +174,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }, [router, fetchProfile, pathname])
 
     const signOut = async () => {
-        console.log("AuthProvider: Cerrando sesión...")
         try {
-            const { error } = await supabase.auth.signOut()
-            if (error) throw error
+            await supabase.auth.signOut()
         } catch (e) {
             console.error("AuthProvider: Error al cerrar sesión:", e)
         } finally {
             setUser(null)
             setProfile(null)
             setSession(null)
+            lastFetchedProfileId.current = null
             router.push('/login')
-            router.refresh()
         }
     }
 

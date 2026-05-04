@@ -168,27 +168,30 @@ export default function UsuariosPage() {
         await fetchRolePermissions(newRole)
     }
 
+    const adminUpdate = async (userId: string, updates: Record<string, unknown>) => {
+        const { data: { session } } = await supabase.auth.getSession()
+        const res = await fetch('/api/admin/update-user', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session?.access_token}`,
+            },
+            body: JSON.stringify({ userId, ...updates }),
+        })
+        const result = await res.json()
+        if (!res.ok) throw new Error(result.error)
+    }
+
     const saveUserRole = async () => {
         if (!selectedProfile) return
-
         setSavingRole(true)
         try {
-            const { error } = await supabase
-                .from('profiles')
-                .update({
-                    role: selectedRole,
-                    sucursal: selectedSucursal,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', selectedProfile.id)
-
-            if (error) throw error
-
+            await adminUpdate(selectedProfile.id, { role: selectedRole, sucursal: selectedSucursal })
             toast.success("Rol y sucursal actualizados correctamente")
             setSelectedProfile(null)
             await fetchProfiles()
-        } catch (error) {
-            toast.error("Error al guardar el rol. Intenta de nuevo.")
+        } catch (error: any) {
+            toast.error(error.message || "Error al guardar el rol. Intenta de nuevo.")
         } finally {
             setSavingRole(false)
         }
@@ -197,20 +200,11 @@ export default function UsuariosPage() {
     const toggleApproval = async (profile: Profile) => {
         const newStatus = !profile.approved
         try {
-            const { error } = await supabase
-                .from('profiles')
-                .update({
-                    approved: newStatus,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', profile.id)
-
-            if (error) throw error
-
+            await adminUpdate(profile.id, { approved: newStatus })
             toast.success(newStatus ? `✅ ${profile.full_name || 'Usuario'} aprobado` : `❌ Acceso revocado para ${profile.full_name || 'Usuario'}`)
             await fetchProfiles()
-        } catch (error) {
-            toast.error("Error al cambiar el estado de aprobación. Intenta de nuevo.")
+        } catch (error: any) {
+            toast.error(error.message || "Error al cambiar el estado de aprobación.")
         }
     }
 

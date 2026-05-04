@@ -21,8 +21,8 @@ export default function LoginPage() {
     })
 
     useEffect(() => {
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-            if (!session) return
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (event !== 'SIGNED_IN' || !session) return
             const { data: profile } = await supabase
                 .from('profiles')
                 .select('id')
