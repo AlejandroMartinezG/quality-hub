@@ -41,8 +41,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [session, setSession] = useState<Session | null>(null)
     const [loading, setLoading] = useState(true)
     const initialized = useRef(false)
-    const initFoundSession = useRef(false)
     const lastFetchedProfileId = useRef<string | null>(null)
+    const fetchingProfile = useRef(false)
     // Captured at render time, before Supabase cleans the URL hash
     const hadAuthHash = useRef(
         typeof window !== 'undefined' && window.location.hash.includes('access_token')
@@ -55,6 +55,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
         // On the invite page the user has no profile yet — don't interfere
         if (pathnameRef.current.replace(/\/$/, '') === '/auth/invite') return null
+        // Prevent concurrent fetches for the same user
+        if (fetchingProfile.current) return null
+        fetchingProfile.current = true
 
         try {
             const { data: profileData, error } = await supabase
@@ -88,6 +91,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } catch (err) {
             console.error("Exception fetching profile:", err)
             return null
+        } finally {
+            fetchingProfile.current = false
         }
     }, [router])
 
@@ -123,12 +128,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
                 if (mounted) {
                     if (data?.session) {
-                        initFoundSession.current = true
                         setSession(data.session)
                         setUser(data.session.user)
                         await fetchProfile(data.session.user.id)
+                    } else {
+                        // No session at init — redirect to login unless on a public page
+                        const normalizedPath = pathnameRef.current.replace(/\/$/, '')
+                        if (!hadAuthHash.current && normalizedPath !== '/login' && normalizedPath !== '/auth/invite') {
+                            router.push('/login')
+                        }
                     }
-                    // No session: don't redirect here — let onAuthStateChange handle it
                 }
             } catch (error) {
                 console.error("AuthProvider: Init exception:", error)
@@ -143,8 +152,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
             if (!mounted) return
 
-            // Only skip INITIAL_SESSION if initializeAuth already found and handled a session
-            if (event === 'INITIAL_SESSION' && initFoundSession.current) return
+            // INITIAL_SESSION is fully handled by initializeAuth — skip it here always
+            if (event === 'INITIAL_SESSION') return
 
             console.log(`AuthProvider: Auth Event - ${event}`)
 
@@ -162,7 +171,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 lastFetchedProfileId.current = null
                 if (mounted) setLoading(false)
 
-                const normalizedPath = pathname.replace(/\/$/, '')
+                const normalizedPath = pathnameRef.current.replace(/\/$/, '')
                 if (!hadAuthHash.current && normalizedPath !== '/login' && normalizedPath !== '/auth/invite') {
                     router.push('/login')
                 }
