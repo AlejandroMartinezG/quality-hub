@@ -282,7 +282,7 @@ export default function BitacoraPage() {
                     batch_code: lotNumber,
                     sucursal: formData.sucursal,
                     product_id: formData.codigo_producto,
-                    preparer_user_id: null,
+                    preparer_user_id: user?.id ?? null,
                     nombre_preparador: formData.nombre_preparador,
                     defect_parameter: failedParams,
                     severity: 'MAYOR',

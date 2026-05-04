@@ -189,12 +189,15 @@ export function NCRManager() {
                 // Enforce sucursal filter
                 const profileAny = profile as any;
                 const userRole = (profileAny?.role || profileAny?.rol || '').toLowerCase();
+                const isGlobalRole = ['admin', 'gerente_calidad', 'coordinador', 'director_operaciones'].includes(userRole);
                 const isManager = ['gerente_sucursal', 'gerente', 'sucursal'].includes(userRole);
 
                 if (isManager && profileAny?.sucursal && profileAny.sucursal.trim() !== '') {
                     query = query.eq('sucursal', profileAny.sucursal.trim())
-                } else if (sucursalFilter !== 'ALL' && sucursalFilter) {
+                } else if (isGlobalRole && sucursalFilter !== 'ALL' && sucursalFilter) {
                     query = query.eq('sucursal', sucursalFilter.trim())
+                } else if (!isGlobalRole && !isManager && profileAny?.sucursal && profileAny.sucursal.trim() !== '') {
+                    query = query.eq('sucursal', profileAny.sucursal.trim())
                 }
 
                 if (productFilter !== 'ALL') query = query.eq('product_id', productFilter)
@@ -238,9 +241,13 @@ export function NCRManager() {
 
             // Security: Enforce branch lock for managers (dual role check)
             const userRole = (profileAny?.role || profileAny?.rol || '').toLowerCase();
+            const isGlobalRole = ['admin', 'gerente_calidad', 'coordinador', 'director_operaciones'].includes(userRole);
             const isManager = ['gerente_sucursal', 'gerente', 'sucursal'].includes(userRole);
 
             if (isManager && profileAny?.sucursal && typeof profileAny.sucursal === 'string' && profileAny.sucursal.trim() !== '') {
+                effectiveSucursal = profileAny.sucursal.trim();
+            } else if (!isGlobalRole && !isManager && profileAny?.sucursal && typeof profileAny.sucursal === 'string' && profileAny.sucursal.trim() !== '') {
+                // Any other role with a sucursal assigned sees only their branch
                 effectiveSucursal = profileAny.sucursal.trim();
             }
 
