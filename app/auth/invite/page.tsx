@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2, Lock, ShieldCheck, Mail, KeyRound } from "lucide-react"
+import { Loader2, Lock, ShieldCheck, Mail, KeyRound, User, Building2 } from "lucide-react"
 
 type PageState = 'verifying' | 'otp' | 'setup'
 
@@ -15,11 +15,23 @@ export default function InvitePage() {
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [userEmail, setUserEmail] = useState<string | null>(null)
+    const [userSucursal, setUserSucursal] = useState<string | null>(null)
     const router = useRouter()
 
     const [otpData, setOtpData] = useState({ email: '', code: '' })
+    const [fullName, setFullName] = useState('')
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
+
+    const loadProfileData = async (userId: string) => {
+        const { data } = await supabase
+            .from('profiles')
+            .select('full_name, sucursal')
+            .eq('id', userId)
+            .single()
+        if (data?.sucursal) setUserSucursal(data.sucursal)
+        if (data?.full_name) setFullName(data.full_name)
+    }
 
     useEffect(() => {
         const hash = window.location.hash
@@ -32,6 +44,7 @@ export default function InvitePage() {
                     .then(({ data, error }) => {
                         if (!error && data.session) {
                             setUserEmail(data.session.user.email ?? null)
+                            loadProfileData(data.session.user.id)
                             setPageState('setup')
                             window.history.replaceState(null, '', window.location.pathname)
                         } else {
@@ -45,6 +58,7 @@ export default function InvitePage() {
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (session) {
                 setUserEmail(session.user.email ?? null)
+                loadProfileData(session.user.id)
                 setPageState('setup')
             } else {
                 setPageState('otp')
@@ -54,6 +68,7 @@ export default function InvitePage() {
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             if (session) {
                 setUserEmail(session.user.email ?? null)
+                loadProfileData(session.user.id)
                 setPageState('setup')
             }
         })
@@ -73,6 +88,7 @@ export default function InvitePage() {
             if (error) throw error
             if (data.session) {
                 setUserEmail(data.session.user.email ?? null)
+                await loadProfileData(data.session.user.id)
                 setPageState('setup')
             }
         } catch (err: any) {
@@ -84,6 +100,10 @@ export default function InvitePage() {
 
     const handleSetup = async (e: React.FormEvent) => {
         e.preventDefault()
+        if (!fullName.trim()) {
+            setError("Ingresa tu nombre completo")
+            return
+        }
         if (password !== confirmPassword) {
             setError("Las contraseñas no coinciden")
             return
@@ -95,11 +115,20 @@ export default function InvitePage() {
         setSubmitting(true)
         setError(null)
         try {
-            const { error } = await supabase.auth.updateUser({ password })
-            if (error) throw error
+            const { error: pwError } = await supabase.auth.updateUser({ password })
+            if (pwError) throw pwError
+
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session?.user) {
+                await supabase
+                    .from('profiles')
+                    .update({ full_name: fullName.trim(), updated_at: new Date().toISOString() })
+                    .eq('id', session.user.id)
+            }
+
             router.push('/')
         } catch (err: any) {
-            setError(err.message || "Error al configurar la contraseña")
+            setError(err.message || "Error al configurar la cuenta")
         } finally {
             setSubmitting(false)
         }
@@ -123,12 +152,12 @@ export default function InvitePage() {
                         </div>
                     </div>
                     <h2 className="text-3xl font-bold text-slate-900 dark:text-white">
-                        {pageState === 'otp' ? 'Activar invitación' : 'Configura tu contraseña'}
+                        {pageState === 'otp' ? 'Activar invitación' : 'Configura tu cuenta'}
                     </h2>
                     <p className="text-slate-600 dark:text-slate-400">
                         {pageState === 'otp'
                             ? 'Ingresa tu correo y el código del email de invitación'
-                            : <>Bienvenido, <strong>{userEmail}</strong>. Establece una contraseña para acceder.</>
+                            : <>Bienvenido, <strong>{userEmail}</strong>. Completa tu perfil para acceder.</>
                         }
                     </p>
                 </div>
@@ -180,6 +209,33 @@ export default function InvitePage() {
 
                 {pageState === 'setup' && (
                     <form onSubmit={handleSetup} className="space-y-5">
+                        <div className="space-y-2">
+                            <Label htmlFor="fullname">Nombre completo</Label>
+                            <div className="relative">
+                                <User className="absolute left-3 top-3.5 h-5 w-5 text-slate-400" />
+                                <Input
+                                    id="fullname"
+                                    type="text"
+                                    placeholder="Tu nombre completo"
+                                    className="pl-11 h-12 bg-white dark:bg-slate-900"
+                                    value={fullName}
+                                    onChange={e => setFullName(e.target.value)}
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        {userSucursal && (
+                            <div className="space-y-2">
+                                <Label>Sucursal asignada</Label>
+                                <div className="flex items-center gap-3 h-12 px-4 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                    <Building2 className="h-5 w-5 text-slate-400 shrink-0" />
+                                    <span className="font-medium">{userSucursal}</span>
+                                    <span className="text-xs text-slate-400 ml-auto">Asignada por el administrador</span>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="space-y-2">
                             <Label htmlFor="password">Nueva contraseña</Label>
                             <div className="relative">

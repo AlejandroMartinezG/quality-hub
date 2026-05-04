@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
         const body = await request.json()
         const { email, full_name, role, sucursal } = body
 
-        if (!email || !full_name || !role || !sucursal) {
+        if (!email || !role || !sucursal) {
             return NextResponse.json({ error: 'Faltan datos requeridos' }, { status: 400 })
         }
 
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
             email,
             {
                 redirectTo: 'https://calidadginez.tech/auth/invite/',
-                data: { full_name, role, sucursal },
+                data: { full_name: full_name || '', role, sucursal },
             }
         )
 
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
             .from('profiles')
             .upsert({
                 id: inviteData.user.id,
-                full_name: sanitizeText(full_name.trim()),
+                full_name: full_name ? sanitizeText(full_name.trim()) : '',
                 role,
                 sucursal,
                 approved: true,

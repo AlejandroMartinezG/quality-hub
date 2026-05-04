@@ -43,6 +43,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const initialized = useRef(false)
     const lastFetchedProfileId = useRef<string | null>(null)
     const fetchingProfile = useRef(false)
+    const lastFetchTime = useRef<number>(0)
     // Captured at render time, before Supabase cleans the URL hash
     const hadAuthHash = useRef(
         typeof window !== 'undefined' && window.location.hash.includes('access_token')
@@ -82,6 +83,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 }
                 setProfile(profileData)
                 lastFetchedProfileId.current = userId
+                lastFetchTime.current = Date.now()
                 return profileData
             }
 
@@ -183,6 +185,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             subscription.unsubscribe()
         }
     }, [router, fetchProfile])
+
+    // On every navigation: re-fetch profile if it's missing or stale (> 60s)
+    // This catches the post-invite case (profile was null on /auth/invite) and admin changes
+    useEffect(() => {
+        if (!user || loading) return
+        const isStale = !profile || Date.now() - lastFetchTime.current > 60_000
+        if (isStale && !fetchingProfile.current) {
+            fetchProfile(user.id)
+        }
+    }, [pathname]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const signOut = async () => {
         try {

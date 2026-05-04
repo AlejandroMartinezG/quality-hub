@@ -278,7 +278,7 @@ export default function UsuariosPage() {
                                 Invitar Nuevo Usuario
                             </DialogTitle>
                             <DialogDescription>
-                                Se enviará un correo de invitación. El usuario solo necesitará configurar su contraseña.
+                                Se enviará un correo de invitación. El usuario completará su nombre y contraseña al activar su cuenta.
                             </DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleInvite} className="space-y-4 mt-2">
@@ -294,13 +294,12 @@ export default function UsuariosPage() {
                                 />
                             </div>
                             <div className="space-y-1">
-                                <Label htmlFor="invite-name">Nombre completo</Label>
+                                <Label htmlFor="invite-name">Nombre completo <span className="text-slate-400 font-normal">(opcional)</span></Label>
                                 <Input
                                     id="invite-name"
-                                    placeholder="Juan Pérez"
+                                    placeholder="El usuario lo completará al activar su cuenta"
                                     value={inviteForm.full_name}
                                     onChange={e => setInviteForm({ ...inviteForm, full_name: e.target.value })}
-                                    required
                                 />
                             </div>
                             <div className="space-y-1">
