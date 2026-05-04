@@ -26,7 +26,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Loader2, Shield, Users, Search, Edit, Save, X, Check, Building2, UserCheck, UserX, Clock } from "lucide-react"
+import { Loader2, Shield, Users, Search, Edit, Save, X, Check, Building2, UserCheck, UserX, Clock, UserPlus, Mail } from "lucide-react"
 import { toast } from "sonner"
 import { SUCURSALES } from "@/lib/production-constants"
 
@@ -83,6 +83,11 @@ export default function UsuariosPage() {
     const [rolePermissions, setRolePermissions] = useState<ModuleAccess[]>([])
     const [savingRole, setSavingRole] = useState(false)
     const [showPendingOnly, setShowPendingOnly] = useState(false)
+    const [inviteOpen, setInviteOpen] = useState(false)
+    const [inviting, setInviting] = useState(false)
+    const [inviteForm, setInviteForm] = useState({
+        email: '', full_name: '', role: 'preparador', sucursal: ''
+    })
 
     // Permissions check
     useEffect(() => {
@@ -209,6 +214,32 @@ export default function UsuariosPage() {
         }
     }
 
+    const handleInvite = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setInviting(true)
+        try {
+            const { data: { session } } = await supabase.auth.getSession()
+            const res = await fetch('/api/admin/invite-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token}`,
+                },
+                body: JSON.stringify(inviteForm),
+            })
+            const result = await res.json()
+            if (!res.ok) throw new Error(result.error)
+            toast.success(`Invitación enviada a ${inviteForm.email}`)
+            setInviteOpen(false)
+            setInviteForm({ email: '', full_name: '', role: 'preparador', sucursal: '' })
+            await fetchProfiles()
+        } catch (err: any) {
+            toast.error(err.message || 'Error al enviar invitación')
+        } finally {
+            setInviting(false)
+        }
+    }
+
     const pendingCount = profiles.filter(p => !p.approved).length
 
     const filteredProfiles = profiles
@@ -229,14 +260,92 @@ export default function UsuariosPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                    <Users className="h-8 w-8" />
-                    Gestión de Usuarios
-                </h1>
-                <p className="text-slate-500 dark:text-slate-400 mt-1">
-                    Administra los roles, sucursales y aprobación de cada usuario
-                </p>
+            <div className="flex items-start justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <Users className="h-8 w-8" />
+                        Gestión de Usuarios
+                    </h1>
+                    <p className="text-slate-500 dark:text-slate-400 mt-1">
+                        Administra los roles, sucursales y aprobación de cada usuario
+                    </p>
+                </div>
+                <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+                    <DialogTrigger asChild>
+                        <Button className="bg-blue-900 hover:bg-blue-800">
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            Invitar Usuario
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md">
+                        <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2">
+                                <Mail className="h-5 w-5" />
+                                Invitar Nuevo Usuario
+                            </DialogTitle>
+                            <DialogDescription>
+                                Se enviará un correo de invitación. El usuario solo necesitará configurar su contraseña.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleInvite} className="space-y-4 mt-2">
+                            <div className="space-y-1">
+                                <Label htmlFor="invite-email">Correo electrónico</Label>
+                                <Input
+                                    id="invite-email"
+                                    type="email"
+                                    placeholder="usuario@ejemplo.com"
+                                    value={inviteForm.email}
+                                    onChange={e => setInviteForm({ ...inviteForm, email: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <Label htmlFor="invite-name">Nombre completo</Label>
+                                <Input
+                                    id="invite-name"
+                                    placeholder="Juan Pérez"
+                                    value={inviteForm.full_name}
+                                    onChange={e => setInviteForm({ ...inviteForm, full_name: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <Label htmlFor="invite-role">Rol</Label>
+                                <Select value={inviteForm.role} onValueChange={v => setInviteForm({ ...inviteForm, role: v })}>
+                                    <SelectTrigger id="invite-role">
+                                        <SelectValue placeholder="Selecciona un rol" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {roles.map(r => (
+                                            <SelectItem key={r.role_key} value={r.role_key}>{r.role_name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-1">
+                                <Label htmlFor="invite-sucursal">Sucursal</Label>
+                                <Select value={inviteForm.sucursal} onValueChange={v => setInviteForm({ ...inviteForm, sucursal: v })}>
+                                    <SelectTrigger id="invite-sucursal">
+                                        <SelectValue placeholder="Selecciona una sucursal" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {SUCURSALES.map(s => (
+                                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="flex justify-end gap-2 pt-2 border-t">
+                                <Button type="button" variant="outline" onClick={() => setInviteOpen(false)}>
+                                    Cancelar
+                                </Button>
+                                <Button type="submit" disabled={inviting} className="bg-blue-900 hover:bg-blue-800">
+                                    {inviting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Enviando...</> : <><Mail className="h-4 w-4 mr-2" />Enviar invitación</>}
+                                </Button>
+                            </div>
+                        </form>
+                    </DialogContent>
+                </Dialog>
             </div>
 
             {/* Pending Users Alert */}
