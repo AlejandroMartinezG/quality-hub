@@ -79,11 +79,20 @@ export function NotificationBell() {
     }
 
     const handleNotificationClick = (notif: Notification) => {
-        if (!notif.read) markAsRead(notif.id)
-        setOpen(false) // Close popover
-        if (notif.link) {
-            router.push(notif.link)
+        setOpen(false)
+
+        if (notif.type === 'CHAT_CALIDAD') {
+            // Navigate using metadata so we always land at the right chat,
+            // regardless of the stored link. Don't mark as read here —
+            // the chat opening in /calidad marks it read so the badge stays
+            // visible until the user actually opens the conversation.
+            const mid = notif.metadata?.measurement_id
+            router.push(mid ? `/calidad?chat=${mid}` : '/calidad')
+            return
         }
+
+        if (!notif.read) markAsRead(notif.id)
+        if (notif.link) router.push(notif.link)
     }
 
     return (

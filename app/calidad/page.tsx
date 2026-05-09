@@ -291,8 +291,7 @@ export default function CalidadPage() {
     // Auto-open chat when navigating from a notification link (?chat=<measurement_id>)
     useEffect(() => {
         if (loading || records.length === 0 || chatOpen) return
-        const params = new URLSearchParams(window.location.search)
-        const chatMid = params.get('chat')
+        const chatMid = new URLSearchParams(window.location.search).get('chat')
         if (!chatMid) return
         const record = records.find(r => String(r.id) === chatMid)
         if (record) {
