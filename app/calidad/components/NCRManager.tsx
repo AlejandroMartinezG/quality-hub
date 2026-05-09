@@ -322,7 +322,7 @@ export function NCRManager() {
                 }
             }
 
-            setNcrs(ncrData)
+            setNcrs(ncrData.filter((n: any) => n.status !== 'NOTA'))
             fetchStatusCounts()
         } catch (error: any) {
             console.error('Error fetching NCRs:', error)

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/AuthProvider"
 import { Breadcrumbs } from "@/components/Breadcrumbs"
@@ -31,7 +31,9 @@ import {
     X,
     ClipboardList,
     Package,
-    AlertTriangle
+    AlertTriangle,
+    MessageSquare,
+    Send
 } from "lucide-react"
 import {
     Dialog,
@@ -105,6 +107,18 @@ export default function CalidadPage() {
     // Lifted State for NCR View Mode & Tabs
     const [activeTab, setActiveTab] = useState(defaultTab)
 
+    const isNcrAllowed = ['admin', 'gerente_calidad'].includes(profile?.role?.toLowerCase() || '')
+
+    // Chat State
+    const [chatOpen, setChatOpen] = useState(false)
+    const [chatRecord, setChatRecord] = useState<BitacoraRecord | null>(null)
+    const [chatNcrId, setChatNcrId] = useState<number | null>(null)
+    const [chatMessages, setChatMessages] = useState<any[]>([])
+    const [chatLoading, setChatLoading] = useState(false)
+    const [newChatMsg, setNewChatMsg] = useState('')
+    const [sendingChat, setSendingChat] = useState(false)
+    const chatEndRef = useRef<HTMLDivElement>(null)
+
     // Permissions check
     useEffect(() => {
         if (!authLoading && profile) {
@@ -118,6 +132,13 @@ export default function CalidadPage() {
             }
         }
     }, [profile, authLoading, router])
+
+    // Force non-NCR roles to history tab
+    useEffect(() => {
+        if (!authLoading && profile && !isNcrAllowed && activeTab === 'ncr') {
+            setActiveTab('history')
+        }
+    }, [profile, authLoading, isNcrAllowed, activeTab])
 
     useEffect(() => {
         if (user && !authLoading) {
@@ -262,6 +283,88 @@ export default function CalidadPage() {
         }
     }
 
+    const fetchChatMessages = async (ncrId: number) => {
+        const { data } = await supabase
+            .from('quality_ncr_comments')
+            .select('id, ncr_id, author_user_id, message, created_at, profiles(full_name)')
+            .eq('ncr_id', ncrId)
+            .order('created_at', { ascending: true })
+        setChatMessages(data || [])
+    }
+
+    const openChat = async (record: BitacoraRecord) => {
+        setChatRecord(record)
+        setChatOpen(true)
+        setChatLoading(true)
+        setChatMessages([])
+        setChatNcrId(null)
+
+        const { data: existing } = await supabase
+            .from('quality_ncr')
+            .select('id, status')
+            .eq('measurement_id', record.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+
+        let ncrId: number | null = null
+
+        if (existing) {
+            ncrId = existing.id
+        } else {
+            const { data: created } = await supabase
+                .from('quality_ncr')
+                .insert({
+                    measurement_id: record.id,
+                    batch_code: record.lote_producto,
+                    sucursal: record.sucursal,
+                    product_id: record.codigo_producto,
+                    preparer_user_id: user?.id ?? null,
+                    nombre_preparador: record.nombre_preparador,
+                    defect_parameter: 'NOTA',
+                    severity: 'MENOR',
+                    defect_detail: '',
+                    liters_involved: 0,
+                    status: 'NOTA',
+                    author_user_id: profile?.id,
+                })
+                .select()
+                .single()
+            if (created) ncrId = created.id
+        }
+
+        setChatNcrId(ncrId)
+        if (ncrId) await fetchChatMessages(ncrId)
+        setChatLoading(false)
+    }
+
+    const sendChatMessage = async () => {
+        if (!newChatMsg.trim() || !chatNcrId || !profile) return
+        setSendingChat(true)
+        try {
+            const { error } = await supabase
+                .from('quality_ncr_comments')
+                .insert({
+                    ncr_id: chatNcrId,
+                    author_user_id: profile.id,
+                    message: newChatMsg.trim(),
+                    visibility: 'ALL',
+                })
+            if (error) throw error
+            setNewChatMsg('')
+            await fetchChatMessages(chatNcrId)
+        } catch {
+            toast.error('Error al enviar mensaje')
+        } finally {
+            setSendingChat(false)
+        }
+    }
+
+    // Auto-scroll chat to bottom on new messages
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }, [chatMessages])
+
     const getStatusInfo = (record: BitacoraRecord) => {
         let status: 'success' | 'warning' | 'error' = 'success'
 
@@ -339,7 +442,9 @@ export default function CalidadPage() {
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
                 <div className="flex flex-col md:flex-row justify-between items-end gap-4">
                     <TabsList className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-                        <TabsTrigger value="ncr" className="rounded-lg px-4 py-2">Gestión de NCRs</TabsTrigger>
+                        {isNcrAllowed && (
+                            <TabsTrigger value="ncr" className="rounded-lg px-4 py-2">Gestión de NCRs</TabsTrigger>
+                        )}
                         <TabsTrigger value="history" className="rounded-lg px-4 py-2">Historial de Mediciones</TabsTrigger>
                     </TabsList>
                 </div>
@@ -564,6 +669,7 @@ export default function CalidadPage() {
                                                     <TableHead className="text-center text-white font-bold text-sm">% Sólidos (Avg)</TableHead>
                                                     <TableHead className="text-white font-bold text-sm">Estado</TableHead>
                                                     <TableHead className="text-center text-white font-bold text-sm">Apariencia</TableHead>
+                                                    <TableHead className="text-center text-white font-bold text-sm">Chat</TableHead>
                                                     {profile?.is_admin ? (
                                                         <>
                                                             <TableHead className="text-right text-white font-bold text-sm">Fecha</TableHead>
@@ -652,6 +758,17 @@ export default function CalidadPage() {
                                                                         )}
                                                                     </div>
                                                                 </TableCell>
+                                                                <TableCell className="text-center">
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                                                        title="Abrir chat"
+                                                                        onClick={() => openChat(record)}
+                                                                    >
+                                                                        <MessageSquare className="h-4 w-4" />
+                                                                    </Button>
+                                                                </TableCell>
                                                                 <TableCell className="text-right text-sm text-muted-foreground dark:text-slate-400">
                                                                     {new Date(record.fecha_fabricacion).toLocaleDateString()}
                                                                 </TableCell>
@@ -696,7 +813,7 @@ export default function CalidadPage() {
                                                     })
                                                 ) : (
                                                     <TableRow>
-                                                        <TableCell colSpan={profile?.is_admin ? 9 : 8} className="h-24 text-center text-muted-foreground">
+                                                        <TableCell colSpan={profile?.is_admin ? 10 : 8} className="h-24 text-center text-muted-foreground">
                                                             No se encontraron registros.
                                                         </TableCell>
                                                     </TableRow>
@@ -742,16 +859,21 @@ export default function CalidadPage() {
                                                                     >
                                                                         {status === 'success' ? 'CONFORME' : status === 'warning' ? 'SEMI' : 'NO CONF.'}
                                                                     </Badge>
-                                                                    {profile?.is_admin && (
-                                                                        <div className="flex gap-1 mt-1">
-                                                                            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => { setEditingRecord(record); setIsEditDialogOpen(true); }}>
-                                                                                <Edit2 className="h-3.5 w-3.5 text-blue-600" />
-                                                                            </Button>
-                                                                            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => requestDelete(record.id, record.lote_producto)}>
-                                                                                <Trash2 className="h-3.5 w-3.5 text-red-600" />
-                                                                            </Button>
-                                                                        </div>
-                                                                    )}
+                                                                    <div className="flex gap-1 mt-1">
+                                                                        <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => openChat(record)} title="Abrir chat">
+                                                                            <MessageSquare className="h-3.5 w-3.5 text-blue-600" />
+                                                                        </Button>
+                                                                        {profile?.is_admin && (
+                                                                            <>
+                                                                                <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => { setEditingRecord(record); setIsEditDialogOpen(true); }}>
+                                                                                    <Edit2 className="h-3.5 w-3.5 text-blue-600" />
+                                                                                </Button>
+                                                                                <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => requestDelete(record.id, record.lote_producto)}>
+                                                                                    <Trash2 className="h-3.5 w-3.5 text-red-600" />
+                                                                                </Button>
+                                                                            </>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
                                                             </div>
 
@@ -796,9 +918,11 @@ export default function CalidadPage() {
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="ncr">
-                    <NCRManager />
-                </TabsContent>
+                {isNcrAllowed && (
+                    <TabsContent value="ncr">
+                        <NCRManager />
+                    </TabsContent>
+                )}
             </Tabs>
 
             {/* Modal de Edición */}
@@ -865,6 +989,80 @@ export default function CalidadPage() {
                 </DialogContent>
             </Dialog>
 
+
+            {/* Chat Dialog */}
+            <Dialog open={chatOpen} onOpenChange={setChatOpen}>
+                <DialogContent className="sm:max-w-[480px] sm:rounded-[2rem] flex flex-col" style={{ height: '600px' }}>
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <MessageSquare className="h-5 w-5 text-blue-600" />
+                            Chat — {chatRecord?.lote_producto}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {chatRecord?.codigo_producto} · {chatRecord?.sucursal}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex-1 overflow-y-auto space-y-3 py-2 pr-1 min-h-0">
+                        {chatLoading ? (
+                            <div className="flex items-center justify-center h-full">
+                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                            </div>
+                        ) : chatMessages.length === 0 ? (
+                            <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+                                Sin mensajes aún. ¡Sé el primero en escribir!
+                            </div>
+                        ) : (
+                            chatMessages.map((msg: any) => {
+                                const isMe = msg.author_user_id === profile?.id
+                                return (
+                                    <div key={msg.id} className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
+                                        <span className="text-[10px] text-muted-foreground mb-0.5 px-1">
+                                            {(msg.profiles as any)?.full_name || 'Usuario'}
+                                        </span>
+                                        <div className={cn(
+                                            "max-w-[80%] rounded-2xl px-3 py-2 text-sm",
+                                            isMe
+                                                ? "bg-blue-600 text-white rounded-br-sm"
+                                                : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-bl-sm"
+                                        )}>
+                                            {msg.message}
+                                        </div>
+                                        <span className="text-[9px] text-muted-foreground mt-0.5 px-1">
+                                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    </div>
+                                )
+                            })
+                        )}
+                        <div ref={chatEndRef} />
+                    </div>
+                    <div className="flex gap-2 pt-2 border-t">
+                        <Input
+                            placeholder="Escribe un mensaje..."
+                            value={newChatMsg}
+                            onChange={(e) => setNewChatMsg(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault()
+                                    sendChatMessage()
+                                }
+                            }}
+                            className="flex-1 rounded-xl"
+                            disabled={sendingChat || chatLoading}
+                        />
+                        <Button
+                            size="icon"
+                            onClick={sendChatMessage}
+                            disabled={sendingChat || !newChatMsg.trim() || chatLoading}
+                            className="rounded-xl bg-blue-600 hover:bg-blue-700"
+                        >
+                            {sendingChat
+                                ? <Loader2 className="h-4 w-4 animate-spin" />
+                                : <Send className="h-4 w-4" />}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             {/* Dialogo CREAR NCR */}
             <Dialog open={isNcrDialogOpen} onOpenChange={setIsNcrDialogOpen}>

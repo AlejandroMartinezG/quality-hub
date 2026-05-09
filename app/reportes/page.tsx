@@ -73,6 +73,7 @@ export default function ReportesPage() {
     const isPreparador = role === 'preparador'
     const isGerente = role === 'gerente_sucursal' || role === 'gerente'
     const isGlobalRole = role === 'admin' || role === 'gerente_calidad' || role === 'coordinador'
+    const isSpyAllowed = role === 'admin' || role === 'gerente_calidad'
 
     // Filters
     const [selectedSucursal, setSelectedSucursal] = useState("all")
@@ -791,15 +792,21 @@ export default function ReportesPage() {
                 </div>
             ) : (
                 <Tabs defaultValue={(isPreparador || isGerente) ? "calidad" : "comercial"} className="space-y-6">
-                    <TabsList className={`grid w-full ${(isPreparador || isGerente) ? 'grid-cols-2 max-w-[400px]' : 'grid-cols-3 max-w-[600px]'}`}>
+                    <TabsList className={`grid w-full ${
+                        (isPreparador || isGerente) ? 'grid-cols-1 max-w-[200px]'
+                        : isSpyAllowed ? 'grid-cols-3 max-w-[600px]'
+                        : 'grid-cols-2 max-w-[400px]'
+                    }`}>
                         {(!isPreparador && !isGerente) && <TabsTrigger value="comercial">Análisis Comercial</TabsTrigger>}
                         <TabsTrigger value="calidad">First Time Quality</TabsTrigger>
-                        <TabsTrigger value="spy">SPY (Yield)</TabsTrigger>
+                        {isSpyAllowed && <TabsTrigger value="spy">SPY (Yield)</TabsTrigger>}
                     </TabsList>
 
-                    <TabsContent value="spy" className="space-y-6">
-                        <SPYReportPage />
-                    </TabsContent>
+                    {isSpyAllowed && (
+                        <TabsContent value="spy" className="space-y-6">
+                            <SPYReportPage />
+                        </TabsContent>
+                    )}
 
                     <TabsContent value="calidad" className="space-y-6">
                         {/* Print Button */}
