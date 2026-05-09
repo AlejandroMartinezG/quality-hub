@@ -161,7 +161,23 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
--- ── 2. RPC: unread chat measurements (SECURITY DEFINER bypasses RLS) ──────────
+-- ── 2. Recreate triggers to ensure they call handle_ncr_notifications ─────────
+-- Drop old/stale triggers by any name that may exist
+DROP TRIGGER IF EXISTS on_ncr_comment_insert ON public.quality_ncr_comments;
+DROP TRIGGER IF EXISTS tr_ncr_v10_comm ON public.quality_ncr_comments;
+DROP TRIGGER IF EXISTS on_ncr_insert ON public.quality_ncr;
+DROP TRIGGER IF EXISTS on_ncr_update ON public.quality_ncr;
+DROP TRIGGER IF EXISTS tr_ncr_v10_main ON public.quality_ncr;
+
+CREATE TRIGGER tr_ncr_v10_main
+AFTER INSERT OR UPDATE ON public.quality_ncr
+FOR EACH ROW EXECUTE FUNCTION public.handle_ncr_notifications();
+
+CREATE TRIGGER tr_ncr_v10_comm
+AFTER INSERT ON public.quality_ncr_comments
+FOR EACH ROW EXECUTE FUNCTION public.handle_ncr_notifications();
+
+-- ── 3. RPC: unread chat measurements (SECURITY DEFINER bypasses RLS) ──────────
 CREATE OR REPLACE FUNCTION public.rpc_unread_chat_measurements(
     p_user_id uuid,
     p_measurement_ids text[]
