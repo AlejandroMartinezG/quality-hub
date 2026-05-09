@@ -49,8 +49,8 @@ interface BitacoraRecord {
 }
 
 interface ChatMessage {
-    id: string | number
-    ncr_id: string | number
+    id: string
+    measurement_id: string
     author_user_id: string
     message: string
     created_at: string
@@ -77,7 +77,6 @@ export default function CalidadPage() {
     // Chat state
     const [chatOpen, setChatOpen] = useState(false)
     const [chatRecord, setChatRecord] = useState<BitacoraRecord | null>(null)
-    const [chatNcrId, setChatNcrId] = useState<string | null>(null)
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
     const [chatLoading, setChatLoading] = useState(false)
     const [newChatMsg, setNewChatMsg] = useState('')
@@ -125,19 +124,10 @@ export default function CalidadPage() {
 
     const fetchUnreadChats = async () => {
         if (!user) return
-        const { data } = await supabase
-            .from('notifications')
-            .select('metadata')
-            .eq('user_id', user.id)
-            .in('type', ['CHAT_CALIDAD', 'COMENTARIO_NUEVO'])
-            .eq('read', false)
+        const { data } = await supabase.rpc('rpc_measurement_chat_unread', { p_user_id: user.id })
         const counts = new Map<string, number>()
-        for (const notif of (data || []) as any[]) {
-            const mid = notif.metadata?.measurement_id
-            if (mid) {
-                const key = String(mid)
-                counts.set(key, (counts.get(key) || 0) + 1)
-            }
+        for (const row of (data || []) as any[]) {
+            counts.set(String(row.measurement_id), Number(row.unread_count))
         }
         setUnreadChatCounts(counts)
     }
@@ -187,11 +177,11 @@ export default function CalidadPage() {
         }
     }
 
-    const fetchChatMessages = async (ncrId: string) => {
+    const fetchChatMessages = async (measurementId: string) => {
         const { data: msgs } = await supabase
-            .from('quality_ncr_comments')
-            .select('id, ncr_id, author_user_id, message, created_at')
-            .eq('ncr_id', ncrId)
+            .from('measurement_chat_messages')
+            .select('id, measurement_id, author_user_id, message, created_at')
+            .eq('measurement_id', measurementId)
             .order('created_at', { ascending: true })
 
         if (!msgs || msgs.length === 0) { setChatMessages([]); return }
@@ -216,68 +206,50 @@ export default function CalidadPage() {
     }
 
     const openChat = async (record: BitacoraRecord) => {
+        const mid = String(record.id)
         setChatRecord(record)
         setChatOpen(true)
         setChatLoading(true)
         setChatMessages([])
-        setChatNcrId(null)
-        setUnreadChatCounts(prev => { const next = new Map(prev); next.delete(String(record.id)); return next })
+        setUnreadChatCounts(prev => { const next = new Map(prev); next.delete(mid); return next })
+
+        // Mark messages as read and CHAT_CALIDAD notifications as read
         if (user) {
+            supabase.from('measurement_chat_reads')
+                .upsert({ user_id: user.id, measurement_id: mid, last_read_at: new Date().toISOString() },
+                    { onConflict: 'user_id,measurement_id' })
+                .then(() => { })
             supabase.from('notifications')
                 .update({ read: true })
                 .eq('user_id', user.id)
-                .in('type', ['CHAT_CALIDAD', 'COMENTARIO_NUEVO'])
+                .eq('type', 'CHAT_CALIDAD')
                 .eq('read', false)
-                .filter('metadata->>measurement_id', 'eq', String(record.id))
+                .filter('metadata->>measurement_id', 'eq', mid)
                 .then(() => { })
         }
 
-        const { data: existing } = await supabase
-            .from('quality_ncr').select('id, status')
-            .eq('measurement_id', record.id)
-            .eq('status', 'NOTA')
-            .order('created_at', { ascending: false })
-            .limit(1).maybeSingle()
-
-        let ncrId: string | null = null
-        if (existing) {
-            ncrId = (existing as any).id as string
-        } else {
-            const { data: created } = await supabase
-                .from('quality_ncr')
-                .insert({
-                    measurement_id: record.id,
-                    batch_code: record.lote_producto,
-                    sucursal: record.sucursal,
-                    product_id: record.codigo_producto,
-                    preparer_user_id: user?.id ?? null,
-                    nombre_preparador: record.nombre_preparador,
-                    defect_parameter: 'NOTA',
-                    severity: 'MENOR',
-                    defect_detail: '',
-                    liters_involved: 0,
-                    status: 'NOTA',
-                    author_user_id: profile?.id,
-                })
-                .select().single()
-            if (created) ncrId = (created as any).id as string
-        }
-
-        setChatNcrId(ncrId)
-        if (ncrId) await fetchChatMessages(ncrId)
+        await fetchChatMessages(mid)
         setChatLoading(false)
     }
 
     const sendChatMessage = async () => {
-        if (!newChatMsg.trim() || !chatNcrId || !profile) return
+        if (!newChatMsg.trim() || !chatRecord || !profile) return
+        const mid = String(chatRecord.id)
         setSendingChat(true)
         try {
             const { error } = await supabase
-                .from('quality_ncr_comments')
-                .insert({ ncr_id: chatNcrId, author_user_id: profile.id, message: newChatMsg.trim(), visibility: 'ALL' })
+                .from('measurement_chat_messages')
+                .insert({ measurement_id: mid, author_user_id: profile.id, message: newChatMsg.trim() })
             if (error) throw error
             setNewChatMsg('')
-            await fetchChatMessages(chatNcrId)
+            await fetchChatMessages(mid)
+            // Update read timestamp so our own message doesn't count as unread
+            if (user) {
+                supabase.from('measurement_chat_reads')
+                    .upsert({ user_id: user.id, measurement_id: mid, last_read_at: new Date().toISOString() },
+                        { onConflict: 'user_id,measurement_id' })
+                    .then(() => { })
+            }
         } catch {
             toast.error('Error al enviar mensaje')
         } finally {
