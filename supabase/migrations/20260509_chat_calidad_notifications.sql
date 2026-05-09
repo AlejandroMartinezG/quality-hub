@@ -1,8 +1,9 @@
--- Migration: Bidirectional chat notifications for NOTA NCRs (historial de mediciones chat)
--- When preparador sends → notify admins
--- When admin sends → notify the record's preparador
--- Fix: use author_user_id as fallback when auth.uid() is NULL in trigger context
+-- Migration: Bidirectional chat notifications + unread chat RPC
+-- Fix: profiles column is full_name, not nombre_completo
+-- Fix: use author_user_id fallback when auth.uid() is NULL in trigger context
+-- Add: rpc_unread_chat_measurements (SECURITY DEFINER to bypass RLS)
 
+-- ── 1. Notification trigger function ──────────────────────────────────────────
 CREATE OR REPLACE FUNCTION public.handle_ncr_notifications()
 RETURNS trigger AS $$
 DECLARE
@@ -36,22 +37,18 @@ BEGIN
             v_acting_id := (to_jsonb(NEW)->>'author_user_id')::uuid;
         END IF;
 
-        -- Detect acting user name and admin status
+        -- Detect acting user name and admin status (column is full_name)
         IF v_acting_id IS NOT NULL THEN
             SELECT
-                COALESCE(nombre_completo, full_name, 'Usuario'),
+                COALESCE(full_name, 'Usuario'),
                 COALESCE(is_admin, false)
             INTO v_acting_name, v_acting_is_admin
             FROM public.profiles WHERE id = v_acting_id;
         END IF;
-
-        v_acting_name := TRIM(BOTH '"()' FROM COALESCE(v_acting_name, 'Usuario'));
-        IF position(',' in v_acting_name) > 0 THEN
-            v_acting_name := TRIM(split_part(v_acting_name, ',', 2));
-        END IF;
+        v_acting_name := COALESCE(v_acting_name, 'Usuario');
 
         -- ── NOTA NCR = chat record from historial de mediciones ──
-        IF v_ncr.status = 'NOTA' AND TG_TABLE_NAME = 'quality_ncr_comments' THEN
+        IF v_ncr.status::text = 'NOTA' AND TG_TABLE_NAME = 'quality_ncr_comments' THEN
             v_notif_type  := 'CHAT_CALIDAD';
             v_notif_title := '💬 Chat lote: ' || COALESCE(v_ncr_json->>'batch_code', 'registro');
             v_raw_msg     := COALESCE(to_jsonb(NEW)->>'message', 'Nuevo mensaje');
@@ -64,7 +61,7 @@ BEGIN
                 AND id IS DISTINCT FROM v_acting_id
             LOOP
                 v_user_json   := to_jsonb(v_user);
-                v_target_role := LOWER(COALESCE(v_user_json->>'rol', v_user_json->>'role', ''));
+                v_target_role := LOWER(COALESCE(v_user_json->>'role', ''));
 
                 IF v_acting_is_admin THEN
                     -- Admin wrote → only notify the record's preparador
@@ -99,7 +96,7 @@ BEGIN
         END IF;
 
         -- ── All other NOTA NCR events → skip ──
-        IF v_ncr.status = 'NOTA' THEN RETURN NEW; END IF;
+        IF v_ncr.status::text = 'NOTA' THEN RETURN NEW; END IF;
 
         v_ncr_suc := public.get_sucursal_acronym(v_ncr_json->>'sucursal');
 
@@ -133,7 +130,7 @@ BEGIN
             AND id IS DISTINCT FROM v_acting_id
         LOOP
             v_user_json   := to_jsonb(v_user);
-            v_target_role := LOWER(COALESCE(v_user_json->>'rol', v_user_json->>'role', ''));
+            v_target_role := LOWER(COALESCE(v_user_json->>'role', ''));
             v_target_suc  := public.get_sucursal_acronym(v_user_json->>'sucursal');
 
             IF v_notif_type = 'NCR_CREATED' THEN
@@ -162,3 +159,24 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- ── 2. RPC: unread chat measurements (SECURITY DEFINER bypasses RLS) ──────────
+CREATE OR REPLACE FUNCTION public.rpc_unread_chat_measurements(
+    p_user_id uuid,
+    p_measurement_ids text[]
+)
+RETURNS TABLE(measurement_id text) AS $$
+    WITH last_msg AS (
+        SELECT DISTINCT ON (n.measurement_id)
+            n.measurement_id::text,
+            c.author_user_id
+        FROM public.quality_ncr n
+        JOIN public.quality_ncr_comments c ON c.ncr_id = n.id
+        WHERE n.status::text = 'NOTA'
+          AND n.measurement_id::text = ANY(p_measurement_ids)
+        ORDER BY n.measurement_id, c.created_at DESC
+    )
+    SELECT last_msg.measurement_id FROM last_msg
+    WHERE last_msg.author_user_id IS DISTINCT FROM p_user_id;
+$$ LANGUAGE sql SECURITY DEFINER;
