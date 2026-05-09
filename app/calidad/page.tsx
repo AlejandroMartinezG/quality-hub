@@ -171,7 +171,7 @@ export default function CalidadPage() {
 
         if (!msgs || msgs.length === 0) { setChatMessages([]); return }
 
-        const authorIds = [...new Set((msgs as any[]).map((m: any) => m.author_user_id as string))]
+        const authorIds = Array.from(new Set((msgs as any[]).map((m: any) => m.author_user_id as string)))
         const { data: profilesData } = await supabase
             .from('profiles').select('id, full_name').in('id', authorIds)
 
