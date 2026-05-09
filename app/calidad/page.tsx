@@ -48,8 +48,8 @@ interface BitacoraRecord {
 }
 
 interface ChatMessage {
-    id: number
-    ncr_id: number
+    id: string | number
+    ncr_id: string | number
     author_user_id: string
     message: string
     created_at: string
@@ -73,7 +73,7 @@ export default function CalidadPage() {
     // Chat state
     const [chatOpen, setChatOpen] = useState(false)
     const [chatRecord, setChatRecord] = useState<BitacoraRecord | null>(null)
-    const [chatNcrId, setChatNcrId] = useState<number | null>(null)
+    const [chatNcrId, setChatNcrId] = useState<string | null>(null)
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
     const [chatLoading, setChatLoading] = useState(false)
     const [newChatMsg, setNewChatMsg] = useState('')
@@ -162,7 +162,7 @@ export default function CalidadPage() {
         }
     }
 
-    const fetchChatMessages = async (ncrId: number) => {
+    const fetchChatMessages = async (ncrId: string) => {
         const { data: msgs } = await supabase
             .from('quality_ncr_comments')
             .select('id, ncr_id, author_user_id, message, created_at')
@@ -171,14 +171,15 @@ export default function CalidadPage() {
 
         if (!msgs || msgs.length === 0) { setChatMessages([]); return }
 
-        const authorIds = [...new Set(msgs.map(m => m.author_user_id))]
+        const authorIds = [...new Set((msgs as any[]).map((m: any) => m.author_user_id as string))]
         const { data: profilesData } = await supabase
             .from('profiles').select('id, full_name').in('id', authorIds)
 
-        const nameMap: Record<string, string> = Object.fromEntries(
-            (profilesData || []).map(p => [p.id, p.full_name || 'Usuario'])
-        )
-        setChatMessages(msgs.map(m => ({ ...m, author_name: nameMap[m.author_user_id] || 'Usuario' })))
+        const nameMap: Record<string, string> = {}
+        for (const p of (profilesData || []) as any[]) {
+            if (p.id) nameMap[p.id as string] = (p.full_name as string | null) || 'Usuario'
+        }
+        setChatMessages((msgs as any[]).map((m: any) => ({ ...m, author_name: nameMap[m.author_user_id] || 'Usuario' }) as ChatMessage))
     }
 
     const openChat = async (record: BitacoraRecord) => {
@@ -194,9 +195,9 @@ export default function CalidadPage() {
             .order('created_at', { ascending: false })
             .limit(1).maybeSingle()
 
-        let ncrId: number | null = null
+        let ncrId: string | null = null
         if (existing) {
-            ncrId = existing.id
+            ncrId = (existing as any).id as string
         } else {
             const { data: created } = await supabase
                 .from('quality_ncr')
@@ -215,7 +216,7 @@ export default function CalidadPage() {
                     author_user_id: profile?.id,
                 })
                 .select().single()
-            if (created) ncrId = created.id
+            if (created) ncrId = (created as any).id as string
         }
 
         setChatNcrId(ncrId)
