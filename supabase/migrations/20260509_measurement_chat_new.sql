@@ -15,6 +15,9 @@ CREATE INDEX IF NOT EXISTS idx_mch_measurement
 
 ALTER TABLE public.measurement_chat_messages ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "mch_select" ON public.measurement_chat_messages;
+DROP POLICY IF EXISTS "mch_insert" ON public.measurement_chat_messages;
+
 CREATE POLICY "mch_select" ON public.measurement_chat_messages
     FOR SELECT USING (auth.role() = 'authenticated');
 
@@ -31,6 +34,8 @@ CREATE TABLE IF NOT EXISTS public.measurement_chat_reads (
 );
 
 ALTER TABLE public.measurement_chat_reads ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "mcr_own" ON public.measurement_chat_reads;
 
 CREATE POLICY "mcr_own" ON public.measurement_chat_reads
     USING  (auth.uid() = user_id)
