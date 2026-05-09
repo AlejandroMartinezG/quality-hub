@@ -44,7 +44,7 @@ interface BitacoraRecord {
     aroma: string
     nombre_preparador: string
     familia_producto?: string
-    litros_producidos?: number
+    tamano_lote?: number
 }
 
 interface ChatMessage {
@@ -152,7 +152,7 @@ export default function CalidadPage() {
                     apariencia: editingRecord.apariencia,
                     color: editingRecord.color,
                     aroma: editingRecord.aroma,
-                    litros_producidos: editingRecord.litros_producidos ?? null,
+                    tamano_lote: editingRecord.tamano_lote ?? null,
                 })
                 .eq('id', editingRecord.id)
             if (error) throw error
@@ -310,7 +310,7 @@ export default function CalidadPage() {
         const fam = (r.familia_producto || '').toLowerCase()
         return fam.includes('base') && fam.includes('limp')
     }).length
-    const totalLitros = filteredRecords.reduce((s, r) => s + (r.litros_producidos || 0), 0)
+    const totalLitros = filteredRecords.reduce((s, r) => s + (r.tamano_lote || 0), 0)
 
     const pct = (n: number, total: number) => total > 0 ? ((n / total) * 100).toFixed(1) + '%' : '—'
 
@@ -583,7 +583,7 @@ export default function CalidadPage() {
                                         <TableRow className="bg-gradient-to-r from-[#0e0c9b] to-[#2a28b5] hover:from-[#0e0c9b] hover:to-[#2a28b5] border-none h-12">
                                             <TableHead className="w-[150px] text-white font-bold text-sm rounded-l-2xl pl-6">Lote</TableHead>
                                             <TableHead className="text-white font-bold text-sm">Producto / Sucursal</TableHead>
-                                            <TableHead className="text-center text-white font-bold text-sm">Litros</TableHead>
+                                            <TableHead className="text-center text-white font-bold text-sm">Tamaño Lote</TableHead>
                                             <TableHead className="text-center text-white font-bold text-sm">pH</TableHead>
                                             <TableHead className="text-center text-white font-bold text-sm">% Sólidos (Avg)</TableHead>
                                             <TableHead className="text-white font-bold text-sm">Estado</TableHead>
@@ -623,7 +623,7 @@ export default function CalidadPage() {
                                                     </TableCell>
                                                     <TableCell className="text-center">
                                                         <span className="font-bold text-sm text-slate-700 dark:text-slate-200">
-                                                            {record.litros_producidos ? record.litros_producidos.toLocaleString() + ' L' : <span className="text-muted-foreground text-xs">—</span>}
+                                                            {record.tamano_lote ? record.tamano_lote.toLocaleString() + ' L' : <span className="text-muted-foreground text-xs">—</span>}
                                                         </span>
                                                     </TableCell>
                                                     <TableCell className="text-center">
@@ -839,8 +839,8 @@ export default function CalidadPage() {
                                 <Input id="aroma" value={editingRecord.aroma || ""} onChange={e => setEditingRecord({ ...editingRecord, aroma: e.target.value })} className="col-span-3" />
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
-                                <UILabel htmlFor="litros" className="text-right text-xs">Litros prod.</UILabel>
-                                <Input id="litros" type="number" step="1" min="0" value={editingRecord.litros_producidos ?? ""} onChange={e => setEditingRecord({ ...editingRecord, litros_producidos: parseFloat(e.target.value) || undefined })} className="col-span-3" placeholder="ej. 500" />
+                                <UILabel htmlFor="tamano_lote" className="text-right text-xs">Tamaño lote</UILabel>
+                                <Input id="tamano_lote" type="number" step="1" min="0" value={editingRecord.tamano_lote ?? ""} onChange={e => setEditingRecord({ ...editingRecord, tamano_lote: parseFloat(e.target.value) || undefined })} className="col-span-3" placeholder="ej. 500" />
                             </div>
                         </div>
                     )}
