@@ -129,7 +129,7 @@ export default function CalidadPage() {
             .from('notifications')
             .select('metadata')
             .eq('user_id', user.id)
-            .eq('type', 'CHAT_CALIDAD')
+            .in('type', ['CHAT_CALIDAD', 'COMENTARIO_NUEVO'])
             .eq('read', false)
         const counts = new Map<string, number>()
         for (const notif of (data || []) as any[]) {
@@ -226,7 +226,7 @@ export default function CalidadPage() {
             supabase.from('notifications')
                 .update({ read: true })
                 .eq('user_id', user.id)
-                .eq('type', 'CHAT_CALIDAD')
+                .in('type', ['CHAT_CALIDAD', 'COMENTARIO_NUEVO'])
                 .eq('read', false)
                 .filter('metadata->>measurement_id', 'eq', String(record.id))
                 .then(() => { })

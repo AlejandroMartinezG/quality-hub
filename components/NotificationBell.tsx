@@ -81,11 +81,11 @@ export function NotificationBell() {
     const handleNotificationClick = (notif: Notification) => {
         setOpen(false)
 
-        if (notif.type === 'CHAT_CALIDAD') {
-            // Navigate using metadata so we always land at the right chat,
-            // regardless of the stored link. Don't mark as read here —
-            // the chat opening in /calidad marks it read so the badge stays
-            // visible until the user actually opens the conversation.
+        const isMessageType = notif.type === 'CHAT_CALIDAD' || notif.type === 'COMENTARIO_NUEVO'
+
+        if (isMessageType) {
+            // All message notifications go to the historial table, never to the NCR panel.
+            // Don't mark as read — the chat opening in /calidad will mark it read.
             const mid = notif.metadata?.measurement_id
             router.push(mid ? `/calidad?chat=${mid}` : '/calidad')
             return
