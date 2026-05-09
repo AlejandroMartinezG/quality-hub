@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
+import { updateBitacoraRecord } from "./actions"
 import { useAuth } from "@/components/AuthProvider"
 import { Breadcrumbs } from "@/components/Breadcrumbs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -165,24 +166,22 @@ export default function CalidadPage() {
         if (!editingRecord) return
         try {
             setIsUpdating(true)
-            const { error } = await supabase
-                .from('bitacora_produccion_calidad')
-                .update({
-                    ph: editingRecord.ph,
-                    solidos_medicion_1: editingRecord.solidos_medicion_1,
-                    solidos_medicion_2: editingRecord.solidos_medicion_2,
-                    apariencia: editingRecord.apariencia,
-                    color: editingRecord.color,
-                    aroma: editingRecord.aroma,
-                    tamano_lote: editingRecord.tamano_lote ?? null,
-                })
-                .eq('id', editingRecord.id)
-            if (error) throw error
+            const result = await updateBitacoraRecord({
+                id: editingRecord.id,
+                ph: editingRecord.ph,
+                solidos_medicion_1: editingRecord.solidos_medicion_1,
+                solidos_medicion_2: editingRecord.solidos_medicion_2,
+                apariencia: editingRecord.apariencia,
+                color: editingRecord.color,
+                aroma: editingRecord.aroma,
+                tamano_lote: editingRecord.tamano_lote ?? null,
+            })
+            if (!result.success) throw new Error(result.message)
             toast.success("Registro actualizado")
             setIsEditDialogOpen(false)
             fetchRecords()
-        } catch {
-            toast.error("Error al actualizar el registro.")
+        } catch (e: any) {
+            toast.error("Error al actualizar el registro.", { description: e?.message })
         } finally {
             setIsUpdating(false)
         }
