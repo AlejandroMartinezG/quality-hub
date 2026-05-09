@@ -54,6 +54,7 @@ interface ChatMessage {
     message: string
     created_at: string
     author_name: string
+    author_avatar?: string | null
 }
 
 export default function CalidadPage() {
@@ -66,6 +67,8 @@ export default function CalidadPage() {
     const [sucursalFilter, setSucursalFilter] = useState("all")
     const [statusFilter, setStatusFilter] = useState("all")
     const [timeRangeFilter, setTimeRangeFilter] = useState("all")
+    const [categoriaFilter, setCategoriaFilter] = useState("all")
+    const [productoFilter, setProductoFilter] = useState("all")
     const [editingRecord, setEditingRecord] = useState<BitacoraRecord | null>(null)
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
     const [isUpdating, setIsUpdating] = useState(false)
@@ -173,13 +176,21 @@ export default function CalidadPage() {
 
         const authorIds = Array.from(new Set((msgs as any[]).map((m: any) => m.author_user_id as string)))
         const { data: profilesData } = await supabase
-            .from('profiles').select('id, full_name').in('id', authorIds)
+            .from('profiles').select('id, full_name, avatar_url').in('id', authorIds)
 
         const nameMap: Record<string, string> = {}
+        const avatarMap: Record<string, string | null> = {}
         for (const p of (profilesData || []) as any[]) {
-            if (p.id) nameMap[p.id as string] = (p.full_name as string | null) || 'Usuario'
+            if (p.id) {
+                nameMap[p.id as string] = (p.full_name as string | null) || 'Usuario'
+                avatarMap[p.id as string] = (p.avatar_url as string | null) || null
+            }
         }
-        setChatMessages((msgs as any[]).map((m: any) => ({ ...m, author_name: nameMap[m.author_user_id] || 'Usuario' }) as ChatMessage))
+        setChatMessages((msgs as any[]).map((m: any) => ({
+            ...m,
+            author_name: nameMap[m.author_user_id] || 'Usuario',
+            author_avatar: avatarMap[m.author_user_id] ?? null,
+        }) as ChatMessage))
     }
 
     const openChat = async (record: BitacoraRecord) => {
@@ -267,6 +278,9 @@ export default function CalidadPage() {
         return 'error'
     }
 
+    const uniqueCategorias = Array.from(new Set(records.map(r => r.familia_producto).filter(Boolean))) as string[]
+    const uniqueProductos = Array.from(new Set(records.map(r => r.codigo_producto).filter(Boolean))) as string[]
+
     const filteredRecords = records.filter(r => {
         const matchesSearch =
             r.lote_producto?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -274,6 +288,8 @@ export default function CalidadPage() {
             r.sucursal?.toLowerCase().includes(searchTerm.toLowerCase())
         const matchesSucursal = sucursalFilter === "all" || r.sucursal === sucursalFilter
         const matchesStatus = statusFilter === "all" || getStatusInfo(r) === statusFilter
+        const matchesCategoria = categoriaFilter === "all" || (r.familia_producto || '') === categoriaFilter
+        const matchesProducto = productoFilter === "all" || r.codigo_producto === productoFilter
         let matchesTime = true
         if (timeRangeFilter !== "all") {
             const d = new Date(r.fecha_fabricacion || r.created_at)
@@ -281,12 +297,18 @@ export default function CalidadPage() {
             cutoff.setHours(0, 0, 0, 0)
             matchesTime = d >= cutoff
         }
-        return matchesSearch && matchesSucursal && matchesStatus && matchesTime
+        return matchesSearch && matchesSucursal && matchesStatus && matchesTime && matchesCategoria && matchesProducto
     })
 
     const phRecords = filteredRecords.filter(r => getPhStatus(r) !== 'none')
-    const totalAromatizantes = filteredRecords.filter(r => (r.familia_producto || '').toLowerCase().includes('aromat')).length
-    const totalLimpiadores = filteredRecords.filter(r => (r.familia_producto || '').toLowerCase().includes('limp')).length
+    const totalAromatizantes = filteredRecords.filter(r => {
+        const fam = (r.familia_producto || '').toLowerCase()
+        return fam.includes('base') && fam.includes('aromat')
+    }).length
+    const totalLimpiadores = filteredRecords.filter(r => {
+        const fam = (r.familia_producto || '').toLowerCase()
+        return fam.includes('base') && fam.includes('limp')
+    }).length
     const totalLitros = filteredRecords.reduce((s, r) => s + (r.litros_producidos || 0), 0)
 
     const pct = (n: number, total: number) => total > 0 ? ((n / total) * 100).toFixed(1) + '%' : '—'
@@ -335,13 +357,13 @@ export default function CalidadPage() {
                         <div className="h-px bg-blue-200/60 dark:bg-blue-800/40" />
 
                         <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm text-blue-700/70 dark:text-blue-300/70 font-semibold">🌿 Aromatizante Ambiental</span>
-                                <span className="text-xl font-extrabold text-blue-700 dark:text-blue-400">{totalAromatizantes}</span>
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs text-blue-700/70 dark:text-blue-300/70 font-semibold leading-tight">🌿 Bases Aromatizante Ambiental</span>
+                                <span className="text-xl font-extrabold text-blue-700 dark:text-blue-400 shrink-0">{totalAromatizantes}</span>
                             </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm text-blue-700/70 dark:text-blue-300/70 font-semibold">🧴 Limpiador Multiusos</span>
-                                <span className="text-xl font-extrabold text-blue-700 dark:text-blue-400">{totalLimpiadores}</span>
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs text-blue-700/70 dark:text-blue-300/70 font-semibold leading-tight">🧴 Bases Limpiadores Multiusos</span>
+                                <span className="text-xl font-extrabold text-blue-700 dark:text-blue-400 shrink-0">{totalLimpiadores}</span>
                             </div>
                             {totalLitros > 0 && (
                                 <>
@@ -441,28 +463,6 @@ export default function CalidadPage() {
                     </CardContent>
                 </Card>
 
-                {/* pH — Semi */}
-                <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/20 dark:to-amber-900/10 border-amber-200 dark:border-amber-900/30">
-                    <div className="absolute top-0 right-0 p-3 opacity-10"><AlertCircle className="w-20 h-20 text-amber-600" /></div>
-                    <CardHeader className="pb-1 pt-5 px-5 relative z-10">
-                        <CardTitle className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1.5">
-                            <div className="h-2 w-2 rounded-full bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.6)]" />
-                            Semi-Conf · pH
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="relative z-10 px-5 pb-5">
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-4xl font-extrabold text-amber-700 dark:text-amber-400">
-                                {phRecords.filter(r => getPhStatus(r) === 'warning').length}
-                            </span>
-                            <span className="text-sm font-bold text-amber-600/70">
-                                {pct(phRecords.filter(r => getPhStatus(r) === 'warning').length, phRecords.length)}
-                            </span>
-                        </div>
-                        <p className="text-[10px] text-amber-600/60 mt-0.5">de {phRecords.length} con estándar</p>
-                    </CardContent>
-                </Card>
-
                 {/* pH — No Conforme */}
                 <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-rose-50 to-rose-100/50 dark:from-rose-950/20 dark:to-rose-900/10 border-rose-200 dark:border-rose-900/30">
                     <div className="absolute top-0 right-0 p-3 opacity-10"><XCircle className="w-20 h-20 text-rose-600" /></div>
@@ -488,10 +488,36 @@ export default function CalidadPage() {
 
             {/* ── Filtros ── */}
             <Card className="border-primary/5 bg-muted/20 rounded-[2rem]">
-                <CardContent className="p-4 flex flex-col md:flex-row gap-4">
-                    <div className="flex-1 relative">
+                <CardContent className="p-4 flex flex-col md:flex-row gap-4 flex-wrap">
+                    <div className="flex-1 min-w-[180px] relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input placeholder="Buscar por lote o producto..." className="pl-10 h-10" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                    </div>
+                    <div className="w-full md:w-52">
+                        <Select value={categoriaFilter} onValueChange={v => { setCategoriaFilter(v); setProductoFilter("all") }}>
+                            <SelectTrigger className="h-10">
+                                <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
+                                <SelectValue placeholder="Categoría" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Todas las categorías</SelectItem>
+                                {uniqueCategorias.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="w-full md:w-52">
+                        <Select value={productoFilter} onValueChange={setProductoFilter}>
+                            <SelectTrigger className="h-10">
+                                <SelectValue placeholder="Producto" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Todos los productos</SelectItem>
+                                {(categoriaFilter === "all"
+                                    ? uniqueProductos
+                                    : Array.from(new Set(records.filter(r => r.familia_producto === categoriaFilter).map(r => r.codigo_producto).filter(Boolean))) as string[]
+                                ).map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
                     </div>
                     <div className="w-full md:w-52">
                         <Select value={timeRangeFilter} onValueChange={setTimeRangeFilter}>
@@ -841,18 +867,33 @@ export default function CalidadPage() {
                         ) : (
                             chatMessages.map(msg => {
                                 const isMe = msg.author_user_id === profile?.id
+                                const avatarUrl = isMe ? (profile as any)?.avatar_url : msg.author_avatar
+                                const initials = (msg.author_name || 'U').charAt(0).toUpperCase()
+                                const avatar = (
+                                    <div className={cn(
+                                        "h-7 w-7 rounded-full shrink-0 overflow-hidden flex items-center justify-center text-[11px] font-bold",
+                                        isMe ? "bg-blue-200 text-blue-700" : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-300"
+                                    )}>
+                                        {avatarUrl
+                                            ? <img src={avatarUrl} alt={msg.author_name} className="h-full w-full object-cover" />
+                                            : initials}
+                                    </div>
+                                )
                                 return (
-                                    <div key={msg.id} className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
-                                        <span className="text-[10px] text-muted-foreground mb-0.5 px-1">{msg.author_name}</span>
-                                        <div className={cn(
-                                            "max-w-[80%] rounded-2xl px-3 py-2 text-sm",
-                                            isMe ? "bg-blue-600 text-white rounded-br-sm" : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-bl-sm"
-                                        )}>
-                                            {msg.message}
+                                    <div key={msg.id} className={cn("flex items-end gap-2", isMe ? "flex-row-reverse" : "flex-row")}>
+                                        {avatar}
+                                        <div className={cn("flex flex-col max-w-[75%]", isMe ? "items-end" : "items-start")}>
+                                            <span className="text-[10px] text-muted-foreground mb-0.5 px-1">{msg.author_name}</span>
+                                            <div className={cn(
+                                                "rounded-2xl px-3 py-2 text-sm",
+                                                isMe ? "bg-blue-600 text-white rounded-br-sm" : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-bl-sm"
+                                            )}>
+                                                {msg.message}
+                                            </div>
+                                            <span className="text-[9px] text-muted-foreground mt-0.5 px-1">
+                                                {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
                                         </div>
-                                        <span className="text-[9px] text-muted-foreground mt-0.5 px-1">
-                                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
                                     </div>
                                 )
                             })
