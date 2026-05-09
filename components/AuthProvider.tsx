@@ -157,6 +157,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             // INITIAL_SESSION is fully handled by initializeAuth — skip it here always
             if (event === 'INITIAL_SESSION') return
 
+            // TOKEN_REFRESHED: session updated silently, profile already loaded — don't disrupt UI
+            if (event === 'TOKEN_REFRESHED') {
+                setSession(currentSession)
+                setUser(currentSession?.user ?? null)
+                return
+            }
+
             console.log(`AuthProvider: Auth Event - ${event}`)
 
             setSession(currentSession)
@@ -164,10 +171,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
             if (currentSession) {
                 hadAuthHash.current = false
-                if (currentSession.user.id !== lastFetchedProfileId.current) {
+                // Only fetch profile if not already fetched for this user AND not mid-fetch
+                if (currentSession.user.id !== lastFetchedProfileId.current && !fetchingProfile.current) {
                     await fetchProfile(currentSession.user.id)
                 }
-                if (mounted) setLoading(false)
+                // Only set loading false if we're not mid-fetch
+                if (mounted && !fetchingProfile.current) setLoading(false)
             } else {
                 setProfile(null)
                 lastFetchedProfileId.current = null
