@@ -81,7 +81,7 @@ export default function CalidadPage() {
     const [chatLoading, setChatLoading] = useState(false)
     const [newChatMsg, setNewChatMsg] = useState('')
     const [sendingChat, setSendingChat] = useState(false)
-    const [unreadChatIds, setUnreadChatIds] = useState<Set<string>>(new Set())
+    const [unreadChatCounts, setUnreadChatCounts] = useState<Map<string, number>>(new Map())
     const chatEndRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
@@ -114,7 +114,7 @@ export default function CalidadPage() {
             if (error) throw error
             const loaded = data || []
             setRecords(loaded)
-            fetchUnreadChats(loaded)
+            fetchUnreadChats()
         } catch {
             toast.error("Error al cargar los registros. Intenta de nuevo.")
         } finally {
@@ -122,15 +122,23 @@ export default function CalidadPage() {
         }
     }
 
-    const fetchUnreadChats = async (loadedRecords: BitacoraRecord[]) => {
-        if (!user || loadedRecords.length === 0) return
-        const { data } = await supabase.rpc('rpc_unread_chat_measurements', {
-            p_user_id: user.id,
-            p_measurement_ids: loadedRecords.map(r => String(r.id)),
-        } as any)
-        const unread = new Set<string>()
-        for (const row of (data || []) as any[]) unread.add(String(row.measurement_id))
-        setUnreadChatIds(unread)
+    const fetchUnreadChats = async () => {
+        if (!user) return
+        const { data } = await supabase
+            .from('notifications')
+            .select('metadata')
+            .eq('user_id', user.id)
+            .eq('type', 'CHAT_CALIDAD')
+            .eq('read', false)
+        const counts = new Map<string, number>()
+        for (const notif of (data || []) as any[]) {
+            const mid = notif.metadata?.measurement_id
+            if (mid) {
+                const key = String(mid)
+                counts.set(key, (counts.get(key) || 0) + 1)
+            }
+        }
+        setUnreadChatCounts(counts)
     }
 
     const performDelete = async (id: number) => {
@@ -214,7 +222,16 @@ export default function CalidadPage() {
         setChatLoading(true)
         setChatMessages([])
         setChatNcrId(null)
-        setUnreadChatIds(prev => { const next = new Set(prev); next.delete(String(record.id)); return next })
+        setUnreadChatCounts(prev => { const next = new Map(prev); next.delete(String(record.id)); return next })
+        if (user) {
+            supabase.from('notifications')
+                .update({ read: true })
+                .eq('user_id', user.id)
+                .eq('type', 'CHAT_CALIDAD')
+                .eq('read', false)
+                .filter('metadata->>measurement_id', 'eq', String(record.id))
+                .then(() => { })
+        }
 
         const { data: existing } = await supabase
             .from('quality_ncr').select('id, status')
@@ -271,6 +288,20 @@ export default function CalidadPage() {
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }, [chatMessages])
+
+    // Auto-open chat when navigating from a notification link (?chat=<measurement_id>)
+    useEffect(() => {
+        if (loading || records.length === 0 || chatOpen) return
+        const params = new URLSearchParams(window.location.search)
+        const chatMid = params.get('chat')
+        if (!chatMid) return
+        const record = records.find(r => String(r.id) === chatMid)
+        if (record) {
+            window.history.replaceState({}, '', window.location.pathname)
+            openChat(record)
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [records, loading])
 
     const getStatusInfo = (record: BitacoraRecord): 'success' | 'warning' | 'error' => {
         const std = PRODUCT_STANDARDS[record.codigo_producto]
@@ -695,8 +726,10 @@ export default function CalidadPage() {
                                                             <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" title="Abrir chat" onClick={() => openChat(record)}>
                                                                 <MessageSquare className="h-4 w-4" />
                                                             </Button>
-                                                            {unreadChatIds.has(String(record.id)) && (
-                                                                <span className="absolute top-0 right-0 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-slate-900 pointer-events-none" />
+                                                            {(unreadChatCounts.get(String(record.id)) ?? 0) > 0 && (
+                                                                <span className="absolute -top-1.5 -right-1.5 min-w-[1.1rem] h-[1.1rem] rounded-full bg-red-500 border border-white dark:border-slate-900 pointer-events-none text-white text-[9px] font-bold flex items-center justify-center px-0.5">
+                                                                    {(unreadChatCounts.get(String(record.id)) ?? 0) > 9 ? '9+' : unreadChatCounts.get(String(record.id))}
+                                                                </span>
                                                             )}
                                                         </div>
                                                     </TableCell>
@@ -773,8 +806,10 @@ export default function CalidadPage() {
                                                                 <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => openChat(record)} title="Chat">
                                                                     <MessageSquare className="h-3.5 w-3.5 text-blue-600" />
                                                                 </Button>
-                                                                {unreadChatIds.has(String(record.id)) && (
-                                                                    <span className="absolute top-0 right-0 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-slate-900 pointer-events-none" />
+                                                                {(unreadChatCounts.get(String(record.id)) ?? 0) > 0 && (
+                                                                    <span className="absolute -top-1.5 -right-1.5 min-w-[1.1rem] h-[1.1rem] rounded-full bg-red-500 border border-white dark:border-slate-900 pointer-events-none text-white text-[9px] font-bold flex items-center justify-center px-0.5">
+                                                                        {(unreadChatCounts.get(String(record.id)) ?? 0) > 9 ? '9+' : unreadChatCounts.get(String(record.id))}
+                                                                    </span>
                                                                 )}
                                                             </div>
                                                             {profile?.is_admin && (
