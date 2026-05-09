@@ -235,6 +235,7 @@ export default function CalidadPage() {
         const { data: existing } = await supabase
             .from('quality_ncr').select('id, status')
             .eq('measurement_id', record.id)
+            .eq('status', 'NOTA')
             .order('created_at', { ascending: false })
             .limit(1).maybeSingle()
 
