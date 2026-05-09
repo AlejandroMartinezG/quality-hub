@@ -1,15 +1,16 @@
 -- Migration: Bidirectional chat notifications for NOTA NCRs (historial de mediciones chat)
 -- When preparador sends → notify admins
 -- When admin sends → notify the record's preparador
+-- Fix: use author_user_id as fallback when auth.uid() is NULL in trigger context
 
 CREATE OR REPLACE FUNCTION public.handle_ncr_notifications()
 RETURNS trigger AS $$
 DECLARE
     v_ncr record;
     v_user record;
-    v_acting_name text;
-    v_acting_id uuid := auth.uid();
+    v_acting_id uuid;
     v_acting_is_admin boolean := false;
+    v_acting_name text;
     v_notif_title text;
     v_notif_msg text;
     v_notif_type text;
@@ -29,19 +30,27 @@ BEGIN
 
         v_ncr_json := to_jsonb(v_ncr);
 
+        -- Determine acting user: prefer auth.uid(), fall back to stored author_user_id on comments
+        v_acting_id := auth.uid();
+        IF v_acting_id IS NULL AND TG_TABLE_NAME = 'quality_ncr_comments' THEN
+            v_acting_id := (to_jsonb(NEW)->>'author_user_id')::uuid;
+        END IF;
+
         -- Detect acting user name and admin status
-        SELECT
-            COALESCE(nombre_completo, 'Usuario'),
-            COALESCE(is_admin, false)
-        INTO v_acting_name, v_acting_is_admin
-        FROM public.profiles WHERE id = v_acting_id;
+        IF v_acting_id IS NOT NULL THEN
+            SELECT
+                COALESCE(nombre_completo, full_name, 'Usuario'),
+                COALESCE(is_admin, false)
+            INTO v_acting_name, v_acting_is_admin
+            FROM public.profiles WHERE id = v_acting_id;
+        END IF;
+
         v_acting_name := TRIM(BOTH '"()' FROM COALESCE(v_acting_name, 'Usuario'));
         IF position(',' in v_acting_name) > 0 THEN
             v_acting_name := TRIM(split_part(v_acting_name, ',', 2));
         END IF;
 
         -- ── NOTA NCR = chat record from historial de mediciones ──
-        -- Handle bidirectional chat notifications separately
         IF v_ncr.status = 'NOTA' AND TG_TABLE_NAME = 'quality_ncr_comments' THEN
             v_notif_type  := 'CHAT_CALIDAD';
             v_notif_title := '💬 Chat lote: ' || COALESCE(v_ncr_json->>'batch_code', 'registro');
@@ -52,9 +61,9 @@ BEGIN
                 SELECT DISTINCT ON (id) *
                 FROM public.profiles
                 WHERE approved = true
-                AND id != COALESCE(v_acting_id, '00000000-0000-0000-0000-000000000000'::uuid)
+                AND id IS DISTINCT FROM v_acting_id
             LOOP
-                v_user_json  := to_jsonb(v_user);
+                v_user_json   := to_jsonb(v_user);
                 v_target_role := LOWER(COALESCE(v_user_json->>'rol', v_user_json->>'role', ''));
 
                 IF v_acting_is_admin THEN
@@ -97,11 +106,11 @@ BEGIN
         -- Content factory for real NCRs
         IF TG_TABLE_NAME = 'quality_ncr' THEN
             IF TG_OP = 'INSERT' THEN
-                v_notif_type := 'NCR_CREATED';
+                v_notif_type  := 'NCR_CREATED';
                 v_notif_title := '🚨 Nuevo NCR: ' || COALESCE(v_ncr_json->>'sucursal', 'Ginez');
                 v_notif_msg   := v_acting_name || ' creó reporte: ' || (v_ncr_json->>'batch_code');
             ELSIF OLD.status IS DISTINCT FROM NEW.status THEN
-                v_notif_type := 'NCR_STATUS_CHANGE';
+                v_notif_type  := 'NCR_STATUS_CHANGE';
                 v_notif_title := '🔄 Estado NCR: ' || (v_ncr_json->>'batch_code');
                 v_notif_msg   := v_acting_name || ' cambió a: ' || (v_ncr_json->>'status');
             ELSE RETURN NEW; END IF;
@@ -121,7 +130,7 @@ BEGIN
             SELECT DISTINCT ON (id) *
             FROM public.profiles
             WHERE approved = true
-            AND id != COALESCE(v_acting_id, '00000000-0000-0000-0000-000000000000'::uuid)
+            AND id IS DISTINCT FROM v_acting_id
         LOOP
             v_user_json   := to_jsonb(v_user);
             v_target_role := LOWER(COALESCE(v_user_json->>'rol', v_user_json->>'role', ''));

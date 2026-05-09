@@ -81,6 +81,7 @@ export default function CalidadPage() {
     const [chatLoading, setChatLoading] = useState(false)
     const [newChatMsg, setNewChatMsg] = useState('')
     const [sendingChat, setSendingChat] = useState(false)
+    const [unreadChatIds, setUnreadChatIds] = useState<Set<number>>(new Set())
     const chatEndRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
@@ -111,12 +112,52 @@ export default function CalidadPage() {
             }
             const { data, error } = await query.order('created_at', { ascending: false }).limit(100)
             if (error) throw error
-            setRecords(data || [])
+            const loaded = data || []
+            setRecords(loaded)
+            fetchUnreadChats(loaded)
         } catch {
             toast.error("Error al cargar los registros. Intenta de nuevo.")
         } finally {
             setLoading(false)
         }
+    }
+
+    const fetchUnreadChats = async (loadedRecords: BitacoraRecord[]) => {
+        if (!user || loadedRecords.length === 0) return
+        const measurementIds = loadedRecords.map(r => r.id)
+
+        const { data: notaNCRs } = await supabase
+            .from('quality_ncr')
+            .select('id, measurement_id')
+            .eq('status', 'NOTA')
+            .in('measurement_id', measurementIds)
+
+        if (!notaNCRs || notaNCRs.length === 0) { setUnreadChatIds(new Set()); return }
+
+        const ncrToMeasurement: Record<string, number> = {}
+        for (const n of notaNCRs as any[]) ncrToMeasurement[n.id] = n.measurement_id
+        const ncrIds = Object.keys(ncrToMeasurement)
+
+        const { data: comments } = await supabase
+            .from('quality_ncr_comments')
+            .select('ncr_id, author_user_id, created_at')
+            .in('ncr_id', ncrIds)
+            .order('created_at', { ascending: false })
+
+        const lastPerNcr: Record<string, any> = {}
+        for (const c of (comments || []) as any[]) {
+            if (!lastPerNcr[c.ncr_id]) lastPerNcr[c.ncr_id] = c
+        }
+
+        const unread = new Set<number>()
+        for (const ncrId of Object.keys(lastPerNcr)) {
+            const c = lastPerNcr[ncrId]
+            if (c.author_user_id !== user.id) {
+                const mid = ncrToMeasurement[ncrId]
+                if (mid !== undefined) unread.add(mid)
+            }
+        }
+        setUnreadChatIds(unread)
     }
 
     const performDelete = async (id: number) => {
@@ -200,6 +241,7 @@ export default function CalidadPage() {
         setChatLoading(true)
         setChatMessages([])
         setChatNcrId(null)
+        setUnreadChatIds(prev => { const next = new Set(prev); next.delete(record.id); return next })
 
         const { data: existing } = await supabase
             .from('quality_ncr').select('id, status')
@@ -676,9 +718,14 @@ export default function CalidadPage() {
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="text-center">
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" title="Abrir chat" onClick={() => openChat(record)}>
-                                                            <MessageSquare className="h-4 w-4" />
-                                                        </Button>
+                                                        <div className="relative inline-flex">
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" title="Abrir chat" onClick={() => openChat(record)}>
+                                                                <MessageSquare className="h-4 w-4" />
+                                                            </Button>
+                                                            {unreadChatIds.has(record.id) && (
+                                                                <span className="absolute top-0 right-0 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-slate-900 pointer-events-none" />
+                                                            )}
+                                                        </div>
                                                     </TableCell>
                                                     <TableCell className="text-right text-sm text-muted-foreground">
                                                         {new Date(record.fecha_fabricacion).toLocaleDateString()}
@@ -749,9 +796,14 @@ export default function CalidadPage() {
                                                             {status === 'success' ? 'CONFORME' : status === 'warning' ? 'SEMI' : 'NO CONF.'}
                                                         </Badge>
                                                         <div className="flex gap-1 mt-1">
-                                                            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => openChat(record)} title="Chat">
-                                                                <MessageSquare className="h-3.5 w-3.5 text-blue-600" />
-                                                            </Button>
+                                                            <div className="relative inline-flex">
+                                                                <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => openChat(record)} title="Chat">
+                                                                    <MessageSquare className="h-3.5 w-3.5 text-blue-600" />
+                                                                </Button>
+                                                                {unreadChatIds.has(record.id) && (
+                                                                    <span className="absolute top-0 right-0 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-slate-900 pointer-events-none" />
+                                                                )}
+                                                            </div>
                                                             {profile?.is_admin && (
                                                                 <>
                                                                     <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => { setEditingRecord(record); setIsEditDialogOpen(true) }}>
