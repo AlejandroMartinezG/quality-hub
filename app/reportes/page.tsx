@@ -797,7 +797,7 @@ export default function ReportesPage() {
                         : isSpyAllowed ? 'grid-cols-3 max-w-[600px]'
                         : 'grid-cols-2 max-w-[400px]'
                     }`}>
-                        {(!isPreparador && !isGerente) && <TabsTrigger value="comercial">Análisis Comercial</TabsTrigger>}
+                        {(!isPreparador && !isGerente) && <TabsTrigger value="comercial">Análisis de Operación</TabsTrigger>}
                         <TabsTrigger value="calidad">First Time Quality</TabsTrigger>
                         {isSpyAllowed && <TabsTrigger value="spy">SPY (Yield)</TabsTrigger>}
                     </TabsList>
@@ -1772,7 +1772,7 @@ export default function ReportesPage() {
                 open={printModal === 'comercial'}
                 onClose={() => setPrintModal(null)}
                 onConfirm={handlePrintConfirm('comercial')}
-                title="Reporte Análisis Comercial"
+                title="Reporte Análisis de Operación"
             />
 
             {/* Print Views */}
@@ -2093,7 +2093,7 @@ export default function ReportesPage() {
                 if (!pr || pr.length === 0) {
                     return (
                         <PrintReportWrapper
-                            title="Reporte Análisis Comercial"
+                            title="Reporte Análisis de Operación"
                             dateFrom={printView.dateFrom}
                             dateTo={printView.dateTo}
                             userName={profile?.full_name}
@@ -2193,7 +2193,7 @@ export default function ReportesPage() {
 
                 return (
                     <PrintReportWrapper
-                        title="Reporte Análisis Comercial"
+                        title="Reporte Análisis de Operación"
                         dateFrom={printView.dateFrom}
                         dateTo={printView.dateTo}
                         userName={profile?.full_name}
