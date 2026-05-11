@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabase"
 import {
     Search, Filter, CheckCircle2, AlertCircle, XCircle, Loader2,
-    Calendar, Trash2, Edit2, RotateCcw, ClipboardList, MessageSquare, Send
+    Calendar, Trash2, Edit2, RotateCcw, ClipboardList, MessageSquare, Send, Download
 } from "lucide-react"
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -83,6 +83,12 @@ export default function CalidadPage() {
     const [sendingChat, setSendingChat] = useState(false)
     const [unreadChatCounts, setUnreadChatCounts] = useState<Map<string, number>>(new Map())
     const chatEndRef = useRef<HTMLDivElement>(null)
+
+    // Export state
+    const [exportOpen, setExportOpen] = useState(false)
+    const [exportDateFrom, setExportDateFrom] = useState('')
+    const [exportDateTo, setExportDateTo] = useState('')
+    const [exporting, setExporting] = useState(false)
 
     useEffect(() => {
         if (!authLoading && profile) {
@@ -331,6 +337,94 @@ export default function CalidadPage() {
 
     const pct = (n: number, total: number) => total > 0 ? ((n / total) * 100).toFixed(1) + '%' : '—'
 
+    const buildExportRows = (data: BitacoraRecord[]) => data.map(r => {
+        const solidsSt = getStatusInfo(r)
+        const phSt = getPhStatus(r)
+        const avg = r.solidos_medicion_1 !== null && r.solidos_medicion_2 !== null
+            ? ((r.solidos_medicion_1 + r.solidos_medicion_2) / 2).toFixed(2)
+            : ''
+        return {
+            'Lote': r.lote_producto || '',
+            'Código Producto': r.codigo_producto || '',
+            'Categoría': r.familia_producto || '',
+            'Sucursal': r.sucursal || '',
+            'Fecha Fabricación': r.fecha_fabricacion || '',
+            'Fecha Registro': new Date(r.created_at).toLocaleDateString('es-MX'),
+            'Preparador': r.nombre_preparador || '',
+            'Tamaño Lote (L)': r.tamano_lote ?? '',
+            'pH': r.ph ?? '',
+            'Sólidos Med. 1 (%)': r.solidos_medicion_1 ?? '',
+            'Sólidos Med. 2 (%)': r.solidos_medicion_2 ?? '',
+            'Promedio Sólidos (%)': avg,
+            'Estado Sólidos': solidsSt === 'success' ? 'Conforme' : solidsSt === 'warning' ? 'Semi-Conforme' : 'No Conforme',
+            'Estado pH': phSt === 'none' ? 'N/A' : phSt === 'success' ? 'Conforme' : phSt === 'warning' ? 'Semi-Conforme' : 'No Conforme',
+            'Apariencia': r.apariencia || '',
+            'Color': r.color || '',
+            'Aroma': r.aroma || '',
+        }
+    })
+
+    const fetchExportData = async (): Promise<BitacoraRecord[]> => {
+        let query = supabase.from('bitacora_produccion_calidad').select('*')
+        const role = profile?.role?.toLowerCase()
+        if (role === 'preparador') query = query.eq('user_id', user!.id)
+        else if ((role === 'gerente_sucursal' || role === 'gerente') && profile?.sucursal)
+            query = query.eq('sucursal', profile.sucursal)
+        if (exportDateFrom) query = query.gte('fecha_fabricacion', exportDateFrom)
+        if (exportDateTo) query = query.lte('fecha_fabricacion', exportDateTo)
+        const { data } = await query.order('fecha_fabricacion', { ascending: false })
+        return (data || []) as BitacoraRecord[]
+    }
+
+    const handleExportCsv = async () => {
+        setExporting(true)
+        try {
+            const data = await fetchExportData()
+            const rows = buildExportRows(data)
+            if (rows.length === 0) { toast.info('No hay registros en ese rango de fechas'); return }
+            const headers = Object.keys(rows[0])
+            const escape = (v: any) => {
+                const s = String(v ?? '')
+                return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s
+            }
+            const csv = [
+                headers.join(','),
+                ...rows.map(r => headers.map(h => escape(r[h as keyof typeof r])).join(','))
+            ].join('\n')
+            const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `mediciones_${exportDateFrom || 'inicio'}_al_${exportDateTo || 'hoy'}.csv`
+            a.click()
+            URL.revokeObjectURL(url)
+            toast.success(`CSV descargado (${rows.length} registros)`)
+            setExportOpen(false)
+        } catch { toast.error('Error al exportar') }
+        finally { setExporting(false) }
+    }
+
+    const handleExportXlsx = async () => {
+        setExporting(true)
+        try {
+            const data = await fetchExportData()
+            const rows = buildExportRows(data)
+            if (rows.length === 0) { toast.info('No hay registros en ese rango de fechas'); return }
+            const { default: XLSX } = await import('xlsx')
+            const ws = XLSX.utils.json_to_sheet(rows)
+            const headers = Object.keys(rows[0])
+            ws['!cols'] = headers.map(h => ({
+                wch: Math.max(h.length, ...rows.map(r => String(r[h as keyof typeof r] ?? '').length)) + 2
+            }))
+            const wb = XLSX.utils.book_new()
+            XLSX.utils.book_append_sheet(wb, ws, 'Mediciones')
+            XLSX.writeFile(wb, `mediciones_${exportDateFrom || 'inicio'}_al_${exportDateTo || 'hoy'}.xlsx`)
+            toast.success(`Excel descargado (${rows.length} registros)`)
+            setExportOpen(false)
+        } catch { toast.error('Error al exportar') }
+        finally { setExporting(false) }
+    }
+
     return (
         <div className="space-y-6 max-w-7xl mx-auto pb-12">
             <Breadcrumbs items={[{ label: "Control de Calidad" }]} />
@@ -344,10 +438,16 @@ export default function CalidadPage() {
                         Historial de Mediciones
                     </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={fetchRecords} className="gap-2" disabled={loading}>
-                    <RotateCcw className={cn("h-4 w-4", loading && "animate-spin")} />
-                    Actualizar
-                </Button>
+                <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setExportOpen(true)} className="gap-2">
+                        <Download className="h-4 w-4" />
+                        Exportar datos
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={fetchRecords} className="gap-2" disabled={loading}>
+                        <RotateCcw className={cn("h-4 w-4", loading && "animate-spin")} />
+                        Actualizar
+                    </Button>
+                </div>
             </div>
 
             {/* ── Stats Grid: Total (rowspan 2) + 3 Sólidos + 3 pH ── */}
@@ -880,6 +980,54 @@ export default function CalidadPage() {
                         <Button onClick={handleEditSave} disabled={isUpdating}>
                             {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Guardar Cambios
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Export Dialog ── */}
+            <Dialog open={exportOpen} onOpenChange={setExportOpen}>
+                <DialogContent className="sm:max-w-[420px] sm:rounded-[2rem]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Download className="h-5 w-5 text-blue-600" />
+                            Exportar Mediciones
+                        </DialogTitle>
+                        <DialogDescription>
+                            Selecciona el rango de fechas. Si lo dejas vacío, se exporta todo el historial disponible.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-2">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <UILabel className="text-right text-xs col-span-1">Desde</UILabel>
+                            <Input
+                                type="date"
+                                value={exportDateFrom}
+                                onChange={e => setExportDateFrom(e.target.value)}
+                                className="col-span-3"
+                            />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <UILabel className="text-right text-xs col-span-1">Hasta</UILabel>
+                            <Input
+                                type="date"
+                                value={exportDateTo}
+                                onChange={e => setExportDateTo(e.target.value)}
+                                className="col-span-3"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter className="flex-col sm:flex-row gap-2">
+                        <Button variant="outline" onClick={() => setExportOpen(false)} disabled={exporting}>
+                            Cancelar
+                        </Button>
+                        <Button variant="outline" onClick={handleExportCsv} disabled={exporting} className="gap-2">
+                            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                            Descargar CSV
+                        </Button>
+                        <Button onClick={handleExportXlsx} disabled={exporting} className="gap-2 bg-green-600 hover:bg-green-700 text-white">
+                            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                            Descargar Excel
                         </Button>
                     </DialogFooter>
                 </DialogContent>
