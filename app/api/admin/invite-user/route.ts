@@ -36,11 +36,11 @@ function buildInviteEmail(name: string, role: string, sucursal: string, inviteUr
       <td align="center">
         <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
 
-          <!-- Header con logo -->
+          <!-- Header con logo: fondo blanco + marco azul/rojo -->
           <tr>
-            <td style="background:#0e0c9b;border-radius:16px 16px 0 0;padding:32px 40px;text-align:center;">
-              <img src="https://calidadginez.tech/logo.png" alt="GINEZ" width="140" style="display:block;margin:0 auto 12px;max-width:140px;" />
-              <p style="margin:0;font-size:11px;font-weight:700;color:rgba(255,255,255,0.5);letter-spacing:4px;text-transform:uppercase;">
+            <td style="background:#ffffff;border-radius:16px 16px 0 0;border-top:6px solid #0e0c9b;border-left:6px solid #0e0c9b;border-right:6px solid #ef4444;padding:28px 40px;text-align:center;">
+              <img src="https://calidadginez.tech/logo.png" alt="GINEZ" width="160" style="display:block;margin:0 auto 10px;max-width:160px;" />
+              <p style="margin:0;font-size:11px;font-weight:700;color:#0e0c9b;letter-spacing:4px;text-transform:uppercase;">
                 Plataforma de Control de Calidad
               </p>
             </td>
@@ -48,15 +48,19 @@ function buildInviteEmail(name: string, role: string, sucursal: string, inviteUr
 
           <!-- Body -->
           <tr>
-            <td style="background:#ffffff;padding:40px 40px 32px;">
+            <td style="background:#ffffff;padding:36px 40px 32px;border-left:6px solid #0e0c9b;border-right:6px solid #ef4444;">
 
-              <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">
-                ${firstName ? `Hola, ${firstName}! 👋` : '¡Bienvenido! 👋'}
+              <p style="margin:0 0 12px;font-size:24px;font-weight:700;color:#0f172a;">
+                ${firstName ? `¡Hola, ${firstName}! 🎉` : '¡Bienvenido! 🎉'}
               </p>
-              <p style="margin:0 0 28px;font-size:15px;color:#475569;line-height:1.6;">
-                Has sido invitado a unirte a la <strong style="color:#0e0c9b;">Plataforma de Control de Calidad GINEZ (PCC-Ginez)</strong>,
-                el sistema oficial de gestión y seguimiento de calidad de Operadora GINEZ de México.
-                Tu cuenta ya está lista con el siguiente perfil:
+              <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">
+                ¡Tienes una nueva invitación! 🚀 Has sido seleccionado para unirte a la
+                <strong style="color:#0e0c9b;">Plataforma de Control de Calidad GINEZ (PCC-Ginez)</strong>,
+                el sistema oficial de gestión y seguimiento de calidad de
+                <strong>Operadora GINEZ de México</strong>. 🏭
+              </p>
+              <p style="margin:0 0 28px;font-size:15px;color:#475569;line-height:1.7;">
+                Tu cuenta ya está lista y configurada. Solo necesitas activarla para empezar. 👇
               </p>
 
               <!-- Profile card -->
@@ -115,7 +119,7 @@ function buildInviteEmail(name: string, role: string, sucursal: string, inviteUr
 
           <!-- Footer -->
           <tr>
-            <td style="background:#f8fafc;border-top:1px solid #e2e8f0;border-radius:0 0 16px 16px;padding:24px 40px;text-align:center;">
+            <td style="background:#f8fafc;border-top:1px solid #e2e8f0;border-left:6px solid #0e0c9b;border-right:6px solid #ef4444;border-bottom:6px solid #ef4444;border-radius:0 0 16px 16px;padding:24px 40px;text-align:center;">
               <p style="margin:0 0 4px;font-size:12px;color:#94a3b8;">
                 Este mensaje fue generado automáticamente por PCC-Ginez. Si no esperabas esta invitación, ignora este correo.
               </p>
@@ -213,7 +217,7 @@ export async function POST(request: NextRequest) {
         const inviteUrl = linkData.properties.action_link
 
         const { error: emailError } = await resend.emails.send({
-            from: 'Quality Hub GINEZ <noreply@calidadginez.tech>',
+            from: 'PCC-Ginez <noreply@calidadginez.tech>',
             to: email,
             subject: `Has sido invitado a PCC-Ginez${full_name ? ' — ' + full_name.split(' ')[0] : ''}, activa tu cuenta`,
             html: buildInviteEmail(full_name || '', role, sucursal, inviteUrl),
