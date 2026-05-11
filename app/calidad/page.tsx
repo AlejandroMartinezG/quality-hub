@@ -570,27 +570,7 @@ export default function CalidadPage() {
                     </CardContent>
                 </Card>
 
-                {/* pH — Semi-Conforme */}
-                <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/20 dark:to-amber-900/10 border-amber-200 dark:border-amber-900/30">
-                    <div className="absolute top-4 right-4 h-10 w-10 rounded-2xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
-                        <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                    </div>
-                    <CardContent className="pt-5 px-5 pb-5">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600/60 dark:text-amber-400/50 mb-0.5">pH</p>
-                        <p className="text-sm font-bold text-amber-700 dark:text-amber-400 mb-3">Semi-Conforme</p>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-4xl font-extrabold text-amber-700 dark:text-amber-400">
-                                {phRecords.filter(r => getPhStatus(r) === 'warning').length}
-                            </span>
-                            <span className="text-sm font-bold text-amber-600/70">
-                                {pct(phRecords.filter(r => getPhStatus(r) === 'warning').length, phRecords.length)}
-                            </span>
-                        </div>
-                        <p className="text-[10px] text-amber-600/50 mt-1">de {phRecords.length} con estándar</p>
-                    </CardContent>
-                </Card>
-
-                {/* pH — No Conforme */}
+{/* pH — No Conforme */}
                 <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-rose-50 to-rose-100/50 dark:from-rose-950/20 dark:to-rose-900/10 border-rose-200 dark:border-rose-900/30">
                     <div className="absolute top-4 right-4 h-10 w-10 rounded-2xl bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center">
                         <XCircle className="h-5 w-5 text-rose-600 dark:text-rose-400" />

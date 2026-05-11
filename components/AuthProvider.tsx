@@ -41,6 +41,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [session, setSession] = useState<Session | null>(null)
     const [loading, setLoading] = useState(true)
     const initialized = useRef(false)
+    const initComplete = useRef(false)
     const lastFetchedProfileId = useRef<string | null>(null)
     const fetchingProfile = useRef(false)
     const lastFetchTime = useRef<number>(0)
@@ -145,6 +146,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 console.error("AuthProvider: Init exception:", error)
             } finally {
                 clearTimeout(safetyTimer)
+                initComplete.current = true
                 if (mounted) setLoading(false)
             }
         }
@@ -163,6 +165,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setUser(currentSession?.user ?? null)
                 return
             }
+
+            // SIGNED_OUT can fire transiently during token refresh before init completes.
+            // Ignore it to avoid false redirects while the session is still being restored.
+            if (event === 'SIGNED_OUT' && !initComplete.current) return
 
             console.log(`AuthProvider: Auth Event - ${event}`)
 

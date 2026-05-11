@@ -9,9 +9,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
-        flowType: 'implicit',
-        // Change storage key to reset potentially corrupted locks from development
-        storageKey: 'qh_auth_token',
+        flowType: 'pkce',
     },
 })
 
