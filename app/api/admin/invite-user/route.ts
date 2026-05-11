@@ -17,17 +17,16 @@ const ROLE_LABELS: Record<string, string> = {
     vendedor: 'Vendedor',
 }
 
-async function fetchLogoBase64(): Promise<string> {
-    const fallback = 'https://calidadginez.tech/logo.png'
+async function fetchLogoAttachment(): Promise<{ content: string; contentType: string } | null> {
     try {
-        const res = await fetch('https://calidadginez.tech/logo.png', { next: { revalidate: 0 } })
-        if (!res.ok) return fallback
+        const res = await fetch('https://calidadginez.tech/logo.png', { cache: 'no-store' })
+        if (!res.ok) return null
         const buffer = await res.arrayBuffer()
-        const base64 = Buffer.from(buffer).toString('base64')
+        const content = Buffer.from(buffer).toString('base64')
         const contentType = res.headers.get('content-type') || 'image/png'
-        return `data:${contentType};base64,${base64}`
+        return { content, contentType }
     } catch {
-        return fallback
+        return null
     }
 }
 
@@ -231,13 +230,18 @@ export async function POST(request: NextRequest) {
 
         const resend = new Resend(resendKey)
         const inviteUrl = linkData.properties.action_link
-        const logoSrc = await fetchLogoBase64()
+        const logo = await fetchLogoAttachment()
 
         const { error: emailError } = await resend.emails.send({
             from: 'PCC-Ginez <noreply@calidadginez.tech>',
             to: email,
             subject: `Has sido invitado a PCC-Ginez${full_name ? ' — ' + full_name.split(' ')[0] : ''}, activa tu cuenta`,
-            html: buildInviteEmail(full_name || '', role, sucursal, inviteUrl, logoSrc),
+            html: buildInviteEmail(full_name || '', role, sucursal, inviteUrl, logo ? 'cid:logo@ginez' : 'https://calidadginez.tech/logo.png'),
+            attachments: logo ? [{
+                content: logo.content,
+                filename: 'logo.png',
+                contentId: 'logo@ginez',
+            }] : [],
         })
 
         if (emailError) {
