@@ -296,23 +296,30 @@ export default function ConfigurationPage() {
     const handleUpdateUser = async () => {
         if (!editingUser) return
         setSaveLoading(true)
-        const { error } = await supabase
-            .from('profiles')
-            .update({
-                full_name: sanitizeText(editingUser.full_name),
-                area: sanitizeText(editingUser.area),
-                position: sanitizeText(editingUser.position),
-                sucursal: editingUser.sucursal,
-                is_admin: editingUser.is_admin,
-                updated_at: new Date().toISOString()
+        try {
+            const { data: { session } } = await supabase.auth.getSession()
+            const res = await fetch('/api/admin/update-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token}`,
+                },
+                body: JSON.stringify({
+                    userId: editingUser.id,
+                    full_name: sanitizeText(editingUser.full_name),
+                    area: sanitizeText(editingUser.area),
+                    position: sanitizeText(editingUser.position),
+                    sucursal: editingUser.sucursal,
+                    is_admin: editingUser.is_admin,
+                }),
             })
-            .eq('id', editingUser.id)
-
-        if (!error) {
-            fetchAllUsers()
-            setIsEditDialogOpen(false)
+            if (res.ok) {
+                fetchAllUsers()
+                setIsEditDialogOpen(false)
+            }
+        } finally {
+            setSaveLoading(false)
         }
-        setSaveLoading(false)
     }
 
     const handleDeleteUser = async (userId: string) => {

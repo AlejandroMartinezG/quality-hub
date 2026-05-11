@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
         }
 
-        const { userId, role, sucursal, approved } = await request.json()
+        const { userId, role, sucursal, approved, full_name, area, position, is_admin } = await request.json()
 
         if (!userId) {
             return NextResponse.json({ error: 'userId requerido' }, { status: 400 })
@@ -40,6 +40,10 @@ export async function POST(request: NextRequest) {
         if (role !== undefined) updates.role = role
         if (sucursal !== undefined) updates.sucursal = sucursal
         if (approved !== undefined) updates.approved = approved
+        if (full_name !== undefined) updates.full_name = full_name
+        if (area !== undefined) updates.area = area
+        if (position !== undefined) updates.position = position
+        if (is_admin !== undefined) updates.is_admin = is_admin
 
         const { error } = await supabaseAdmin
             .from('profiles')

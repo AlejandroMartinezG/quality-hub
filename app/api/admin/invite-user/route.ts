@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json()
-        const { email, full_name, role, sucursal } = body
+        const { email, full_name, role, sucursal, area, position } = body
 
         if (!email || !role || !sucursal) {
             return NextResponse.json({ error: 'Faltan datos requeridos' }, { status: 400 })
@@ -196,6 +196,8 @@ export async function POST(request: NextRequest) {
                 full_name: full_name ? sanitizeText(full_name.trim()) : '',
                 role,
                 sucursal,
+                area: area ? sanitizeText(area.trim()) : '',
+                position: position ? sanitizeText(position.trim()) : '',
                 approved: true,
                 updated_at: new Date().toISOString(),
             })

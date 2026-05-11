@@ -81,7 +81,7 @@ const FALLBACK_ROLES: UserRole[] = [
 ]
 
 export default function UsuariosPage() {
-    const { user: currentUser, profile, loading: authLoading } = useAuth()
+    const { profile, loading: authLoading } = useAuth()
     const router = useRouter()
 
     const [profiles, setProfiles] = useState<Profile[]>([])
@@ -103,7 +103,7 @@ export default function UsuariosPage() {
     const [inviteOpen, setInviteOpen] = useState(false)
     const [inviting, setInviting] = useState(false)
     const [inviteForm, setInviteForm] = useState({
-        email: '', full_name: '', role: 'preparador', sucursal: ''
+        email: '', full_name: '', role: 'preparador', sucursal: '', area: '', position: ''
     })
 
     const isAdmin = !authLoading && !!profile && (profile.is_admin || profile.role?.toLowerCase() === 'admin')
@@ -236,7 +236,7 @@ export default function UsuariosPage() {
             if (!res.ok) throw new Error(result.error)
             toast.success(`Invitación enviada a ${inviteForm.email}`)
             setInviteOpen(false)
-            setInviteForm({ email: '', full_name: '', role: 'preparador', sucursal: '' })
+            setInviteForm({ email: '', full_name: '', role: 'preparador', sucursal: '', area: '', position: '' })
             await fetchProfiles()
         } catch (err: any) {
             toast.error(err.message || 'Error al enviar invitación')
@@ -346,6 +346,30 @@ export default function UsuariosPage() {
                                         ))}
                                     </SelectContent>
                                 </Select>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                    <Label htmlFor="invite-area">
+                                        Área <span className="text-slate-400 font-normal">(opcional)</span>
+                                    </Label>
+                                    <Input
+                                        id="invite-area"
+                                        placeholder="Ej: Producción"
+                                        value={inviteForm.area}
+                                        onChange={e => setInviteForm({ ...inviteForm, area: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label htmlFor="invite-position">
+                                        Puesto <span className="text-slate-400 font-normal">(opcional)</span>
+                                    </Label>
+                                    <Input
+                                        id="invite-position"
+                                        placeholder="Ej: Preparador"
+                                        value={inviteForm.position}
+                                        onChange={e => setInviteForm({ ...inviteForm, position: e.target.value })}
+                                    />
+                                </div>
                             </div>
                             <div className="flex justify-end gap-2 pt-2 border-t">
                                 <Button type="button" variant="outline" onClick={() => setInviteOpen(false)}>
