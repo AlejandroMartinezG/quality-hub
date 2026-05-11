@@ -20,30 +20,28 @@ const ROLE_LABELS: Record<string, string> = {
 function buildInviteEmail(name: string, role: string, sucursal: string, inviteUrl: string): string {
     const roleLabel = ROLE_LABELS[role] || role
     const year = new Date().getFullYear()
+    const firstName = name ? name.split(' ')[0] : ''
 
     return `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Invitación — Quality Hub GINEZ</title>
+  <title>Invitación — PCC-Ginez</title>
 </head>
 <body style="margin:0;padding:0;background:#f1f5f9;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
 
-  <!-- Wrapper -->
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:40px 0;">
     <tr>
       <td align="center">
         <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
 
-          <!-- Header -->
+          <!-- Header con logo -->
           <tr>
-            <td style="background:#0e0c9b;border-radius:16px 16px 0 0;padding:36px 40px;text-align:center;">
-              <p style="margin:0 0 4px 0;font-size:28px;font-weight:900;color:#ffffff;letter-spacing:-1px;">
-                GI<span style="color:#ef4444;">N</span>EZ
-              </p>
-              <p style="margin:0;font-size:12px;font-weight:600;color:rgba(255,255,255,0.55);letter-spacing:3px;text-transform:uppercase;">
-                Quality Hub
+            <td style="background:#0e0c9b;border-radius:16px 16px 0 0;padding:32px 40px;text-align:center;">
+              <img src="https://calidadginez.tech/logo.png" alt="GINEZ" width="140" style="display:block;margin:0 auto 12px;max-width:140px;" />
+              <p style="margin:0;font-size:11px;font-weight:700;color:rgba(255,255,255,0.5);letter-spacing:4px;text-transform:uppercase;">
+                Plataforma de Control de Calidad
               </p>
             </td>
           </tr>
@@ -53,12 +51,12 @@ function buildInviteEmail(name: string, role: string, sucursal: string, inviteUr
             <td style="background:#ffffff;padding:40px 40px 32px;">
 
               <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">
-                Hola${name ? ', ' + name.split(' ')[0] : ''}! 👋
+                ${firstName ? `Hola, ${firstName}! 👋` : '¡Bienvenido! 👋'}
               </p>
               <p style="margin:0 0 28px;font-size:15px;color:#475569;line-height:1.6;">
-                Has sido invitado a unirte al sistema de gestión de calidad de
-                <strong style="color:#0e0c9b;">Operadora GINEZ de México</strong>.
-                Tu cuenta ya está lista y configurada con el siguiente perfil:
+                Has sido invitado a unirte a la <strong style="color:#0e0c9b;">Plataforma de Control de Calidad GINEZ (PCC-Ginez)</strong>,
+                el sistema oficial de gestión y seguimiento de calidad de Operadora GINEZ de México.
+                Tu cuenta ya está lista con el siguiente perfil:
               </p>
 
               <!-- Profile card -->
@@ -68,13 +66,13 @@ function buildInviteEmail(name: string, role: string, sucursal: string, inviteUr
                     <table width="100%" cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="padding:6px 0;border-bottom:1px solid #e2e8f0;">
-                          <span style="font-size:12px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">Rol asignado</span><br/>
+                          <span style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">Rol asignado</span><br/>
                           <span style="font-size:15px;font-weight:700;color:#0f172a;">${roleLabel}</span>
                         </td>
                       </tr>
                       <tr>
                         <td style="padding:12px 0 6px;">
-                          <span style="font-size:12px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">Sucursal</span><br/>
+                          <span style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">Sucursal</span><br/>
                           <span style="font-size:15px;font-weight:700;color:#0f172a;">${sucursal}</span>
                         </td>
                       </tr>
@@ -84,7 +82,7 @@ function buildInviteEmail(name: string, role: string, sucursal: string, inviteUr
               </table>
 
               <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.6;">
-                Haz clic en el botón para crear tu contraseña y activar tu cuenta.
+                Haz clic en el botón para crear tu contraseña y activar tu acceso.
                 Este enlace expira en <strong>24 horas</strong>.
               </p>
 
@@ -93,7 +91,7 @@ function buildInviteEmail(name: string, role: string, sucursal: string, inviteUr
                 <tr>
                   <td align="center">
                     <a href="${inviteUrl}"
-                       style="display:inline-block;background:#0e0c9b;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 36px;border-radius:10px;letter-spacing:0.3px;">
+                       style="display:inline-block;background:#0e0c9b;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 40px;border-radius:10px;letter-spacing:0.3px;">
                       Activar mi cuenta →
                     </a>
                   </td>
@@ -101,7 +99,7 @@ function buildInviteEmail(name: string, role: string, sucursal: string, inviteUr
               </table>
 
               <!-- Fallback link -->
-              <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:8px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
                 <tr>
                   <td style="padding:16px 20px;">
                     <p style="margin:0 0 6px;font-size:12px;color:#64748b;">
@@ -119,7 +117,7 @@ function buildInviteEmail(name: string, role: string, sucursal: string, inviteUr
           <tr>
             <td style="background:#f8fafc;border-top:1px solid #e2e8f0;border-radius:0 0 16px 16px;padding:24px 40px;text-align:center;">
               <p style="margin:0 0 4px;font-size:12px;color:#94a3b8;">
-                Este correo fue enviado automáticamente por el sistema Quality Hub.
+                Este mensaje fue generado automáticamente por PCC-Ginez. Si no esperabas esta invitación, ignora este correo.
               </p>
               <p style="margin:0;font-size:12px;color:#94a3b8;">
                 © ${year} Operadora GINEZ de México · Todos los derechos reservados
@@ -217,7 +215,7 @@ export async function POST(request: NextRequest) {
         const { error: emailError } = await resend.emails.send({
             from: 'Quality Hub GINEZ <noreply@calidadginez.tech>',
             to: email,
-            subject: 'Bienvenido a Quality Hub — Activa tu cuenta',
+            subject: `Has sido invitado a PCC-Ginez${full_name ? ' — ' + full_name.split(' ')[0] : ''}, activa tu cuenta`,
             html: buildInviteEmail(full_name || '', role, sucursal, inviteUrl),
         })
 
