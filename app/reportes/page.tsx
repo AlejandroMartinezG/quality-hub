@@ -102,7 +102,7 @@ export default function ReportesPage() {
     // Permissions check
     useEffect(() => {
         if (!authLoading && profile) {
-            const allowedRoles = ['admin', 'gerente_calidad', 'coordinador', 'gerente_sucursal', 'gerente', 'preparador']
+            const allowedRoles = ['admin', 'gerente_calidad', 'coordinador', 'gerente_sucursal', 'gerente', 'preparador', 'director_operaciones', 'director_compras']
             if (!allowedRoles.includes(role)) {
                 toast.error("Acceso restringido", {
                     description: "No tienes permisos para acceder al módulo de Reportes."

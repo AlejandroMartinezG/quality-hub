@@ -26,7 +26,7 @@ export default function HomePage() {
     const showCalidad = !forbiddenCalidad.includes(role)
 
     // Reportes Visibility Rules - Now includes preparador
-    const showReportes = ['admin', 'gerente_calidad', 'coordinador', 'gerente_sucursal', 'gerente', 'preparador'].includes(role)
+    const showReportes = ['admin', 'gerente_calidad', 'coordinador', 'gerente_sucursal', 'gerente', 'preparador', 'director_operaciones', 'director_compras'].includes(role)
 
     return (
         <div className="space-y-8 pb-12">

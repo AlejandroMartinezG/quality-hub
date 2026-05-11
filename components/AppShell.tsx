@@ -167,7 +167,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         )}
 
                         {/* Reportes: For management roles and preparers (internal tab filtering handles specific views) */}
-                        {['admin', 'gerente_calidad', 'coordinador', 'gerente_sucursal', 'gerente', 'preparador'].includes(profile?.role?.toLowerCase() || '') && (
+                        {['admin', 'gerente_calidad', 'coordinador', 'gerente_sucursal', 'gerente', 'preparador', 'director_operaciones', 'director_compras'].includes(profile?.role?.toLowerCase() || '') && (
                             <NavItem href="/reportes" icon={BarChart3} label="Reportes y KPIs" />
                         )}
                     </div>
@@ -260,7 +260,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         )}
 
                         {/* Reportes en Mobile */}
-                        {['admin', 'gerente_calidad', 'coordinador', 'gerente_sucursal', 'gerente', 'preparador'].includes(profile?.role?.toLowerCase() || '') && (
+                        {['admin', 'gerente_calidad', 'coordinador', 'gerente_sucursal', 'gerente', 'preparador', 'director_operaciones', 'director_compras'].includes(profile?.role?.toLowerCase() || '') && (
                             <MobileNavItem href="/reportes" icon={BarChart3} label="Reportes y KPIs" />
                         )}
 
