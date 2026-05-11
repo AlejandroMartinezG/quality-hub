@@ -60,6 +60,7 @@ interface ChatMessage {
 
 export default function CalidadPage() {
     const { user, profile, loading: authLoading } = useAuth()
+    const isAdmin = !!profile && (profile.is_admin || profile.role === 'admin')
     const router = useRouter()
 
     const [records, setRecords] = useState<BitacoraRecord[]>([])
@@ -103,7 +104,7 @@ export default function CalidadPage() {
 
     useEffect(() => {
         if (user && !authLoading) fetchRecords()
-    }, [user?.id, profile?.is_admin, profile?.role, authLoading])
+    }, [user?.id, isAdmin, profile?.role, authLoading])
 
     const fetchRecords = async () => {
         if (!user) return
@@ -638,7 +639,7 @@ export default function CalidadPage() {
                             </SelectContent>
                         </Select>
                     </div>
-                    {profile?.is_admin && (
+                    {isAdmin && (
                         <div className="w-full md:w-56">
                             <Select value={sucursalFilter} onValueChange={setSucursalFilter}>
                                 <SelectTrigger className="h-10">
@@ -693,7 +694,7 @@ export default function CalidadPage() {
                                             <TableHead className="text-white font-bold text-sm">Estado</TableHead>
                                             <TableHead className="text-center text-white font-bold text-sm">Apariencia</TableHead>
                                             <TableHead className="text-center text-white font-bold text-sm">Chat</TableHead>
-                                            {profile?.is_admin ? (
+                                            {isAdmin ? (
                                                 <>
                                                     <TableHead className="text-right text-white font-bold text-sm">Fecha</TableHead>
                                                     <TableHead className="text-white font-bold text-sm">Preparador</TableHead>
@@ -794,12 +795,12 @@ export default function CalidadPage() {
                                                     <TableCell className="text-right text-sm text-muted-foreground">
                                                         {new Date(record.fecha_fabricacion).toLocaleDateString()}
                                                     </TableCell>
-                                                    {profile?.is_admin && (
+                                                    {isAdmin && (
                                                         <TableCell className="text-sm font-medium text-slate-700 dark:text-slate-300">
                                                             {record.nombre_preparador || "N/A"}
                                                         </TableCell>
                                                     )}
-                                                    {profile?.is_admin && (
+                                                    {isAdmin && (
                                                         <TableCell className="text-right pr-6">
                                                             <div className="flex justify-end gap-2">
                                                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
@@ -819,7 +820,7 @@ export default function CalidadPage() {
                                             )
                                         }) : (
                                             <TableRow>
-                                                <TableCell colSpan={profile?.is_admin ? 11 : 9} className="h-24 text-center text-muted-foreground">
+                                                <TableCell colSpan={isAdmin ? 11 : 9} className="h-24 text-center text-muted-foreground">
                                                     No se encontraron registros.
                                                 </TableCell>
                                             </TableRow>
@@ -870,7 +871,7 @@ export default function CalidadPage() {
                                                                     </span>
                                                                 )}
                                                             </div>
-                                                            {profile?.is_admin && (
+                                                            {isAdmin && (
                                                                 <>
                                                                     <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => { setEditingRecord(record); setIsEditDialogOpen(true) }}>
                                                                         <Edit2 className="h-3.5 w-3.5 text-blue-600" />
@@ -900,7 +901,7 @@ export default function CalidadPage() {
                                                         <span className="font-bold text-slate-400 uppercase text-[9px]">Apariencia:</span>
                                                         <span className="font-medium text-slate-700 dark:text-slate-300">{record.apariencia || "N/A"}</span>
                                                     </div>
-                                                    {profile?.is_admin && (
+                                                    {isAdmin && (
                                                         <div className="flex items-center gap-1">
                                                             <span className="font-bold text-slate-400 uppercase text-[9px]">Prep:</span>
                                                             <span className="font-medium text-slate-700 dark:text-slate-300">{record.nombre_preparador?.split(' ')[0] || "N/A"}</span>

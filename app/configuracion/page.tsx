@@ -62,6 +62,7 @@ interface Profile {
 
 export default function ConfigurationPage() {
     const { user, profile, loading, refreshProfile } = useAuth()
+    const isAdmin = !!profile && (profile.is_admin || profile.role === 'admin')
     const [activeTab, setActiveTab] = useState("profile")
 
     // Logs state
@@ -88,7 +89,7 @@ export default function ConfigurationPage() {
     const [saveLoading, setSaveLoading] = useState(false)
 
     useEffect(() => {
-        if (profile?.is_admin) {
+        if (isAdmin) {
             fetchLogs()
             fetchAllUsers()
         }
@@ -258,7 +259,7 @@ export default function ConfigurationPage() {
             }
 
             // 2. Update Auth (Email/Password) - ADMIN ONLY
-            if (profile?.is_admin) {
+            if (isAdmin) {
                 const updates: { email?: string, password?: string } = {}
                 if (myProfileData.email && myProfileData.email.trim().toLowerCase() !== user.email?.trim().toLowerCase()) updates.email = myProfileData.email.trim()
                 const newPass = myProfileData.password?.trim() ?? ""
@@ -460,7 +461,7 @@ export default function ConfigurationPage() {
                             <UserIcon className="h-4 w-4" />
                             Mi Perfil
                         </TabsTrigger>
-                        {profile?.is_admin && (
+                        {isAdmin && (
                             <>
                                 <TabsTrigger value="users" className="gap-2">
                                     <UsersIcon className="h-4 w-4" />
@@ -573,7 +574,7 @@ export default function ConfigurationPage() {
                                                     {profile.sucursal}
                                                 </Badge>
                                             )}
-                                            {profile?.is_admin && (
+                                            {isAdmin && (
                                                 <Badge variant="destructive" className="gap-1.5 px-3 py-1 text-xs md:text-sm">
                                                     <Crown className="h-3.5 w-3.5" />
                                                     Administrador
@@ -650,10 +651,10 @@ export default function ConfigurationPage() {
                                             <div className="space-y-1">
                                                 <p className="text-xs text-muted-foreground">Nivel de Acceso</p>
                                                 <p className="font-semibold">
-                                                    {profile?.is_admin ? 'Administrador del Sistema' : 'Usuario Estándar'}
+                                                    {isAdmin ? 'Administrador del Sistema' : 'Usuario Estándar'}
                                                 </p>
                                             </div>
-                                            {profile?.is_admin ? (
+                                            {isAdmin ? (
                                                 <Crown className="h-4 w-4 text-amber-500 mt-1" />
                                             ) : (
                                                 <UserIcon className="h-4 w-4 text-muted-foreground mt-1" />
@@ -668,7 +669,7 @@ export default function ConfigurationPage() {
                                                     <p className="font-medium">Permisos del Rol</p>
                                                     <p className="mt-1">
                                                         Tus permisos se asignan automáticamente según tu rol.
-                                                        {profile?.is_admin ? ' Como administrador, tienes acceso completo al sistema.' : ' Contacta al administrador para cambios.'}
+                                                        {isAdmin ? ' Como administrador, tienes acceso completo al sistema.' : ' Contacta al administrador para cambios.'}
                                                     </p>
                                                 </div>
                                             </div>
@@ -680,7 +681,7 @@ export default function ConfigurationPage() {
                     </TabsContent>
 
                     {/* Gestión de Usuarios (Admin) */}
-                    {profile?.is_admin && (
+                    {isAdmin && (
                         <>
                             <TabsContent value="users" className="space-y-4 mt-6">
                                 <Card>
@@ -993,7 +994,7 @@ export default function ConfigurationPage() {
                                         )}
                                     </span>
                                     <Badge variant="outline" className="ml-auto">
-                                        {profile?.is_admin ? 'Administrador' : 'Usuario'}
+                                        {isAdmin ? 'Administrador' : 'Usuario'}
                                     </Badge>
                                 </div>
                                 <p className="text-xs text-muted-foreground">
@@ -1023,7 +1024,7 @@ export default function ConfigurationPage() {
                         </div>
 
                         {/* Account Security Section (Admin only) */}
-                        {profile?.is_admin && (
+                        {isAdmin && (
                             <div className="space-y-4 pt-4 border-t">
                                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
                                     <Shield className="h-4 w-4" />
@@ -1067,7 +1068,7 @@ export default function ConfigurationPage() {
                         )}
 
                         {/* Non-admin note */}
-                        {!profile?.is_admin && (
+                        {!isAdmin && (
                             <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                                 <Shield className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5" />
                                 <div className="text-xs text-blue-700 dark:text-blue-300">
