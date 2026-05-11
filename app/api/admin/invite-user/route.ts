@@ -17,7 +17,21 @@ const ROLE_LABELS: Record<string, string> = {
     vendedor: 'Vendedor',
 }
 
-function buildInviteEmail(name: string, role: string, sucursal: string, inviteUrl: string): string {
+async function fetchLogoBase64(): Promise<string> {
+    const fallback = 'https://calidadginez.tech/logo.png'
+    try {
+        const res = await fetch('https://calidadginez.tech/logo.png', { next: { revalidate: 0 } })
+        if (!res.ok) return fallback
+        const buffer = await res.arrayBuffer()
+        const base64 = Buffer.from(buffer).toString('base64')
+        const contentType = res.headers.get('content-type') || 'image/png'
+        return `data:${contentType};base64,${base64}`
+    } catch {
+        return fallback
+    }
+}
+
+function buildInviteEmail(name: string, role: string, sucursal: string, inviteUrl: string, logoSrc: string): string {
     const roleLabel = ROLE_LABELS[role] || role
     const year = new Date().getFullYear()
     const firstName = name ? name.split(' ')[0] : ''
@@ -39,7 +53,7 @@ function buildInviteEmail(name: string, role: string, sucursal: string, inviteUr
           <!-- Header con logo: fondo blanco + marco azul/rojo -->
           <tr>
             <td style="background:#ffffff;border-radius:16px 16px 0 0;border-top:6px solid #0e0c9b;border-left:6px solid #0e0c9b;border-right:6px solid #ef4444;padding:28px 40px;text-align:center;">
-              <img src="https://calidadginez.tech/logo.png" alt="GINEZ" width="160" style="display:block;margin:0 auto 10px;max-width:160px;" />
+              <img src="${logoSrc}" alt="GINEZ" width="160" style="display:block;margin:0 auto 10px;max-width:160px;" />
               <p style="margin:0;font-size:11px;font-weight:700;color:#0e0c9b;letter-spacing:4px;text-transform:uppercase;">
                 Plataforma de Control de Calidad
               </p>
@@ -217,12 +231,13 @@ export async function POST(request: NextRequest) {
 
         const resend = new Resend(resendKey)
         const inviteUrl = linkData.properties.action_link
+        const logoSrc = await fetchLogoBase64()
 
         const { error: emailError } = await resend.emails.send({
             from: 'PCC-Ginez <noreply@calidadginez.tech>',
             to: email,
             subject: `Has sido invitado a PCC-Ginez${full_name ? ' — ' + full_name.split(' ')[0] : ''}, activa tu cuenta`,
-            html: buildInviteEmail(full_name || '', role, sucursal, inviteUrl),
+            html: buildInviteEmail(full_name || '', role, sucursal, inviteUrl, logoSrc),
         })
 
         if (emailError) {
