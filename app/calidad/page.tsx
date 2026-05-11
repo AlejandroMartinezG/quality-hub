@@ -450,45 +450,42 @@ export default function CalidadPage() {
                 </div>
             </div>
 
-            {/* ── Stats Grid: Total (rowspan 2) + 3 Sólidos + 3 pH ── */}
+            {/* ── Stats Grid ── */}
             <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4">
 
                 {/* Total — spans 2 rows */}
-                <Card className="md:row-span-2 relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/20 dark:to-blue-900/10 border-blue-200 dark:border-blue-900/30">
-                    <div className="absolute top-0 right-0 p-6 opacity-10">
-                        <ClipboardList className="w-36 h-36 text-blue-600" />
+                <Card className="md:row-span-2 relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#0e0c9b] to-[#2a28b5] border-none text-white">
+                    <div className="absolute bottom-0 right-0 p-6 opacity-10">
+                        <ClipboardList className="w-40 h-40 text-white" />
                     </div>
-                    <CardHeader className="pb-2 relative z-10">
-                        <CardTitle className="text-sm font-bold text-blue-700 dark:text-blue-400 uppercase tracking-widest flex items-center gap-2">
-                            <div className="h-2.5 w-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
-                            Total Analizado
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="relative z-10 space-y-4">
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-7xl font-extrabold text-blue-700 dark:text-blue-400 tracking-tight">
-                                {filteredRecords.length}
-                            </span>
-                            <span className="text-base font-medium text-blue-600/80">muestras</span>
+                    <div className="absolute top-4 right-4 h-11 w-11 rounded-2xl bg-white/10 flex items-center justify-center">
+                        <ClipboardList className="h-5 w-5 text-white" />
+                    </div>
+                    <CardContent className="relative z-10 p-6 flex flex-col h-full gap-4">
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-white/50 mb-0.5">Historial</p>
+                            <p className="text-sm font-bold text-white/80">Total Analizado</p>
                         </div>
-
-                        <div className="h-px bg-blue-200/60 dark:bg-blue-800/40" />
-
-                        <div className="space-y-3">
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-7xl font-extrabold tracking-tight">{filteredRecords.length}</span>
+                            <span className="text-base font-medium text-white/60">muestras</span>
+                        </div>
+                        <div className="h-px bg-white/10" />
+                        <div className="space-y-3 flex-1">
                             <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs text-blue-700/70 dark:text-blue-300/70 font-semibold leading-tight">🌿 Bases Aromatizante Ambiental</span>
-                                <span className="text-xl font-extrabold text-blue-700 dark:text-blue-400 shrink-0">{totalAromatizantes}</span>
+                                <span className="text-xs text-white/60 font-semibold leading-tight">🌿 Aromatizante Ambiental</span>
+                                <span className="text-xl font-extrabold shrink-0">{totalAromatizantes}</span>
                             </div>
                             <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs text-blue-700/70 dark:text-blue-300/70 font-semibold leading-tight">🧴 Bases Limpiadores Multiusos</span>
-                                <span className="text-xl font-extrabold text-blue-700 dark:text-blue-400 shrink-0">{totalLimpiadores}</span>
+                                <span className="text-xs text-white/60 font-semibold leading-tight">🧴 Limpiadores Multiusos</span>
+                                <span className="text-xl font-extrabold shrink-0">{totalLimpiadores}</span>
                             </div>
                             {totalLitros > 0 && (
                                 <>
-                                    <div className="h-px bg-blue-200/60 dark:bg-blue-800/40" />
+                                    <div className="h-px bg-white/10" />
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm text-blue-700/70 dark:text-blue-300/70 font-semibold">Total L producidos</span>
-                                        <span className="text-xl font-extrabold text-blue-700 dark:text-blue-400">{totalLitros.toLocaleString()}</span>
+                                        <span className="text-sm text-white/60 font-semibold">Total L producidos</span>
+                                        <span className="text-xl font-extrabold">{totalLitros.toLocaleString()}</span>
                                     </div>
                                 </>
                             )}
@@ -498,14 +495,12 @@ export default function CalidadPage() {
 
                 {/* Sólidos — Conformes */}
                 <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/20 dark:to-green-900/10 border-green-200 dark:border-green-900/30">
-                    <div className="absolute top-0 right-0 p-3 opacity-10"><CheckCircle2 className="w-20 h-20 text-green-600" /></div>
-                    <CardHeader className="pb-1 pt-5 px-5 relative z-10">
-                        <CardTitle className="text-xs font-bold text-green-700 dark:text-green-400 uppercase tracking-widest flex items-center gap-1.5">
-                            <div className="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.6)]" />
-                            Conformes · % Sólidos
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="relative z-10 px-5 pb-5">
+                    <div className="absolute top-4 right-4 h-10 w-10 rounded-2xl bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
+                        <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    </div>
+                    <CardContent className="pt-5 px-5 pb-5">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-green-600/60 dark:text-green-400/50 mb-0.5">% Sólidos</p>
+                        <p className="text-sm font-bold text-green-700 dark:text-green-400 mb-3">Conformes</p>
                         <div className="flex items-baseline gap-2">
                             <span className="text-4xl font-extrabold text-green-700 dark:text-green-400">
                                 {filteredRecords.filter(r => getStatusInfo(r) === 'success').length}
@@ -517,16 +512,14 @@ export default function CalidadPage() {
                     </CardContent>
                 </Card>
 
-                {/* Sólidos — Semi */}
+                {/* Sólidos — Semi-Conforme */}
                 <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-yellow-50 to-yellow-100/50 dark:from-yellow-950/20 dark:to-yellow-900/10 border-yellow-200 dark:border-yellow-900/30">
-                    <div className="absolute top-0 right-0 p-3 opacity-10"><AlertCircle className="w-20 h-20 text-yellow-600" /></div>
-                    <CardHeader className="pb-1 pt-5 px-5 relative z-10">
-                        <CardTitle className="text-xs font-bold text-yellow-700 dark:text-yellow-400 uppercase tracking-widest flex items-center gap-1.5">
-                            <div className="h-2 w-2 rounded-full bg-yellow-500 shadow-[0_0_6px_rgba(234,179,8,0.6)]" />
-                            Semi-Conf · % Sólidos
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="relative z-10 px-5 pb-5">
+                    <div className="absolute top-4 right-4 h-10 w-10 rounded-2xl bg-yellow-100 dark:bg-yellow-900/40 flex items-center justify-center">
+                        <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                    </div>
+                    <CardContent className="pt-5 px-5 pb-5">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-yellow-600/60 dark:text-yellow-400/50 mb-0.5">% Sólidos</p>
+                        <p className="text-sm font-bold text-yellow-700 dark:text-yellow-400 mb-3">Semi-Conforme</p>
                         <div className="flex items-baseline gap-2">
                             <span className="text-4xl font-extrabold text-yellow-700 dark:text-yellow-400">
                                 {filteredRecords.filter(r => getStatusInfo(r) === 'warning').length}
@@ -540,14 +533,12 @@ export default function CalidadPage() {
 
                 {/* Sólidos — No Conforme */}
                 <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/20 dark:to-red-900/10 border-[#C1272D]/20">
-                    <div className="absolute top-0 right-0 p-3 opacity-10"><XCircle className="w-20 h-20 text-[#C1272D]" /></div>
-                    <CardHeader className="pb-1 pt-5 px-5 relative z-10">
-                        <CardTitle className="text-xs font-bold text-[#C1272D] dark:text-red-400 uppercase tracking-widest flex items-center gap-1.5">
-                            <div className="h-2 w-2 rounded-full bg-[#C1272D] shadow-[0_0_6px_rgba(193,39,45,0.6)]" />
-                            No Conf · % Sólidos
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="relative z-10 px-5 pb-5">
+                    <div className="absolute top-4 right-4 h-10 w-10 rounded-2xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
+                        <XCircle className="h-5 w-5 text-[#C1272D] dark:text-red-400" />
+                    </div>
+                    <CardContent className="pt-5 px-5 pb-5">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-[#C1272D]/50 dark:text-red-400/50 mb-0.5">% Sólidos</p>
+                        <p className="text-sm font-bold text-[#C1272D] dark:text-red-400 mb-3">No Conforme</p>
                         <div className="flex items-baseline gap-2">
                             <span className="text-4xl font-extrabold text-[#C1272D] dark:text-red-400">
                                 {filteredRecords.filter(r => getStatusInfo(r) === 'error').length}
@@ -561,14 +552,12 @@ export default function CalidadPage() {
 
                 {/* pH — Conformes */}
                 <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/20 dark:to-emerald-900/10 border-emerald-200 dark:border-emerald-900/30">
-                    <div className="absolute top-0 right-0 p-3 opacity-10"><CheckCircle2 className="w-20 h-20 text-emerald-600" /></div>
-                    <CardHeader className="pb-1 pt-5 px-5 relative z-10">
-                        <CardTitle className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
-                            <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
-                            Conformes · pH
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="relative z-10 px-5 pb-5">
+                    <div className="absolute top-4 right-4 h-10 w-10 rounded-2xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
+                        <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <CardContent className="pt-5 px-5 pb-5">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600/60 dark:text-emerald-400/50 mb-0.5">pH</p>
+                        <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400 mb-3">Conformes</p>
                         <div className="flex items-baseline gap-2">
                             <span className="text-4xl font-extrabold text-emerald-700 dark:text-emerald-400">
                                 {phRecords.filter(r => getPhStatus(r) === 'success').length}
@@ -577,20 +566,38 @@ export default function CalidadPage() {
                                 {pct(phRecords.filter(r => getPhStatus(r) === 'success').length, phRecords.length)}
                             </span>
                         </div>
-                        <p className="text-[10px] text-emerald-600/60 mt-0.5">de {phRecords.length} con estándar</p>
+                        <p className="text-[10px] text-emerald-600/50 mt-1">de {phRecords.length} con estándar</p>
+                    </CardContent>
+                </Card>
+
+                {/* pH — Semi-Conforme */}
+                <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/20 dark:to-amber-900/10 border-amber-200 dark:border-amber-900/30">
+                    <div className="absolute top-4 right-4 h-10 w-10 rounded-2xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
+                        <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <CardContent className="pt-5 px-5 pb-5">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600/60 dark:text-amber-400/50 mb-0.5">pH</p>
+                        <p className="text-sm font-bold text-amber-700 dark:text-amber-400 mb-3">Semi-Conforme</p>
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-4xl font-extrabold text-amber-700 dark:text-amber-400">
+                                {phRecords.filter(r => getPhStatus(r) === 'warning').length}
+                            </span>
+                            <span className="text-sm font-bold text-amber-600/70">
+                                {pct(phRecords.filter(r => getPhStatus(r) === 'warning').length, phRecords.length)}
+                            </span>
+                        </div>
+                        <p className="text-[10px] text-amber-600/50 mt-1">de {phRecords.length} con estándar</p>
                     </CardContent>
                 </Card>
 
                 {/* pH — No Conforme */}
                 <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-rose-50 to-rose-100/50 dark:from-rose-950/20 dark:to-rose-900/10 border-rose-200 dark:border-rose-900/30">
-                    <div className="absolute top-0 right-0 p-3 opacity-10"><XCircle className="w-20 h-20 text-rose-600" /></div>
-                    <CardHeader className="pb-1 pt-5 px-5 relative z-10">
-                        <CardTitle className="text-xs font-bold text-rose-700 dark:text-rose-400 uppercase tracking-widest flex items-center gap-1.5">
-                            <div className="h-2 w-2 rounded-full bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.6)]" />
-                            No Conf · pH
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="relative z-10 px-5 pb-5">
+                    <div className="absolute top-4 right-4 h-10 w-10 rounded-2xl bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center">
+                        <XCircle className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+                    </div>
+                    <CardContent className="pt-5 px-5 pb-5">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-rose-600/60 dark:text-rose-400/50 mb-0.5">pH</p>
+                        <p className="text-sm font-bold text-rose-700 dark:text-rose-400 mb-3">No Conforme</p>
                         <div className="flex items-baseline gap-2">
                             <span className="text-4xl font-extrabold text-rose-700 dark:text-rose-400">
                                 {phRecords.filter(r => getPhStatus(r) === 'error').length}
@@ -599,7 +606,7 @@ export default function CalidadPage() {
                                 {pct(phRecords.filter(r => getPhStatus(r) === 'error').length, phRecords.length)}
                             </span>
                         </div>
-                        <p className="text-[10px] text-rose-600/60 mt-0.5">de {phRecords.length} con estándar</p>
+                        <p className="text-[10px] text-rose-600/50 mt-1">de {phRecords.length} con estándar</p>
                     </CardContent>
                 </Card>
             </div>
