@@ -10,6 +10,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
         autoRefreshToken: true,
         detectSessionInUrl: true,
         flowType: 'pkce',
+        storageKey: 'pcc-ginez-auth',
     },
 })
 
