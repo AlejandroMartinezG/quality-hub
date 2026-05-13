@@ -108,10 +108,11 @@ export default function UsuariosPage() {
 
     const isAdmin = !authLoading && !!profile && (profile.is_admin || profile.role?.toLowerCase() === 'admin')
 
-    // Redirect non-admins once auth finishes
+    // Redirect non-admins once auth AND profile finish loading
     useEffect(() => {
         if (authLoading) return
-        if (!profile || (!profile.is_admin && profile.role?.toLowerCase() !== 'admin')) {
+        if (!profile) return  // Profile still loading — wait before evaluating
+        if (!profile.is_admin && profile.role?.toLowerCase() !== 'admin') {
             toast.error("Acceso restringido", {
                 description: "Solo los administradores pueden gestionar usuarios."
             })
