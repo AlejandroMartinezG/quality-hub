@@ -473,6 +473,7 @@ export default function CalidadPage() {
                         </div>
                         <div className="h-px bg-white/10" />
                         <div className="space-y-3 flex-1">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">Cantidad de bases en piezas</p>
                             <div className="flex items-center justify-between gap-2">
                                 <span className="text-xs text-white/60 font-semibold leading-tight">🌿 Aromatizante Ambiental</span>
                                 <span className="text-xl font-extrabold shrink-0">{totalAromatizantes}</span>
@@ -728,7 +729,7 @@ export default function CalidadPage() {
                                                     </TableCell>
                                                     <TableCell className="text-center">
                                                         <span className="font-bold text-sm text-slate-700 dark:text-slate-200">
-                                                            {record.tamano_lote ? record.tamano_lote.toLocaleString() + ' L' : <span className="text-muted-foreground text-xs">—</span>}
+                                                            {record.tamano_lote ? record.tamano_lote.toLocaleString() + (record.familia_producto === 'Bases aromatizante ambiental' || record.familia_producto === 'Bases limpiadores liquidos multiusos' ? ' pzs' : ' L') : <span className="text-muted-foreground text-xs">—</span>}
                                                         </span>
                                                     </TableCell>
                                                     <TableCell className="text-center">
