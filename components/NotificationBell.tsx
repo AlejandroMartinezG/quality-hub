@@ -1,14 +1,11 @@
 'use client'
 
-import { Bell, Check, ExternalLink, X } from 'lucide-react'
+import { Bell, X, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { formatDistanceToNow } from 'date-fns'
-import { es } from 'date-fns/locale'
 import { useRouter } from 'next/navigation'
 
 export interface Notification {
@@ -31,8 +28,6 @@ export function NotificationBell() {
 
     useEffect(() => {
         loadNotifications()
-
-        // Poll every 30s instead of realtime — WebSocket (wss) not available via Kong
         const interval = setInterval(loadNotifications, 30_000)
         return () => clearInterval(interval)
     }, [])
@@ -56,42 +51,45 @@ export function NotificationBell() {
     }
 
     async function markAsRead(id: string) {
-        // Optimistic update
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
         setUnreadCount(prev => Math.max(0, prev - 1))
-
-        await supabase
-            .from('notifications')
-            .update({ read: true })
-            .eq('id', id)
+        await supabase.from('notifications').update({ read: true }).eq('id', id)
     }
 
     async function markAllRead() {
         const unreadIds = notifications.filter(n => !n.read).map(n => n.id)
         if (unreadIds.length === 0) return
-
         setNotifications(prev => prev.map(n => ({ ...n, read: true })))
         setUnreadCount(0)
+        await supabase.from('notifications').update({ read: true }).in('id', unreadIds)
+    }
 
-        await supabase
-            .from('notifications')
-            .update({ read: true })
-            .in('id', unreadIds)
+    async function deleteNotification(e: React.MouseEvent, id: string) {
+        e.stopPropagation()
+        setNotifications(prev => {
+            const updated = prev.filter(n => n.id !== id)
+            setUnreadCount(updated.filter(n => !n.read).length)
+            return updated
+        })
+        await supabase.from('notifications').delete().eq('id', id)
+    }
+
+    async function deleteAll() {
+        const ids = notifications.map(n => n.id)
+        if (ids.length === 0) return
+        setNotifications([])
+        setUnreadCount(0)
+        await supabase.from('notifications').delete().in('id', ids)
     }
 
     const handleNotificationClick = (notif: Notification) => {
         setOpen(false)
-
         const isMessageType = notif.type === 'CHAT_CALIDAD' || notif.type === 'COMENTARIO_NUEVO'
-
         if (isMessageType) {
-            // All message notifications go to the historial table, never to the NCR panel.
-            // Don't mark as read — the chat opening in /calidad will mark it read.
             const mid = notif.metadata?.measurement_id
             router.push(mid ? `/calidad?chat=${mid}` : '/calidad')
             return
         }
-
         if (!notif.read) markAsRead(notif.id)
         if (notif.link) router.push(notif.link)
     }
@@ -112,16 +110,29 @@ export function NotificationBell() {
             <PopoverContent className="w-80 p-0" align="end">
                 <div className="flex items-center justify-between px-4 py-2 border-b">
                     <h3 className="font-semibold text-sm">Notificaciones</h3>
-                    {unreadCount > 0 && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-xs h-auto py-1 text-blue-600 hover:text-blue-800"
-                            onClick={markAllRead}
-                        >
-                            Marcar todo leído
-                        </Button>
-                    )}
+                    <div className="flex items-center gap-1">
+                        {unreadCount > 0 && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs h-auto py-1 text-blue-600 hover:text-blue-800"
+                                onClick={markAllRead}
+                            >
+                                Marcar todo leído
+                            </Button>
+                        )}
+                        {notifications.length > 0 && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs h-auto py-1 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                onClick={deleteAll}
+                            >
+                                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                                Borrar todo
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
                 <div className="max-h-[300px] overflow-y-auto">
@@ -135,17 +146,16 @@ export function NotificationBell() {
                             {notifications.map(notif => (
                                 <div
                                     key={notif.id}
-                                    className={`p-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer flex gap-3 ${!notif.read ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}
+                                    className={`px-3 py-2.5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer flex gap-3 group ${!notif.read ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}
                                     onClick={() => handleNotificationClick(notif)}
                                 >
-                                    <div className={`mt-1 h-2 w-2 rounded-full shrink-0 ${!notif.read ? 'bg-blue-500' : 'bg-transparent'}`} />
-                                    <div className="flex-1 space-y-1">
+                                    <div className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${!notif.read ? 'bg-blue-500' : 'bg-transparent'}`} />
+                                    <div className="flex-1 space-y-1 min-w-0">
                                         <div className="flex justify-between items-start gap-2">
-                                            <p className={`text-sm leading-none ${!notif.read ? 'font-semibold text-slate-900 dark:text-slate-100' : 'font-medium text-slate-600 dark:text-slate-400'}`}>
+                                            <p className={`text-sm leading-none truncate ${!notif.read ? 'font-semibold text-slate-900 dark:text-slate-100' : 'font-medium text-slate-600 dark:text-slate-400'}`}>
                                                 {notif.title}
                                             </p>
-                                            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                                                {/* Use simple date formatting if date-fns fails or for robustness */}
+                                            <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
                                                 {new Date(notif.created_at).toLocaleDateString()}
                                             </span>
                                         </div>
@@ -153,6 +163,13 @@ export function NotificationBell() {
                                             {notif.message}
                                         </p>
                                     </div>
+                                    <button
+                                        className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5 text-slate-400 hover:text-red-500"
+                                        onClick={(e) => deleteNotification(e, notif.id)}
+                                        title="Eliminar"
+                                    >
+                                        <X className="h-3.5 w-3.5" />
+                                    </button>
                                 </div>
                             ))}
                         </div>
