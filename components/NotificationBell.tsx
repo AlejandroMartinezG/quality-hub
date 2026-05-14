@@ -44,7 +44,8 @@ export function NotificationBell() {
         const { data } = await supabase
             .from('notifications')
             .select('*')
-            .eq('user_id', user.id) // Redundant with RLS but good practice
+            .eq('user_id', user.id)
+            .not('type', 'in', '(NCR_CREATED,NCR_STATUS_CHANGE,DISPOSICION_REGISTRADA)')
             .order('created_at', { ascending: false })
             .limit(20)
 
