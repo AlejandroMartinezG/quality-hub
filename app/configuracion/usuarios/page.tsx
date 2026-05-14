@@ -26,7 +26,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Loader2, Shield, Users, Search, Edit, Save, X, Check, Building2, UserCheck, UserX, Clock, UserPlus, Mail } from "lucide-react"
+import { Loader2, Shield, Users, Search, Edit, Save, X, Check, Building2, UserCheck, UserX, Clock, UserPlus, Mail, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { SUCURSALES } from "@/lib/production-constants"
 
@@ -105,6 +105,10 @@ export default function UsuariosPage() {
     const [inviteForm, setInviteForm] = useState({
         email: '', full_name: '', role: 'preparador', sucursal: '', area: '', position: ''
     })
+
+    // Delete dialog state
+    const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null)
+    const [deleting, setDeleting] = useState(false)
 
     const isAdmin = !authLoading && !!profile && (profile.is_admin || profile.role?.toLowerCase() === 'admin')
 
@@ -243,6 +247,31 @@ export default function UsuariosPage() {
             toast.error(err.message || 'Error al enviar invitación')
         } finally {
             setInviting(false)
+        }
+    }
+
+    const handleDelete = async () => {
+        if (!deleteTarget) return
+        setDeleting(true)
+        try {
+            const { data: { session } } = await supabase.auth.getSession()
+            const res = await fetch('/api/admin/delete-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token}`,
+                },
+                body: JSON.stringify({ userId: deleteTarget.id }),
+            })
+            const result = await res.json()
+            if (!res.ok) throw new Error(result.error)
+            toast.success(`Usuario ${deleteTarget.full_name || deleteTarget.id} eliminado`)
+            setDeleteTarget(null)
+            await fetchProfiles()
+        } catch (err: any) {
+            toast.error(err.message || 'Error al eliminar usuario')
+        } finally {
+            setDeleting(false)
         }
     }
 
@@ -507,6 +536,14 @@ export default function UsuariosPage() {
                                             <Edit className="h-4 w-4 mr-2" />
                                             Editar
                                         </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setDeleteTarget(p)}
+                                            className="text-red-600 border-red-300 hover:bg-red-50"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -629,6 +666,36 @@ export default function UsuariosPage() {
                                 Guardar Cambios
                             </Button>
                         </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
+                <DialogContent className="max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-red-600">
+                            <Trash2 className="h-5 w-5" />
+                            Eliminar usuario
+                        </DialogTitle>
+                        <DialogDescription>
+                            ¿Estás seguro de que quieres eliminar a{' '}
+                            <strong>{deleteTarget?.full_name || deleteTarget?.id}</strong>?
+                            Esta acción no se puede deshacer.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex justify-end gap-2 pt-2">
+                        <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>
+                            Cancelar
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleDelete}
+                            disabled={deleting}
+                        >
+                            {deleting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                            Eliminar
+                        </Button>
                     </div>
                 </DialogContent>
             </Dialog>
