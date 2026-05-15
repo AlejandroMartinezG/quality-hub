@@ -8,7 +8,7 @@ import { analyzeRecord, EnrichedRecord } from "@/lib/analysis-utils"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Loader2, RefreshCcw, Filter, Download, Factory, Trophy, TrendingUp, Package, Activity, AlertCircle, ChevronRight, Printer, Box, AlertTriangle } from "lucide-react"
+import { Loader2, RefreshCcw, Filter, Download, Factory, Trophy, TrendingUp, Package, Activity, AlertCircle, ChevronRight, Printer, Box, AlertTriangle, Search } from "lucide-react"
 import { PrintReportWrapper } from "@/components/PrintReportWrapper"
 import { DateRangeModal } from "@/components/DateRangeModal"
 import { toast } from "sonner"
@@ -19,6 +19,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
 import {
     BarChart,
     Bar,
@@ -41,6 +42,16 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SUCURSALES, PRODUCT_STANDARDS, PH_STANDARDS, CATEGORY_PRODUCTS, PRODUCT_GROUPS, PRODUCT_CATEGORIES } from "@/lib/production-constants"
 import SPYReportPage from "./spy/page"
+
+// --- Helper functions ---
+
+function getHeatColor(ratio: number): string {
+    // 0=low dark blue, 1=high cyan
+    const hue = Math.round(270 - ratio * 110)
+    const sat = Math.round(55 + ratio * 30)
+    const light = Math.round(22 + ratio * 42)
+    return `hsl(${hue},${sat}%,${light}%)`
+}
 
 // --- Components ---
 
@@ -98,6 +109,13 @@ export default function ReportesPage() {
         setPrintView({ tab, dateFrom, dateTo })
     }
 
+    // Production analysis state
+    const [prodDateFrom, setProdDateFrom] = useState(() => {
+        const d = new Date(); d.setFullYear(d.getFullYear() - 1); return d.toISOString().split('T')[0]
+    })
+    const [prodDateTo, setProdDateTo] = useState(() => new Date().toISOString().split('T')[0])
+    const [sucursalHeatmapTab, setSucursalHeatmapTab] = useState<'total' | 'productos' | 'bases'>('total')
+    const [sucursalHeatmapSearch, setSucursalHeatmapSearch] = useState('')
 
     // Permissions check
     useEffect(() => {
@@ -307,6 +325,79 @@ export default function ReportesPage() {
             percentNoConformidadPH
         }
     }, [filteredRecords])
+
+    // Production analysis records (only date-filtered, ignores conformity/product filters)
+    const prodAnalysisRecords = useMemo(() => {
+        return records.filter(r => {
+            const raw = r as any
+            const d = new Date(r.fecha_fabricacion || raw.created_at)
+            if (prodDateFrom && d < new Date(prodDateFrom)) return false
+            if (prodDateTo && d > new Date(prodDateTo + 'T23:59:59')) return false
+            return true
+        })
+    }, [records, prodDateFrom, prodDateTo])
+
+    // Aggregated production data for analysis charts
+    const productionAnalysisData = useMemo(() => {
+        const PIECE_FAM = ["Bases aromatizante ambiental", "Bases limpiadores liquidos multiusos", "Bases Aromatizantes"]
+
+        const byMonth: Record<string, { label: string, productos: number, bases: number }> = {}
+        const bySucursalMonth: Record<string, Record<string, { productos: number, bases: number }>> = {}
+        const byFamily: Record<string, number> = {}
+        const familyMonthMap: Record<string, Record<string, number>> = {}
+
+        for (const r of prodAnalysisRecords) {
+            const raw = r as any
+            const dateStr = raw.fecha_fabricacion || raw.created_at
+            const date = new Date(dateStr)
+            const year = date.getFullYear()
+            const monthNum = date.getMonth() + 1
+            const monthKey = `${year}-${String(monthNum).padStart(2, '0')}`
+            const monthLabel = date.toLocaleDateString('es-MX', { month: 'short', year: '2-digit' }).replace('. ', ' \'')
+            const suc = (raw.sucursal || 'Sin Sucursal') as string
+            const fam = (raw.familia_producto || 'Otros') as string
+            const isBase = PIECE_FAM.includes(fam)
+            const val = raw.tamano_lote ? parseFloat(raw.tamano_lote) : 0
+            const litros = isBase ? val * 20 : val
+
+            if (!byMonth[monthKey]) byMonth[monthKey] = { label: monthLabel, productos: 0, bases: 0 }
+            if (isBase) byMonth[monthKey].bases += litros
+            else byMonth[monthKey].productos += litros
+
+            if (!bySucursalMonth[suc]) bySucursalMonth[suc] = {}
+            if (!bySucursalMonth[suc][monthKey]) bySucursalMonth[suc][monthKey] = { productos: 0, bases: 0 }
+            if (isBase) bySucursalMonth[suc][monthKey].bases += litros
+            else bySucursalMonth[suc][monthKey].productos += litros
+
+            if (!byFamily[fam]) byFamily[fam] = 0
+            byFamily[fam] += litros
+
+            if (!familyMonthMap[fam]) familyMonthMap[fam] = {}
+            if (!familyMonthMap[fam][monthKey]) familyMonthMap[fam][monthKey] = 0
+            familyMonthMap[fam][monthKey] += litros
+        }
+
+        const months = Object.keys(byMonth).sort()
+        const monthlyData = months.map(k => ({ key: k, ...byMonth[k], total: byMonth[k].productos + byMonth[k].bases }))
+
+        const sucursalRows = Object.entries(bySucursalMonth).map(([name, mData]) => {
+            const totProd = Object.values(mData).reduce((s, m) => s + m.productos, 0)
+            const totBase = Object.values(mData).reduce((s, m) => s + m.bases, 0)
+            return { name, mData, totProd, totBase, total: totProd + totBase }
+        }).sort((a, b) => b.total - a.total)
+
+        const familyData = Object.entries(byFamily)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value)
+
+        const familyTableData = familyData.map(f => ({
+            name: f.name,
+            total: f.value,
+            byMonth: familyMonthMap[f.name] || {}
+        }))
+
+        return { months, monthlyData, sucursalRows, familyData, familyTableData }
+    }, [prodAnalysisRecords])
 
     // 3. Stacked Bar Chart (Sucursales)
     const sucursalChartData = useMemo(() => {
@@ -1712,6 +1803,316 @@ export default function ReportesPage() {
                                     ))}
                                 </div>
                             </div>
+
+                            {/* ── Production Analysis ─────────────────── */}
+                            {/* Date Range Filter */}
+                            <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
+                                <CardContent className="p-4">
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        <span className="text-sm font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                                            <Filter className="h-4 w-4" />
+                                            Período de análisis
+                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <Input type="date" value={prodDateFrom} onChange={e => setProdDateFrom(e.target.value)}
+                                                className="h-8 text-xs w-36 rounded-lg" />
+                                            <span className="text-xs text-muted-foreground">—</span>
+                                            <Input type="date" value={prodDateTo} onChange={e => setProdDateTo(e.target.value)}
+                                                className="h-8 text-xs w-36 rounded-lg" />
+                                        </div>
+                                        <div className="flex gap-1 flex-wrap">
+                                            {[
+                                                { label: '3M', months: 3 }, { label: '6M', months: 6 },
+                                                { label: '1A', months: 12 }, { label: 'Todo', months: 0 },
+                                            ].map(opt => (
+                                                <Button key={opt.label} variant="outline" size="sm"
+                                                    className="h-7 px-2 text-xs rounded-lg"
+                                                    onClick={() => {
+                                                        const to = new Date()
+                                                        setProdDateTo(to.toISOString().split('T')[0])
+                                                        if (opt.months === 0) { setProdDateFrom('') }
+                                                        else {
+                                                            const from = new Date(to)
+                                                            from.setMonth(from.getMonth() - opt.months)
+                                                            setProdDateFrom(from.toISOString().split('T')[0])
+                                                        }
+                                                    }}>
+                                                    {opt.label}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                        <span className="text-xs text-muted-foreground ml-auto">
+                                            {productionAnalysisData.monthlyData.length} meses · {prodAnalysisRecords.length} lotes
+                                        </span>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Producción Mensual */}
+                            <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
+                                <CardHeader>
+                                    <CardTitle className="text-lg font-bold">Producción Mensual</CardTitle>
+                                    <CardDescription>Volumen mensual separado entre Productos terminados y Bases (×20)</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="flex flex-col lg:flex-row gap-6">
+                                        {/* Chart */}
+                                        <div className="flex-1 min-w-0 h-[320px]">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={productionAnalysisData.monthlyData}
+                                                    margin={{ top: 10, right: 20, left: 10, bottom: 50 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                                                    <XAxis dataKey="label" fontSize={10} angle={-45} textAnchor="end"
+                                                        height={60} interval={0} tick={{ fill: '#64748b' }} />
+                                                    <YAxis fontSize={11} tickLine={false} axisLine={false}
+                                                        tickFormatter={v => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : v >= 1000 ? `${(v / 1000).toFixed(0)}K` : String(v)} />
+                                                    <Tooltip
+                                                        contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0/0.1)' }}
+                                                        formatter={(value) => [`${Number(value).toLocaleString()} L`]}
+                                                    />
+                                                    <Legend wrapperStyle={{ paddingTop: '12px' }} />
+                                                    <Bar dataKey="productos" name="Productos" stackId="a" fill="#C1272D" radius={[0, 0, 0, 0]} />
+                                                    <Bar dataKey="bases" name="Bases" stackId="a" fill="#06b6d4" radius={[3, 3, 0, 0]} />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                        {/* Table */}
+                                        <div className="lg:w-64 shrink-0">
+                                            <div className="max-h-[320px] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700">
+                                                <table className="w-full text-xs">
+                                                    <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800">
+                                                        <tr>
+                                                            <th className="text-left px-3 py-2 font-semibold text-slate-600 dark:text-slate-300">Mes</th>
+                                                            <th className="text-right px-2 py-2 font-semibold text-[#C1272D]">Prod.</th>
+                                                            <th className="text-right px-3 py-2 font-semibold text-cyan-600">Bases</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                                        {productionAnalysisData.monthlyData.map(m => (
+                                                            <tr key={m.key} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                                                <td className="px-3 py-1.5 font-medium text-slate-700 dark:text-slate-300 capitalize">{m.label}</td>
+                                                                <td className="px-2 py-1.5 text-right font-mono text-slate-600 dark:text-slate-400">{m.productos.toLocaleString()}</td>
+                                                                <td className="px-3 py-1.5 text-right font-mono text-slate-600 dark:text-slate-400">{m.bases.toLocaleString()}</td>
+                                                            </tr>
+                                                        ))}
+                                                        {productionAnalysisData.monthlyData.length === 0 && (
+                                                            <tr><td colSpan={3} className="px-3 py-8 text-center text-muted-foreground">Sin datos</td></tr>
+                                                        )}
+                                                    </tbody>
+                                                    <tfoot className="sticky bottom-0 bg-slate-100 dark:bg-slate-700">
+                                                        <tr>
+                                                            <td className="px-3 py-2 font-bold text-slate-700 dark:text-slate-200">Total</td>
+                                                            <td className="px-2 py-2 text-right font-bold font-mono text-slate-700 dark:text-slate-200">
+                                                                {productionAnalysisData.monthlyData.reduce((s, m) => s + m.productos, 0).toLocaleString()}
+                                                            </td>
+                                                            <td className="px-3 py-2 text-right font-bold font-mono text-slate-700 dark:text-slate-200">
+                                                                {productionAnalysisData.monthlyData.reduce((s, m) => s + m.bases, 0).toLocaleString()}
+                                                            </td>
+                                                        </tr>
+                                                    </tfoot>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Familias de Producto */}
+                            <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
+                                <CardHeader>
+                                    <CardTitle className="text-lg font-bold">Familias de Producto</CardTitle>
+                                    <CardDescription>Distribución de volumen producido por familia</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="flex flex-col lg:flex-row gap-6">
+                                        {/* Donut */}
+                                        <div className="lg:w-[340px] shrink-0 h-[320px]">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <PieChart>
+                                                    <Pie data={productionAnalysisData.familyData.slice(0, 15)}
+                                                        cx="50%" cy="50%" innerRadius="45%" outerRadius="68%"
+                                                        paddingAngle={2} dataKey="value" nameKey="name">
+                                                        {productionAnalysisData.familyData.slice(0, 15).map((_, i) => {
+                                                            const colors = ['#C1272D','#06b6d4','#8b5cf6','#f59e0b','#10b981','#3b82f6','#ec4899','#14b8a6','#f97316','#6366f1','#84cc16','#e11d48','#0891b2','#7c3aed','#d97706']
+                                                            return <Cell key={i} fill={colors[i % colors.length]} />
+                                                        })}
+                                                    </Pie>
+                                                    <Tooltip formatter={(value) => [`${Number(value).toLocaleString()} L`]} />
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                        {/* Table by month */}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="max-h-[320px] overflow-auto rounded-xl border border-slate-200 dark:border-slate-700">
+                                                <table className="w-full text-xs min-w-[500px]">
+                                                    <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 z-10">
+                                                        <tr>
+                                                            <th className="sticky left-0 bg-slate-50 dark:bg-slate-800 text-left px-3 py-2 font-semibold text-slate-600 dark:text-slate-300 min-w-[160px]">Familia</th>
+                                                            {productionAnalysisData.months.map(mk => (
+                                                                <th key={mk} className="text-right px-2 py-2 font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                                                                    {productionAnalysisData.monthlyData.find(m => m.key === mk)?.label ?? mk}
+                                                                </th>
+                                                            ))}
+                                                            <th className="text-right px-3 py-2 font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 whitespace-nowrap">Total</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                                        {productionAnalysisData.familyTableData.map(f => (
+                                                            <tr key={f.name} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                                                <td className="sticky left-0 bg-white dark:bg-slate-900 px-3 py-1.5 font-medium text-slate-700 dark:text-slate-300 truncate max-w-[160px]">{f.name}</td>
+                                                                {productionAnalysisData.months.map(mk => (
+                                                                    <td key={mk} className="px-2 py-1.5 text-right font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                                                                        {f.byMonth[mk] ? f.byMonth[mk].toLocaleString() : '—'}
+                                                                    </td>
+                                                                ))}
+                                                                <td className="px-3 py-1.5 text-right font-bold font-mono text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 whitespace-nowrap">{f.total.toLocaleString()}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Producción por Sucursal — Heatmap */}
+                            <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
+                                <CardHeader>
+                                    <div className="flex flex-wrap items-start justify-between gap-3">
+                                        <div>
+                                            <CardTitle className="text-lg font-bold">Producción por Sucursal</CardTitle>
+                                            <CardDescription>Volumen mensual por sucursal con escala de calor</CardDescription>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="relative">
+                                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                                                <Input placeholder="Buscar sucursal..." value={sucursalHeatmapSearch}
+                                                    onChange={e => setSucursalHeatmapSearch(e.target.value)}
+                                                    className="pl-8 h-8 text-xs w-44 rounded-lg" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {/* Tabs */}
+                                    <div className="flex gap-1 mt-2">
+                                        {(['total', 'productos', 'bases'] as const).map(t => (
+                                            <button key={t} onClick={() => setSucursalHeatmapTab(t)}
+                                                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${sucursalHeatmapTab === t ? 'bg-[#C1272D] text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
+                                                {t === 'total' ? 'Producción Total' : t === 'productos' ? 'Productos' : 'Bases'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </CardHeader>
+                                <CardContent>
+                                    {(() => {
+                                        const rows = productionAnalysisData.sucursalRows
+                                            .filter(r => !sucursalHeatmapSearch || r.name.toLowerCase().includes(sucursalHeatmapSearch.toLowerCase()))
+                                        const months = productionAnalysisData.months
+                                        // Get value per cell based on tab
+                                        const getVal = (row: typeof rows[0], mk: string) => {
+                                            const m = row.mData[mk]
+                                            if (!m) return 0
+                                            return sucursalHeatmapTab === 'total' ? m.productos + m.bases
+                                                : sucursalHeatmapTab === 'productos' ? m.productos : m.bases
+                                        }
+                                        const getTotal = (row: typeof rows[0]) =>
+                                            sucursalHeatmapTab === 'total' ? row.total
+                                                : sucursalHeatmapTab === 'productos' ? row.totProd : row.totBase
+                                        // Column maxes for per-column normalization
+                                        const colMaxes = months.map(mk => Math.max(...rows.map(r => getVal(r, mk)), 1))
+                                        // Group months by year for header
+                                        const yearGroups: Record<number, string[]> = {}
+                                        months.forEach(mk => {
+                                            const yr = parseInt(mk.split('-')[0])
+                                            if (!yearGroups[yr]) yearGroups[yr] = []
+                                            yearGroups[yr].push(mk)
+                                        })
+                                        const years = Object.keys(yearGroups).map(Number).sort()
+
+                                        return (
+                                            <div className="overflow-auto max-h-[480px] rounded-xl border border-slate-200 dark:border-slate-700">
+                                                <table className="w-full text-xs min-w-[700px] border-collapse">
+                                                    <thead className="sticky top-0 z-10">
+                                                        {/* Year header */}
+                                                        <tr className="bg-slate-100 dark:bg-slate-800">
+                                                            <th className="sticky left-0 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 text-left text-slate-500 font-semibold" rowSpan={2}>#</th>
+                                                            <th className="sticky left-7 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 text-left text-slate-600 dark:text-slate-300 font-bold min-w-[130px]" rowSpan={2}>SUCURSAL</th>
+                                                            {years.map(yr => (
+                                                                <th key={yr} colSpan={yearGroups[yr].length + 1}
+                                                                    className="px-2 py-1.5 text-center font-bold text-slate-700 dark:text-slate-200 border-l border-slate-300 dark:border-slate-600">
+                                                                    {yr}
+                                                                </th>
+                                                            ))}
+                                                        </tr>
+                                                        {/* Month + Total header */}
+                                                        <tr className="bg-slate-50 dark:bg-slate-800/80">
+                                                            {years.map(yr =>
+                                                                [...yearGroups[yr].map(mk => (
+                                                                    <th key={mk} className="px-2 py-1.5 text-right font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap border-l border-slate-200 dark:border-slate-700">
+                                                                        {new Date(mk + '-15').toLocaleDateString('es-MX', { month: 'short' }).replace('.', '')}
+                                                                        {String(yr).slice(2)}
+                                                                    </th>
+                                                                )),
+                                                                <th key={`total-${yr}`} className="px-3 py-1.5 text-right font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap bg-slate-100 dark:bg-slate-700 border-l-2 border-slate-300 dark:border-slate-500">
+                                                                    Total {yr}
+                                                                </th>]
+                                                            )}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {rows.map((row, ri) => {
+                                                            const rowTotal = getTotal(row)
+                                                            return (
+                                                                <tr key={row.name} className="border-b border-slate-100 dark:border-slate-800 hover:brightness-110 transition-all">
+                                                                    <td className="sticky left-0 bg-white dark:bg-slate-900 px-3 py-2 text-slate-400 font-semibold text-center">{ri + 1}</td>
+                                                                    <td className="sticky left-7 bg-white dark:bg-slate-900 px-3 py-2 font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">{row.name}</td>
+                                                                    {years.map(yr => [
+                                                                        ...yearGroups[yr].map((mk, ci) => {
+                                                                            const globalMkIdx = months.indexOf(mk)
+                                                                            const val = getVal(row, mk)
+                                                                            const ratio = val / colMaxes[globalMkIdx]
+                                                                            const bg = val > 0 ? getHeatColor(ratio) : 'transparent'
+                                                                            return (
+                                                                                <td key={mk} style={{ backgroundColor: bg, color: val > 0 ? '#fff' : undefined }}
+                                                                                    className="px-2 py-2 text-right font-mono whitespace-nowrap border-l border-slate-200/30 dark:border-slate-700/30 text-slate-400 dark:text-slate-500">
+                                                                                    {val > 0 ? val.toLocaleString() : '—'}
+                                                                                </td>
+                                                                            )
+                                                                        }),
+                                                                        <td key={`yt-${row.name}-${yr}`}
+                                                                            className="px-3 py-2 text-right font-bold font-mono whitespace-nowrap border-l-2 border-slate-300 dark:border-slate-500 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+                                                                            {yearGroups[yr].reduce((s, mk) => s + getVal(row, mk), 0).toLocaleString()}
+                                                                        </td>
+                                                                    ])}
+                                                                </tr>
+                                                            )
+                                                        })}
+                                                        {rows.length === 0 && (
+                                                            <tr><td colSpan={2 + months.length + years.length} className="px-3 py-10 text-center text-muted-foreground">Sin datos en el período seleccionado</td></tr>
+                                                        )}
+                                                    </tbody>
+                                                    <tfoot className="sticky bottom-0 bg-slate-100 dark:bg-slate-800 font-bold">
+                                                        <tr>
+                                                            <td className="sticky left-0 bg-slate-100 dark:bg-slate-800 px-3 py-2"></td>
+                                                            <td className="sticky left-7 bg-slate-100 dark:bg-slate-800 px-3 py-2 text-slate-700 dark:text-slate-200">TOTAL</td>
+                                                            {years.map(yr => [
+                                                                ...yearGroups[yr].map(mk => (
+                                                                    <td key={mk} className="px-2 py-2 text-right font-mono border-l border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200">
+                                                                        {rows.reduce((s, r) => s + getVal(r, mk), 0).toLocaleString()}
+                                                                    </td>
+                                                                )),
+                                                                <td key={`ft-${yr}`} className="px-3 py-2 text-right font-mono border-l-2 border-slate-400 dark:border-slate-500 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100">
+                                                                    {rows.reduce((s, r) => s + yearGroups[yr].reduce((ss, mk) => ss + getVal(r, mk), 0), 0).toLocaleString()}
+                                                                </td>
+                                                            ])}
+                                                        </tr>
+                                                    </tfoot>
+                                                </table>
+                                            </div>
+                                        )
+                                    })()}
+                                </CardContent>
+                            </Card>
                         </TabsContent>
                     )}
                 </Tabs>
