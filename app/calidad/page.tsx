@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabase"
 import {
     Search, Filter, CheckCircle2, AlertCircle, XCircle, Loader2,
-    Calendar, Trash2, Edit2, RotateCcw, ClipboardList, MessageSquare, Send, Download
+    Calendar, Trash2, Edit2, RotateCcw, ClipboardList, MessageSquare, Send, Download, StickyNote
 } from "lucide-react"
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -46,6 +46,7 @@ interface BitacoraRecord {
     nombre_preparador: string
     familia_producto?: string
     tamano_lote?: number
+    observaciones?: string | null
 }
 
 interface ChatMessage {
@@ -84,6 +85,9 @@ export default function CalidadPage() {
     const [sendingChat, setSendingChat] = useState(false)
     const [unreadChatCounts, setUnreadChatCounts] = useState<Map<string, number>>(new Map())
     const chatEndRef = useRef<HTMLDivElement>(null)
+
+    // Observations dialog state
+    const [obsRecord, setObsRecord] = useState<BitacoraRecord | null>(null)
 
     // Export state
     const [exportOpen, setExportOpen] = useState(false)
@@ -695,6 +699,7 @@ export default function CalidadPage() {
                                             <TableHead className="text-white font-bold text-sm">Estado</TableHead>
                                             <TableHead className="text-center text-white font-bold text-sm">Apariencia</TableHead>
                                             <TableHead className="text-center text-white font-bold text-sm">Chat</TableHead>
+                                            <TableHead className="text-center text-white font-bold text-sm">Obs.</TableHead>
                                             {isAdmin ? (
                                                 <>
                                                     <TableHead className="text-right text-white font-bold text-sm">Fecha</TableHead>
@@ -793,6 +798,15 @@ export default function CalidadPage() {
                                                             )}
                                                         </div>
                                                     </TableCell>
+                                                    <TableCell className="text-center">
+                                                        {record.observaciones ? (
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50" title="Ver observaciones" onClick={() => setObsRecord(record)}>
+                                                                <StickyNote className="h-4 w-4" />
+                                                            </Button>
+                                                        ) : (
+                                                            <span className="text-muted-foreground text-xs">—</span>
+                                                        )}
+                                                    </TableCell>
                                                     <TableCell className="text-right text-sm text-muted-foreground">
                                                         {new Date(record.fecha_fabricacion).toLocaleDateString()}
                                                     </TableCell>
@@ -821,7 +835,7 @@ export default function CalidadPage() {
                                             )
                                         }) : (
                                             <TableRow>
-                                                <TableCell colSpan={isAdmin ? 11 : 9} className="h-24 text-center text-muted-foreground">
+                                                <TableCell colSpan={isAdmin ? 12 : 10} className="h-24 text-center text-muted-foreground">
                                                     No se encontraron registros.
                                                 </TableCell>
                                             </TableRow>
@@ -872,6 +886,11 @@ export default function CalidadPage() {
                                                                     </span>
                                                                 )}
                                                             </div>
+                                                            {record.observaciones && (
+                                                                <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setObsRecord(record)} title="Ver observaciones">
+                                                                    <StickyNote className="h-3.5 w-3.5 text-amber-600" />
+                                                                </Button>
+                                                            )}
                                                             {isAdmin && (
                                                                 <>
                                                                     <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => { setEditingRecord(record); setIsEditDialogOpen(true) }}>
@@ -922,6 +941,24 @@ export default function CalidadPage() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* ── Observations Dialog ── */}
+            <Dialog open={!!obsRecord} onOpenChange={open => { if (!open) setObsRecord(null) }}>
+                <DialogContent className="sm:max-w-[480px] sm:rounded-[2rem]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <StickyNote className="h-5 w-5 text-amber-500" />
+                            Observaciones adicionales
+                        </DialogTitle>
+                        <DialogDescription>
+                            Lote <strong>{obsRecord?.lote_producto}</strong> · {obsRecord?.codigo_producto}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="mt-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
+                        {obsRecord?.observaciones || '—'}
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             {/* ── Edit Dialog ── */}
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

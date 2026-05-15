@@ -897,23 +897,56 @@ export default function ReportesPage() {
                                     <CardDescription>Volumen de producción conforme vs no conforme</CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="h-[400px] w-full">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart data={sucursalChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                                                <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                                                <YAxis fontSize={12} tickLine={false} axisLine={false} />
-                                                <Tooltip
-                                                    contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                                    cursor={{ fill: '#F1F5F9' }}
-                                                />
-                                                <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                                                <Bar dataKey="conformes" name="Conformes" stackId="a" fill="#22c55e" radius={[0, 0, 0, 0]} />
-                                                <Bar dataKey="semiConformes" name="Semi-Conformes" stackId="a" fill="#eab308" radius={[0, 0, 0, 0]} />
-                                                <Bar dataKey="noConformes" name="No Conformes" stackId="a" fill="#C1272D" radius={[4, 4, 0, 0]} />
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    </div>
+                                    {(isPreparador || isGerente) && sucursalChartData.length > 0 ? (
+                                        // Donut chart for single-branch roles
+                                        <div className="h-[340px] w-full flex flex-col items-center justify-center">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <PieChart>
+                                                    <Pie
+                                                        data={[
+                                                            { name: 'Conformes', value: sucursalChartData[0].conformes },
+                                                            { name: 'Semi-Conformes', value: sucursalChartData[0].semiConformes },
+                                                            { name: 'No Conformes', value: sucursalChartData[0].noConformes },
+                                                        ].filter(d => d.value > 0)}
+                                                        cx="50%"
+                                                        cy="50%"
+                                                        innerRadius="52%"
+                                                        outerRadius="72%"
+                                                        paddingAngle={3}
+                                                        dataKey="value"
+                                                    >
+                                                        <Cell fill="#22c55e" />
+                                                        <Cell fill="#eab308" />
+                                                        <Cell fill="#C1272D" />
+                                                    </Pie>
+                                                    <Tooltip
+                                                        contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                                        formatter={(value: number, name: string) => [`${value} lotes`, name]}
+                                                    />
+                                                    <Legend />
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    ) : (
+                                        // Bar chart for global roles
+                                        <div className="h-[400px] w-full">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={sucursalChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                                                    <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
+                                                    <YAxis fontSize={12} tickLine={false} axisLine={false} />
+                                                    <Tooltip
+                                                        contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                                        cursor={{ fill: '#F1F5F9' }}
+                                                    />
+                                                    <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                                                    <Bar dataKey="conformes" name="Conformes" stackId="a" fill="#22c55e" radius={[0, 0, 0, 0]} />
+                                                    <Bar dataKey="semiConformes" name="Semi-Conformes" stackId="a" fill="#eab308" radius={[0, 0, 0, 0]} />
+                                                    <Bar dataKey="noConformes" name="No Conformes" stackId="a" fill="#C1272D" radius={[4, 4, 0, 0]} />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    )}
                                 </CardContent>
                             </Card>
                         </div>
