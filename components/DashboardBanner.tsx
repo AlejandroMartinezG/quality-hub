@@ -24,6 +24,11 @@ export function DashboardBanner() {
             alt: "Bitácora de Producción - Calidad en Acción",
         },
         {
+            id: 5,
+            image: "/banners/Banner_ambientadores.png",
+            alt: "Ambientadores Ginez",
+        },
+        {
             id: 2,
             image: "/banners/slide2.png?v=4",
             alt: "Productos de Limpieza Ginez",
