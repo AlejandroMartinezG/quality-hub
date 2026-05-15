@@ -102,8 +102,9 @@ export default function ReportesPage() {
     // Permissions check
     useEffect(() => {
         if (!authLoading && profile) {
-            const allowedRoles = ['admin', 'gerente_calidad', 'coordinador', 'gerente_sucursal', 'gerente', 'preparador', 'director_operaciones', 'director_compras']
-            if (!allowedRoles.includes(role)) {
+            const allowedRoles = ['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras']
+            const isAllowed = profile.is_admin || allowedRoles.includes(role)
+            if (!isAllowed) {
                 toast.error("Acceso restringido", {
                     description: "No tienes permisos para acceder al módulo de Reportes."
                 })
@@ -287,6 +288,8 @@ export default function ReportesPage() {
         const percentConformidadPH = total > 0 ? ((conformesPH / total) * 100).toFixed(1) : "0.0"
         const percentNoConformidadPH = total > 0 ? ((noConformesPH / total) * 100).toFixed(1) : "0.0"
 
+        const totalLitrosUnificado = totalVolume + totalPieces * 20
+
         return {
             total,
             conformes,
@@ -297,6 +300,7 @@ export default function ReportesPage() {
             percentNoConformidad,
             totalVolume,
             totalPieces,
+            totalLitrosUnificado,
             conformesPH,
             noConformesPH,
             percentConformidadPH,
@@ -1296,60 +1300,72 @@ export default function ReportesPage() {
                                 </Button>
                             </div>
                             {/* Commercial KPIs */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                {/* KPI 1: Volumen Total + Unidades (Merged) - Enhanced */}
-                                <Card className="border-none shadow-md bg-gradient-to-br from-blue-900 to-blue-950 text-white dark:from-blue-950 dark:to-slate-900 md:col-span-2 rounded-[2rem]">
-                                    <CardContent className="p-6 relative overflow-hidden">
-                                        <div className="relative z-10">
-                                            {/* Volumen Total - Top Section */}
-                                            <div className="mb-6">
-                                                <p className="text-blue-200 font-medium mb-2 flex items-center gap-2">
-                                                    <Factory className="h-5 w-5" />
-                                                    Volumen Total
+                            <div className="space-y-4">
+                                {/* Row 1: Volume KPIs */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {/* KPI: Total Unificado */}
+                                    <Card className="border-none shadow-md bg-gradient-to-br from-blue-900 to-blue-950 text-white dark:from-blue-950 dark:to-slate-900 rounded-[2rem]">
+                                        <CardContent className="p-6 relative overflow-hidden">
+                                            <div className="relative z-10">
+                                                <p className="text-blue-200 font-medium mb-3 flex items-center gap-2 text-sm uppercase tracking-wide">
+                                                    <Activity className="h-4 w-4" />
+                                                    Total Unificado
                                                 </p>
-                                                <div className="text-5xl font-extrabold tracking-tight">
+                                                <div className="text-4xl font-extrabold tracking-tight">
+                                                    {kpis.totalLitrosUnificado.toLocaleString()}
+                                                    <span className="text-xl font-normal opacity-80 ml-2">L</span>
+                                                </div>
+                                                <p className="text-xs text-blue-300 mt-2 opacity-80">
+                                                    Terminados + Bases ×20
+                                                </p>
+                                            </div>
+                                            <Factory className="absolute -right-6 -bottom-6 h-28 w-28 text-white opacity-10 rotate-12" />
+                                        </CardContent>
+                                    </Card>
+
+                                    {/* KPI: Productos Terminados */}
+                                    <Card className="border-none shadow-md bg-gradient-to-br from-indigo-600 to-indigo-700 text-white rounded-[2rem]">
+                                        <CardContent className="p-6 relative overflow-hidden">
+                                            <div className="relative z-10">
+                                                <p className="text-indigo-200 font-medium mb-3 flex items-center gap-2 text-sm uppercase tracking-wide">
+                                                    <Package className="h-4 w-4" />
+                                                    Productos Terminados
+                                                </p>
+                                                <div className="text-4xl font-extrabold tracking-tight">
                                                     {kpis.totalVolume.toLocaleString()}
-                                                    <span className="text-2xl font-normal opacity-80 ml-2">L</span>
+                                                    <span className="text-xl font-normal opacity-80 ml-2">L</span>
                                                 </div>
-                                                <p className="text-sm text-blue-200 mt-2 opacity-80">
-                                                    Producción acumulada
+                                                <p className="text-xs text-indigo-200 mt-2 opacity-80">
+                                                    Volumen producido en litros
                                                 </p>
                                             </div>
+                                            <Package className="absolute -right-6 -bottom-6 h-28 w-28 text-white opacity-10 rotate-12" />
+                                        </CardContent>
+                                    </Card>
 
-                                            {/* Divider */}
-                                            <div className="border-t border-blue-700 opacity-30 my-4"></div>
-
-                                            {/* Unidades (Bases) - Bottom Section */}
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <p className="text-blue-300 text-sm font-semibold mb-2 flex items-center gap-1.5">
-                                                        <Package className="h-4 w-4" />
-                                                        Piezas (Bases)
-                                                    </p>
-                                                    <div className="text-3xl font-bold">
-                                                        {kpis.totalPieces.toLocaleString()}
-                                                        <span className="text-base font-normal opacity-70 ml-1">pzas</span>
-                                                    </div>
+                                    {/* KPI: Bases */}
+                                    <Card className="border-none shadow-md bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-[2rem]">
+                                        <CardContent className="p-6 relative overflow-hidden">
+                                            <div className="relative z-10">
+                                                <p className="text-amber-100 font-medium mb-3 flex items-center gap-2 text-sm uppercase tracking-wide">
+                                                    <Box className="h-4 w-4" />
+                                                    Bases
+                                                </p>
+                                                <div className="text-4xl font-extrabold tracking-tight">
+                                                    {kpis.totalPieces.toLocaleString()}
+                                                    <span className="text-xl font-normal opacity-80 ml-2">pzs</span>
                                                 </div>
-                                                <div>
-                                                    <p className="text-blue-300 text-sm font-semibold mb-2 flex items-center gap-1.5">
-                                                        <Activity className="h-4 w-4" />
-                                                        Rendimiento PT
-                                                    </p>
-                                                    <div className="text-3xl font-bold">
-                                                        {(kpis.totalPieces * 20).toLocaleString()}
-                                                        <span className="text-base font-normal opacity-70 ml-1">L</span>
-                                                    </div>
-                                                    <p className="text-xs text-blue-300 opacity-60 mt-1">
-                                                        (20L por pieza)
-                                                    </p>
-                                                </div>
+                                                <p className="text-xs text-amber-100 mt-2 opacity-80">
+                                                    {(kpis.totalPieces * 20).toLocaleString()} L equiv. (×20)
+                                                </p>
                                             </div>
-                                        </div>
-                                        <Factory className="absolute -right-8 -bottom-8 h-40 w-40 text-white opacity-10 rotate-12" />
-                                    </CardContent>
-                                </Card>
+                                            <Box className="absolute -right-6 -bottom-6 h-28 w-28 text-white opacity-10 rotate-12" />
+                                        </CardContent>
+                                    </Card>
+                                </div>
 
+                                {/* Row 2: Leader KPIs */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* KPI 3: Categoría Leader + Top 3 - Enhanced */}
                                 <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-red-50 to-red-100 dark:from-slate-900 dark:to-slate-800 relative overflow-visible rounded-[2rem]">
                                     <CardContent className="p-8 h-full flex flex-col justify-between">
@@ -1413,6 +1429,7 @@ export default function ReportesPage() {
                                         </div>
                                     </CardContent>
                                 </Card>
+                                </div>
                             </div>
 
                             {/* Chart 1: Production by Sucursal (Full Width) */}
