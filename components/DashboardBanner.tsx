@@ -20,27 +20,32 @@ export function DashboardBanner() {
     const slides = [
         {
             id: 1,
-            image: "/banners/slide1.png?v=4",
+            image: "/banners/slide_1.png",
             alt: "Bitácora de Producción - Calidad en Acción",
         },
         {
-            id: 5,
-            image: "/banners/Banner_ambientadores.png",
+            id: 2,
+            image: "/banners/slide2.png",
             alt: "Ambientadores Ginez",
         },
         {
-            id: 2,
-            image: "/banners/slide2.png?v=4",
+            id: 3,
+            image: "/banners/slide_3.png",
             alt: "Productos de Limpieza Ginez",
         },
         {
-            id: 3,
-            image: "/banners/slide3.png?v=4",
+            id: 4,
+            image: "/banners/slide_4.png",
             alt: "Calidad Garantizada",
         },
         {
-            id: 4,
-            image: "/banners/slide4.png?v=4",
+            id: 5,
+            image: "/banners/slide5.png",
+            alt: "Limpieza de Envases Ginez",
+        },
+        {
+            id: 6,
+            image: "/banners/slide_6.png",
             alt: "Soluciones Integrales",
         },
     ]
