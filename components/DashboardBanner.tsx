@@ -40,7 +40,7 @@ export function DashboardBanner() {
         },
         {
             id: 5,
-            image: "/banners/slide5.png",
+            image: "/banners/slide_5.png",
             alt: "Limpieza de Envases Ginez",
         },
         {
