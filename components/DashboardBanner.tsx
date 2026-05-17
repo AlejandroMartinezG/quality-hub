@@ -20,7 +20,7 @@ export function DashboardBanner() {
     const slides = [
         {
             id: 1,
-            image: "/banners/slide_1.png",
+            image: "/banners/slide_1_mundial.png",
             alt: "Bitácora de Producción - Calidad en Acción",
         },
         {
