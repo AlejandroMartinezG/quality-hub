@@ -22,7 +22,7 @@ Sistema corporativo de gestión de calidad y producción para OPERADORA GINEZ DE
 | Bitácora de Producción | ![Bitácora](public/capturas_proyecto_quality_hub/bitacora_produccion_calidad.png) |
 | Control de Calidad | ![Control Calidad](public/capturas_proyecto_quality_hub/control_de_calidad.png) |
 | Reportes — Análisis de Operación | ![Reportes](public/capturas_proyecto_quality_hub/Reportes.png) |
-| Reportes — First Time Quality | ![Reportes FTQ](public/capturas_proyecto_quality_hub/reportes_FTQ.png) |
+| Reportes — First Time Quality | ![Reportes FTQ](public/capturas_proyecto_quality_hub/Reportes_FTQ.png) |
 | Cartas de Control (% Sólidos) | ![Control Chart](public/capturas_proyecto_quality_hub/Control_Chart.png) |
 | Catálogo MP / PT | ![Catálogo](public/capturas_proyecto_quality_hub/catalogo_MP_PT.png) |
 | Catálogo — Materias Primas | ![Catálogo MP](public/capturas_proyecto_quality_hub/Catalogo_MP.png) |
