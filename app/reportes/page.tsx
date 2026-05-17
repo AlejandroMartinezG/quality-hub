@@ -116,6 +116,10 @@ export default function ReportesPage() {
     const [prodDateTo, setProdDateTo] = useState(() => new Date().toISOString().split('T')[0])
     const [sucursalHeatmapTab, setSucursalHeatmapTab] = useState<'total' | 'productos' | 'bases'>('total')
     const [sucursalHeatmapSearch, setSucursalHeatmapSearch] = useState('')
+    const [codeSearch, setCodeSearch] = useState('')
+    const [showHeatColors, setShowHeatColors] = useState(true)
+    const [heatmapSortKey, setHeatmapSortKey] = useState<string | null>(null)
+    const [heatmapSortDir, setHeatmapSortDir] = useState<'asc' | 'desc'>('desc')
 
     // Permissions check
     useEffect(() => {
@@ -341,10 +345,23 @@ export default function ReportesPage() {
     const productionAnalysisData = useMemo(() => {
         const PIECE_FAM = ["Bases aromatizante ambiental", "Bases limpiadores liquidos multiusos", "Bases Aromatizantes"]
 
+        // Build category → group mapping
+        const catToGroup: Record<string, string> = {}
+        for (const g of PRODUCT_GROUPS) {
+            for (const id of g.ids) {
+                const cat = PRODUCT_CATEGORIES.find(c => c.id === id)
+                if (cat) catToGroup[cat.name] = g.title
+            }
+        }
+
         const byMonth: Record<string, { label: string, productos: number, bases: number }> = {}
         const bySucursalMonth: Record<string, Record<string, { productos: number, bases: number }>> = {}
         const byFamily: Record<string, number> = {}
         const familyMonthMap: Record<string, Record<string, number>> = {}
+        const byGroup: Record<string, number> = {}
+        const groupMonthMap: Record<string, Record<string, number>> = {}
+        const byCode: Record<string, number> = {}
+        const codeMonthMap: Record<string, Record<string, number>> = {}
 
         for (const r of prodAnalysisRecords) {
             const raw = r as any
@@ -371,10 +388,23 @@ export default function ReportesPage() {
 
             if (!byFamily[fam]) byFamily[fam] = 0
             byFamily[fam] += litros
-
             if (!familyMonthMap[fam]) familyMonthMap[fam] = {}
             if (!familyMonthMap[fam][monthKey]) familyMonthMap[fam][monthKey] = 0
             familyMonthMap[fam][monthKey] += litros
+
+            const groupName = catToGroup[fam] || 'Otros'
+            if (!byGroup[groupName]) byGroup[groupName] = 0
+            byGroup[groupName] += litros
+            if (!groupMonthMap[groupName]) groupMonthMap[groupName] = {}
+            if (!groupMonthMap[groupName][monthKey]) groupMonthMap[groupName][monthKey] = 0
+            groupMonthMap[groupName][monthKey] += litros
+
+            const code = (raw.codigo_producto || 'Sin código') as string
+            if (!byCode[code]) byCode[code] = 0
+            byCode[code] += litros
+            if (!codeMonthMap[code]) codeMonthMap[code] = {}
+            if (!codeMonthMap[code][monthKey]) codeMonthMap[code][monthKey] = 0
+            codeMonthMap[code][monthKey] += litros
         }
 
         const months = Object.keys(byMonth).sort()
@@ -389,14 +419,25 @@ export default function ReportesPage() {
         const familyData = Object.entries(byFamily)
             .map(([name, value]) => ({ name, value }))
             .sort((a, b) => b.value - a.value)
-
         const familyTableData = familyData.map(f => ({
-            name: f.name,
-            total: f.value,
-            byMonth: familyMonthMap[f.name] || {}
+            name: f.name, total: f.value, byMonth: familyMonthMap[f.name] || {}
         }))
 
-        return { months, monthlyData, sucursalRows, familyData, familyTableData }
+        const groupData = Object.entries(byGroup)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value)
+        const groupTableData = groupData.map(g => ({
+            name: g.name, total: g.value, byMonth: groupMonthMap[g.name] || {}
+        }))
+
+        const codeData = Object.entries(byCode)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value)
+        const codeTableData = codeData.map(c => ({
+            name: c.name, total: c.value, byMonth: codeMonthMap[c.name] || {}
+        }))
+
+        return { months, monthlyData, sucursalRows, familyData, familyTableData, groupData, groupTableData, codeData, codeTableData }
     }, [prodAnalysisRecords])
 
     // 3. Stacked Bar Chart (Sucursales)
@@ -1917,15 +1958,72 @@ export default function ReportesPage() {
                                 </CardContent>
                             </Card>
 
-                            {/* Familias de Producto */}
+                            {/* Familia de Producto (Línea) */}
                             <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
                                 <CardHeader>
-                                    <CardTitle className="text-lg font-bold">Familias de Producto</CardTitle>
-                                    <CardDescription>Distribución de volumen producido por familia</CardDescription>
+                                    <CardTitle className="text-lg font-bold">Familia de Producto</CardTitle>
+                                    <CardDescription>Distribución de volumen producido por línea de producto</CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                     <div className="flex flex-col lg:flex-row gap-6">
-                                        {/* Donut */}
+                                        <div className="lg:w-[340px] shrink-0 h-[320px]">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <PieChart>
+                                                    <Pie data={productionAnalysisData.groupData}
+                                                        cx="50%" cy="50%" innerRadius="45%" outerRadius="68%"
+                                                        paddingAngle={2} dataKey="value" nameKey="name">
+                                                        {productionAnalysisData.groupData.map((_, i) => {
+                                                            const colors = ['#C1272D','#06b6d4','#8b5cf6','#f59e0b','#10b981','#3b82f6','#ec4899','#14b8a6','#f97316','#6366f1','#84cc16','#e11d48']
+                                                            return <Cell key={i} fill={colors[i % colors.length]} />
+                                                        })}
+                                                    </Pie>
+                                                    <Tooltip formatter={(value) => [`${Number(value).toLocaleString()} L`]} />
+                                                    <Legend iconType="circle" iconSize={10} wrapperStyle={{ fontSize: '11px' }} />
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="max-h-[320px] overflow-auto rounded-xl border border-slate-200 dark:border-slate-700">
+                                                <table className="w-full text-xs min-w-[500px]">
+                                                    <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 z-10">
+                                                        <tr>
+                                                            <th className="sticky left-0 bg-slate-50 dark:bg-slate-800 text-left px-3 py-2 font-semibold text-slate-600 dark:text-slate-300 min-w-[180px]">Familia</th>
+                                                            {productionAnalysisData.months.map(mk => (
+                                                                <th key={mk} className="text-right px-2 py-2 font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                                                                    {productionAnalysisData.monthlyData.find(m => m.key === mk)?.label ?? mk}
+                                                                </th>
+                                                            ))}
+                                                            <th className="text-right px-3 py-2 font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 whitespace-nowrap">Total L</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                                        {productionAnalysisData.groupTableData.map(g => (
+                                                            <tr key={g.name} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                                                <td className="sticky left-0 bg-white dark:bg-slate-900 px-3 py-1.5 font-medium text-slate-700 dark:text-slate-300 truncate max-w-[180px]">{g.name}</td>
+                                                                {productionAnalysisData.months.map(mk => (
+                                                                    <td key={mk} className="px-2 py-1.5 text-right font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                                                                        {g.byMonth[mk] ? g.byMonth[mk].toLocaleString() : '—'}
+                                                                    </td>
+                                                                ))}
+                                                                <td className="px-3 py-1.5 text-right font-bold font-mono text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 whitespace-nowrap">{g.total.toLocaleString()}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Categoría de Productos */}
+                            <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
+                                <CardHeader>
+                                    <CardTitle className="text-lg font-bold">Categoría de Productos</CardTitle>
+                                    <CardDescription>Distribución de volumen producido por categoría</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="flex flex-col lg:flex-row gap-6">
                                         <div className="lg:w-[340px] shrink-0 h-[320px]">
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <PieChart>
@@ -1941,19 +2039,18 @@ export default function ReportesPage() {
                                                 </PieChart>
                                             </ResponsiveContainer>
                                         </div>
-                                        {/* Table by month */}
                                         <div className="flex-1 min-w-0">
                                             <div className="max-h-[320px] overflow-auto rounded-xl border border-slate-200 dark:border-slate-700">
                                                 <table className="w-full text-xs min-w-[500px]">
                                                     <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 z-10">
                                                         <tr>
-                                                            <th className="sticky left-0 bg-slate-50 dark:bg-slate-800 text-left px-3 py-2 font-semibold text-slate-600 dark:text-slate-300 min-w-[160px]">Familia</th>
+                                                            <th className="sticky left-0 bg-slate-50 dark:bg-slate-800 text-left px-3 py-2 font-semibold text-slate-600 dark:text-slate-300 min-w-[160px]">Categoría</th>
                                                             {productionAnalysisData.months.map(mk => (
                                                                 <th key={mk} className="text-right px-2 py-2 font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
                                                                     {productionAnalysisData.monthlyData.find(m => m.key === mk)?.label ?? mk}
                                                                 </th>
                                                             ))}
-                                                            <th className="text-right px-3 py-2 font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 whitespace-nowrap">Total</th>
+                                                            <th className="text-right px-3 py-2 font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 whitespace-nowrap">Total L</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1976,6 +2073,75 @@ export default function ReportesPage() {
                                 </CardContent>
                             </Card>
 
+                            {/* Por Código de Producto */}
+                            <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
+                                <CardHeader>
+                                    <div className="flex flex-wrap items-start justify-between gap-3">
+                                        <div>
+                                            <CardTitle className="text-lg font-bold">Por Código de Producto</CardTitle>
+                                            <CardDescription>Volumen producido por código de producto ({productionAnalysisData.codeData.length} códigos)</CardDescription>
+                                        </div>
+                                        <div className="relative">
+                                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                                            <Input placeholder="Buscar código..." value={codeSearch}
+                                                onChange={e => setCodeSearch(e.target.value)}
+                                                className="pl-8 h-8 text-xs w-40 rounded-lg" />
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="flex flex-col lg:flex-row gap-6">
+                                        <div className="lg:w-[340px] shrink-0 h-[320px]">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <PieChart>
+                                                    <Pie data={productionAnalysisData.codeData.slice(0, 12)}
+                                                        cx="50%" cy="50%" innerRadius="45%" outerRadius="68%"
+                                                        paddingAngle={2} dataKey="value" nameKey="name">
+                                                        {productionAnalysisData.codeData.slice(0, 12).map((_, i) => {
+                                                            const colors = ['#C1272D','#06b6d4','#8b5cf6','#f59e0b','#10b981','#3b82f6','#ec4899','#14b8a6','#f97316','#6366f1','#84cc16','#e11d48']
+                                                            return <Cell key={i} fill={colors[i % colors.length]} />
+                                                        })}
+                                                    </Pie>
+                                                    <Tooltip formatter={(value) => [`${Number(value).toLocaleString()} L`]} />
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="max-h-[320px] overflow-auto rounded-xl border border-slate-200 dark:border-slate-700">
+                                                <table className="w-full text-xs min-w-[500px]">
+                                                    <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 z-10">
+                                                        <tr>
+                                                            <th className="sticky left-0 bg-slate-50 dark:bg-slate-800 text-left px-3 py-2 font-semibold text-slate-600 dark:text-slate-300 min-w-[140px]">Código</th>
+                                                            {productionAnalysisData.months.map(mk => (
+                                                                <th key={mk} className="text-right px-2 py-2 font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                                                                    {productionAnalysisData.monthlyData.find(m => m.key === mk)?.label ?? mk}
+                                                                </th>
+                                                            ))}
+                                                            <th className="text-right px-3 py-2 font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 whitespace-nowrap">Total L</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                                        {productionAnalysisData.codeTableData
+                                                            .filter(c => !codeSearch || c.name.toLowerCase().includes(codeSearch.toLowerCase()))
+                                                            .map(c => (
+                                                            <tr key={c.name} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                                                <td className="sticky left-0 bg-white dark:bg-slate-900 px-3 py-1.5 font-mono font-semibold text-slate-700 dark:text-slate-300">{c.name}</td>
+                                                                {productionAnalysisData.months.map(mk => (
+                                                                    <td key={mk} className="px-2 py-1.5 text-right font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                                                                        {c.byMonth[mk] ? c.byMonth[mk].toLocaleString() : '—'}
+                                                                    </td>
+                                                                ))}
+                                                                <td className="px-3 py-1.5 text-right font-bold font-mono text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 whitespace-nowrap">{c.total.toLocaleString()}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
                             {/* Producción por Sucursal — Heatmap */}
                             <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
                                 <CardHeader>
@@ -1985,6 +2151,11 @@ export default function ReportesPage() {
                                             <CardDescription>Volumen mensual por sucursal con escala de calor</CardDescription>
                                         </div>
                                         <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => setShowHeatColors(v => !v)}
+                                                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors border ${showHeatColors ? 'bg-slate-700 text-white border-slate-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
+                                                Mapa de calor
+                                            </button>
                                             <div className="relative">
                                                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                                                 <Input placeholder="Buscar sucursal..." value={sucursalHeatmapSearch}
@@ -1993,14 +2164,23 @@ export default function ReportesPage() {
                                             </div>
                                         </div>
                                     </div>
-                                    {/* Tabs */}
-                                    <div className="flex gap-1 mt-2">
-                                        {(['total', 'productos', 'bases'] as const).map(t => (
-                                            <button key={t} onClick={() => setSucursalHeatmapTab(t)}
-                                                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${sucursalHeatmapTab === t ? 'bg-[#C1272D] text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
-                                                {t === 'total' ? 'Producción Total' : t === 'productos' ? 'Productos' : 'Bases'}
-                                            </button>
-                                        ))}
+                                    {/* Tabs + leyenda fija */}
+                                    <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
+                                        <div className="flex gap-1">
+                                            {(['total', 'productos', 'bases'] as const).map(t => (
+                                                <button key={t} onClick={() => setSucursalHeatmapTab(t)}
+                                                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${sucursalHeatmapTab === t ? 'bg-[#C1272D] text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
+                                                    {t === 'total' ? 'Producción Total' : t === 'productos' ? 'Productos' : 'Bases (L)'}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Menor</span>
+                                            <div className="h-3.5 w-36 rounded-full" style={{
+                                                background: `linear-gradient(to right, ${[0, 0.2, 0.4, 0.6, 0.8, 1].map(r => getHeatColor(r)).join(', ')})`
+                                            }} />
+                                            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Mayor</span>
+                                        </div>
                                     </div>
                                 </CardHeader>
                                 <CardContent>
@@ -2008,7 +2188,6 @@ export default function ReportesPage() {
                                         const rows = productionAnalysisData.sucursalRows
                                             .filter(r => !sucursalHeatmapSearch || r.name.toLowerCase().includes(sucursalHeatmapSearch.toLowerCase()))
                                         const months = productionAnalysisData.months
-                                        // Get value per cell based on tab
                                         const getVal = (row: typeof rows[0], mk: string) => {
                                             const m = row.mData[mk]
                                             if (!m) return 0
@@ -2018,9 +2197,7 @@ export default function ReportesPage() {
                                         const getTotal = (row: typeof rows[0]) =>
                                             sucursalHeatmapTab === 'total' ? row.total
                                                 : sucursalHeatmapTab === 'productos' ? row.totProd : row.totBase
-                                        // Column maxes for per-column normalization
                                         const colMaxes = months.map(mk => Math.max(...rows.map(r => getVal(r, mk)), 1))
-                                        // Group months by year for header
                                         const yearGroups: Record<number, string[]> = {}
                                         months.forEach(mk => {
                                             const yr = parseInt(mk.split('-')[0])
@@ -2028,6 +2205,28 @@ export default function ReportesPage() {
                                             yearGroups[yr].push(mk)
                                         })
                                         const years = Object.keys(yearGroups).map(Number).sort()
+
+                                        const handleSort = (key: string) => {
+                                            if (heatmapSortKey === key) setHeatmapSortDir(d => d === 'desc' ? 'asc' : 'desc')
+                                            else { setHeatmapSortKey(key); setHeatmapSortDir('desc') }
+                                        }
+                                        const sortedRows = heatmapSortKey
+                                            ? [...rows].sort((a, b) => {
+                                                let aVal = 0, bVal = 0
+                                                if (heatmapSortKey.startsWith('year-')) {
+                                                    const yr = parseInt(heatmapSortKey.replace('year-', ''))
+                                                    aVal = yearGroups[yr]?.reduce((s, mk) => s + getVal(a, mk), 0) ?? 0
+                                                    bVal = yearGroups[yr]?.reduce((s, mk) => s + getVal(b, mk), 0) ?? 0
+                                                } else {
+                                                    aVal = getVal(a, heatmapSortKey)
+                                                    bVal = getVal(b, heatmapSortKey)
+                                                }
+                                                return heatmapSortDir === 'desc' ? bVal - aVal : aVal - bVal
+                                            })
+                                            : rows
+                                        const sortIcon = (key: string) => heatmapSortKey === key
+                                            ? (heatmapSortDir === 'desc' ? ' ↓' : ' ↑')
+                                            : ' ↕'
 
                                         return (
                                             <div className="overflow-auto max-h-[480px] rounded-xl border border-slate-200 dark:border-slate-700">
@@ -2044,49 +2243,52 @@ export default function ReportesPage() {
                                                                 </th>
                                                             ))}
                                                         </tr>
-                                                        {/* Month + Total header */}
+                                                        {/* Month + Total header — clicables para ordenar */}
                                                         <tr className="bg-slate-50 dark:bg-slate-800/80">
                                                             {years.map(yr =>
                                                                 [...yearGroups[yr].map(mk => (
-                                                                    <th key={mk} className="px-2 py-1.5 text-right font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap border-l border-slate-200 dark:border-slate-700">
+                                                                    <th key={mk}
+                                                                        onClick={() => handleSort(mk)}
+                                                                        className={`px-2 py-1.5 text-right font-semibold whitespace-nowrap border-l border-slate-200 dark:border-slate-700 cursor-pointer select-none transition-colors hover:bg-slate-200 dark:hover:bg-slate-700 ${heatmapSortKey === mk ? 'text-[#C1272D]' : 'text-slate-500 dark:text-slate-400'}`}>
                                                                         {new Date(mk + '-15').toLocaleDateString('es-MX', { month: 'short' }).replace('.', '')}
                                                                         {String(yr).slice(2)}
+                                                                        <span className="opacity-60">{sortIcon(mk)}</span>
                                                                     </th>
                                                                 )),
-                                                                <th key={`total-${yr}`} className="px-3 py-1.5 text-right font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap bg-slate-100 dark:bg-slate-700 border-l-2 border-slate-300 dark:border-slate-500">
+                                                                <th key={`total-${yr}`}
+                                                                    onClick={() => handleSort(`year-${yr}`)}
+                                                                    className={`px-3 py-1.5 text-right font-bold whitespace-nowrap bg-slate-100 dark:bg-slate-700 border-l-2 border-slate-300 dark:border-slate-500 cursor-pointer select-none transition-colors hover:bg-slate-200 dark:hover:bg-slate-600 ${heatmapSortKey === `year-${yr}` ? 'text-[#C1272D]' : 'text-slate-600 dark:text-slate-300'}`}>
                                                                     Total {yr}
+                                                                    <span className="opacity-60">{sortIcon(`year-${yr}`)}</span>
                                                                 </th>]
                                                             )}
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {rows.map((row, ri) => {
-                                                            const rowTotal = getTotal(row)
-                                                            return (
-                                                                <tr key={row.name} className="border-b border-slate-100 dark:border-slate-800 hover:brightness-110 transition-all">
-                                                                    <td className="sticky left-0 bg-white dark:bg-slate-900 px-3 py-2 text-slate-400 font-semibold text-center">{ri + 1}</td>
-                                                                    <td className="sticky left-7 bg-white dark:bg-slate-900 px-3 py-2 font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">{row.name}</td>
-                                                                    {years.map(yr => [
-                                                                        ...yearGroups[yr].map((mk, ci) => {
-                                                                            const globalMkIdx = months.indexOf(mk)
-                                                                            const val = getVal(row, mk)
-                                                                            const ratio = val / colMaxes[globalMkIdx]
-                                                                            const bg = val > 0 ? getHeatColor(ratio) : 'transparent'
-                                                                            return (
-                                                                                <td key={mk} style={{ backgroundColor: bg, color: val > 0 ? '#fff' : undefined }}
-                                                                                    className="px-2 py-2 text-right font-mono whitespace-nowrap border-l border-slate-200/30 dark:border-slate-700/30 text-slate-400 dark:text-slate-500">
-                                                                                    {val > 0 ? val.toLocaleString() : '—'}
-                                                                                </td>
-                                                                            )
-                                                                        }),
-                                                                        <td key={`yt-${row.name}-${yr}`}
-                                                                            className="px-3 py-2 text-right font-bold font-mono whitespace-nowrap border-l-2 border-slate-300 dark:border-slate-500 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
-                                                                            {yearGroups[yr].reduce((s, mk) => s + getVal(row, mk), 0).toLocaleString()}
-                                                                        </td>
-                                                                    ])}
-                                                                </tr>
-                                                            )
-                                                        })}
+                                                        {sortedRows.map((row, ri) => (
+                                                            <tr key={row.name} className="border-b border-slate-100 dark:border-slate-800 hover:brightness-110 transition-all">
+                                                                <td className="sticky left-0 bg-white dark:bg-slate-900 px-3 py-2 text-slate-400 font-semibold text-center">{ri + 1}</td>
+                                                                <td className="sticky left-7 bg-white dark:bg-slate-900 px-3 py-2 font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">{row.name}</td>
+                                                                {years.map(yr => [
+                                                                    ...yearGroups[yr].map(mk => {
+                                                                        const globalMkIdx = months.indexOf(mk)
+                                                                        const val = getVal(row, mk)
+                                                                        const ratio = val / colMaxes[globalMkIdx]
+                                                                        const bg = val > 0 && showHeatColors ? getHeatColor(ratio) : 'transparent'
+                                                                        return (
+                                                                            <td key={mk} style={{ backgroundColor: bg, color: val > 0 && showHeatColors ? '#fff' : undefined }}
+                                                                                className="px-2 py-2 text-right font-mono whitespace-nowrap border-l border-slate-200/30 dark:border-slate-700/30 text-slate-400 dark:text-slate-500">
+                                                                                {val > 0 ? val.toLocaleString() : '—'}
+                                                                            </td>
+                                                                        )
+                                                                    }),
+                                                                    <td key={`yt-${row.name}-${yr}`}
+                                                                        className="px-3 py-2 text-right font-bold font-mono whitespace-nowrap border-l-2 border-slate-300 dark:border-slate-500 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+                                                                        {yearGroups[yr].reduce((s, mk) => s + getVal(row, mk), 0).toLocaleString()}
+                                                                    </td>
+                                                                ])}
+                                                            </tr>
+                                                        ))}
                                                         {rows.length === 0 && (
                                                             <tr><td colSpan={2 + months.length + years.length} className="px-3 py-10 text-center text-muted-foreground">Sin datos en el período seleccionado</td></tr>
                                                         )}
@@ -2642,6 +2844,79 @@ export default function ReportesPage() {
 
                 const topProds = Object.entries(byProdCode).sort((a, b) => b[1] - a[1]).slice(0, 10)
 
+                // Monthly breakdown aggregations for the three analysis tables
+                const printCatToGroup: Record<string, string> = {}
+                for (const g of PRODUCT_GROUPS) {
+                    for (const id of g.ids) {
+                        const cat = PRODUCT_CATEGORIES.find(c => c.id === id)
+                        if (cat) printCatToGroup[cat.name] = g.title
+                    }
+                }
+                const printGroupMonthMap: Record<string, Record<string, number>> = {}
+                const printFamilyMonthMap: Record<string, Record<string, number>> = {}
+                const printCodeMonthMap: Record<string, Record<string, number>> = {}
+                const printByMonth: Record<string, { productos: number, bases: number }> = {}
+                const printBySucursalMonth: Record<string, Record<string, { productos: number, bases: number }>> = {}
+                const printAllMonths = new Set<string>()
+
+                pr.forEach((r: any) => {
+                    const dateStr = r.fecha_fabricacion || r.created_at
+                    const date = new Date(dateStr)
+                    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+                    printAllMonths.add(monthKey)
+                    const fam = (r.familia_producto || 'Otros') as string
+                    const isBase = PIECE_FAMILIES.includes(fam)
+                    const val = r.tamano_lote ? parseFloat(r.tamano_lote) : 0
+                    const litros = isBase ? val * 20 : val
+                    const groupName = printCatToGroup[fam] || 'Otros'
+                    if (!printGroupMonthMap[groupName]) printGroupMonthMap[groupName] = {}
+                    printGroupMonthMap[groupName][monthKey] = (printGroupMonthMap[groupName][monthKey] || 0) + litros
+                    if (!printFamilyMonthMap[fam]) printFamilyMonthMap[fam] = {}
+                    printFamilyMonthMap[fam][monthKey] = (printFamilyMonthMap[fam][monthKey] || 0) + litros
+                    const code = (r.codigo_producto || 'Sin código') as string
+                    if (!printCodeMonthMap[code]) printCodeMonthMap[code] = {}
+                    printCodeMonthMap[code][monthKey] = (printCodeMonthMap[code][monthKey] || 0) + litros
+                    if (!printByMonth[monthKey]) printByMonth[monthKey] = { productos: 0, bases: 0 }
+                    if (isBase) printByMonth[monthKey].bases += litros
+                    else printByMonth[monthKey].productos += litros
+                    const suc = (r.sucursal || 'Sin Sucursal') as string
+                    if (!printBySucursalMonth[suc]) printBySucursalMonth[suc] = {}
+                    if (!printBySucursalMonth[suc][monthKey]) printBySucursalMonth[suc][monthKey] = { productos: 0, bases: 0 }
+                    if (isBase) printBySucursalMonth[suc][monthKey].bases += litros
+                    else printBySucursalMonth[suc][monthKey].productos += litros
+                })
+
+                const printMonthsSorted = Array.from(printAllMonths).sort()
+                const MAX_PRINT_COLS = 8
+                const printMonthCols = printMonthsSorted.slice(-MAX_PRINT_COLS)
+                const fmtPrintMonth = (key: string) => {
+                    const [y, m] = key.split('-')
+                    const d = new Date(parseInt(y), parseInt(m) - 1, 1)
+                    return d.toLocaleDateString('es-MX', { month: 'short', year: '2-digit' }).replace('. ', ' \'')
+                }
+                const printMonthlyData = printMonthsSorted.map(mk => ({
+                    key: mk,
+                    label: fmtPrintMonth(mk),
+                    productos: printByMonth[mk]?.productos || 0,
+                    bases: printByMonth[mk]?.bases || 0,
+                    total: (printByMonth[mk]?.productos || 0) + (printByMonth[mk]?.bases || 0)
+                }))
+                const printSucursalRows = Object.entries(printBySucursalMonth).map(([name, mData]) => {
+                    const totProd = Object.values(mData).reduce((s, m) => s + m.productos, 0)
+                    const totBase = Object.values(mData).reduce((s, m) => s + m.bases, 0)
+                    return { name, mData, totProd, totBase, total: totProd + totBase }
+                }).sort((a, b) => b.total - a.total)
+                const printGroupRows = Object.entries(printGroupMonthMap)
+                    .map(([name, mData]) => ({ name, byMonth: mData, total: Object.values(mData).reduce((s, v) => s + v, 0) }))
+                    .sort((a, b) => b.total - a.total)
+                const printFamilyRows = Object.entries(printFamilyMonthMap)
+                    .map(([name, mData]) => ({ name, byMonth: mData, total: Object.values(mData).reduce((s, v) => s + v, 0) }))
+                    .sort((a, b) => b.total - a.total)
+                const printCodeRows = Object.entries(printCodeMonthMap)
+                    .map(([name, mData]) => ({ name, byMonth: mData, total: Object.values(mData).reduce((s, v) => s + v, 0) }))
+                    .sort((a, b) => b.total - a.total)
+                    .slice(0, 15)
+
                 return (
                     <PrintReportWrapper
                         title="Reporte Análisis de Operación"
@@ -2670,6 +2945,55 @@ export default function ReportesPage() {
                             </div>
                         </div>
 
+                        {/* Producción Mensual — stacked bar + table */}
+                        <div className="print-no-break" style={{ marginTop: '30px', paddingBottom: '20px', borderBottom: '1px solid #f1f5f9' }}>
+                            <h3 style={{ fontSize: '14pt', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>Producción Mensual</h3>
+                            <p className="text-[9pt] text-slate-500 mb-4">Volumen mensual separado entre Productos terminados y Bases (×20)</p>
+                            <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
+                                <div style={{ flex: 1 }}>
+                                    <BarChart width={530} height={220} data={printMonthlyData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                        <XAxis dataKey="label" fontSize={9} tick={{ fill: '#475569' }} />
+                                        <YAxis fontSize={9} tick={{ fill: '#475569' }} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}K` : v} />
+                                        <Bar dataKey="productos" stackId="a" fill="#C1272D" name="Productos" radius={[0, 0, 0, 0]} />
+                                        <Bar dataKey="bases" stackId="a" fill="#06b6d4" name="Bases" radius={[3, 3, 0, 0]} />
+                                        <Legend iconSize={10} wrapperStyle={{ fontSize: '9pt' }} />
+                                    </BarChart>
+                                </div>
+                                <div style={{ width: '200px', flexShrink: 0 }}>
+                                    <table className="print-table" style={{ marginBottom: 0 }}>
+                                        <thead>
+                                            <tr>
+                                                <th>Mes</th>
+                                                <th style={{ textAlign: 'right', color: '#C1272D' }}>Prod.</th>
+                                                <th style={{ textAlign: 'right', color: '#06b6d4' }}>Bases</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {printMonthlyData.map((m, i) => (
+                                                <tr key={m.key} style={{ backgroundColor: i % 2 === 0 ? '#f8fafc' : 'white' }}>
+                                                    <td style={{ fontWeight: 600 }}>{m.label}</td>
+                                                    <td style={{ textAlign: 'right' }}>{m.productos.toLocaleString()}</td>
+                                                    <td style={{ textAlign: 'right' }}>{m.bases > 0 ? m.bases.toLocaleString() : '—'}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr style={{ borderTop: '2px solid #e2e8f0' }}>
+                                                <td style={{ fontWeight: 900 }}>Total</td>
+                                                <td style={{ textAlign: 'right', fontWeight: 900, color: '#C1272D' }}>
+                                                    {printMonthlyData.reduce((s, m) => s + m.productos, 0).toLocaleString()}
+                                                </td>
+                                                <td style={{ textAlign: 'right', fontWeight: 900, color: '#06b6d4' }}>
+                                                    {printMonthlyData.reduce((s, m) => s + m.bases, 0).toLocaleString()}
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Image 1: Production by Branch (Vertical Bars) */}
                         <div className="print-no-break" style={{ marginTop: '30px', paddingBottom: '20px', borderBottom: '1px solid #f1f5f9' }}>
                             <h3 style={{ fontSize: '14pt', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>Producción Total por Sucursal (Litros)</h3>
@@ -2694,6 +3018,65 @@ export default function ReportesPage() {
                                     </Bar>
                                 </BarChart>
                             </div>
+                        </div>
+
+                        {/* Producción por Sucursal — heatmap table */}
+                        <div className="print-break print-no-break" style={{ marginTop: '30px', paddingBottom: '20px', borderBottom: '1px solid #f1f5f9' }}>
+                            <h3 style={{ fontSize: '14pt', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>Producción por Sucursal — Desglose Mensual (L equiv.)</h3>
+                            <p className="text-[9pt] text-slate-500 mb-4">Volumen total producido por sucursal por mes</p>
+                            <table className="print-table">
+                                <thead>
+                                    <tr>
+                                        <th style={{ width: '24px', textAlign: 'center' }}>#</th>
+                                        <th>Sucursal</th>
+                                        {printMonthCols.map(mk => <th key={mk} style={{ textAlign: 'right' }}>{fmtPrintMonth(mk)}</th>)}
+                                        {printMonthsSorted.length > MAX_PRINT_COLS && <th style={{ textAlign: 'center', fontSize: '6pt' }}>+{printMonthsSorted.length - MAX_PRINT_COLS}m.</th>}
+                                        <th style={{ textAlign: 'right' }}>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {printSucursalRows.map((row, i) => {
+                                        const colMax = printMonthCols.reduce((mx, mk) => {
+                                            const v = (row.mData[mk]?.productos || 0) + (row.mData[mk]?.bases || 0)
+                                            return v > mx ? v : mx
+                                        }, 0)
+                                        return (
+                                            <tr key={row.name} style={{ backgroundColor: i % 2 === 0 ? '#f8fafc' : 'white' }}>
+                                                <td style={{ textAlign: 'center', fontWeight: 700, color: '#94a3b8' }}>{i + 1}</td>
+                                                <td style={{ fontWeight: 700, color: '#0f172a' }}>{row.name}</td>
+                                                {printMonthCols.map(mk => {
+                                                    const v = (row.mData[mk]?.productos || 0) + (row.mData[mk]?.bases || 0)
+                                                    const colTotal = printSucursalRows.reduce((s, r2) => s + ((r2.mData[mk]?.productos || 0) + (r2.mData[mk]?.bases || 0)), 0)
+                                                    const ratio = colTotal > 0 ? v / colTotal : 0
+                                                    const bg = v > 0 ? getHeatColor(ratio) : 'transparent'
+                                                    return (
+                                                        <td key={mk} style={{ textAlign: 'right', backgroundColor: bg, color: ratio > 0.5 ? 'white' : '#0f172a', fontWeight: v > 0 ? 700 : 400 }}>
+                                                            {v > 0 ? v.toLocaleString() : '—'}
+                                                        </td>
+                                                    )
+                                                })}
+                                                {printMonthsSorted.length > MAX_PRINT_COLS && <td />}
+                                                <td style={{ textAlign: 'right', fontWeight: 900, color: '#0e0c9b' }}>
+                                                    {row.total.toLocaleString()}
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
+                                </tbody>
+                                <tfoot>
+                                    <tr style={{ borderTop: '2px solid #cbd5e1' }}>
+                                        <td colSpan={2} style={{ fontWeight: 900 }}>TOTAL</td>
+                                        {printMonthCols.map(mk => {
+                                            const colTotal = printSucursalRows.reduce((s, r2) => s + ((r2.mData[mk]?.productos || 0) + (r2.mData[mk]?.bases || 0)), 0)
+                                            return <td key={mk} style={{ textAlign: 'right', fontWeight: 900 }}>{colTotal > 0 ? colTotal.toLocaleString() : '—'}</td>
+                                        })}
+                                        {printMonthsSorted.length > MAX_PRINT_COLS && <td />}
+                                        <td style={{ textAlign: 'right', fontWeight: 900, color: '#0e0c9b' }}>
+                                            {printSucursalRows.reduce((s, r2) => s + r2.total, 0).toLocaleString()}
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
                         </div>
 
                         {/* Image 2: Distribution by Variant (Horizontal Bars) */}
@@ -2820,6 +3203,146 @@ export default function ReportesPage() {
                             </div>
                         </div>
 
+                        {/* Familia de Producto — monthly breakdown */}
+                        <div className="print-break print-no-break" style={{ marginTop: '30px', paddingBottom: '10px', borderBottom: '1px solid #f1f5f9' }}>
+                            <h3 style={{ fontSize: '14pt', fontWeight: 900, color: '#0e0c9b', borderLeft: '4px solid #0e0c9b', paddingLeft: '12px', marginBottom: '12px' }}>
+                                Producción por Familia de Producto (L equiv.)
+                            </h3>
+                            {printGroupRows.length === 0 ? (
+                                <p style={{ fontSize: '9pt', color: '#94a3b8' }}>Sin datos disponibles para el periodo seleccionado.</p>
+                            ) : (
+                                <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
+                                    <div style={{ flex: '0 0 auto' }}>
+                                        <PieChart width={200} height={180}>
+                                            <Pie data={printGroupRows} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3} dataKey="total" stroke="none">
+                                                {printGroupRows.map((_e, idx) => <Cell key={idx} fill={COLORS[idx % COLORS.length]} />)}
+                                            </Pie>
+                                            <Tooltip formatter={(v: any) => `${Number(v).toLocaleString()} L`} />
+                                        </PieChart>
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <table className="print-table" style={{ marginBottom: 0 }}>
+                                            <thead>
+                                                <tr>
+                                                    <th>Familia</th>
+                                                    {printMonthCols.map(mk => <th key={mk} style={{ textAlign: 'right' }}>{fmtPrintMonth(mk)}</th>)}
+                                                    {printMonthsSorted.length > MAX_PRINT_COLS && <th style={{ textAlign: 'center', fontSize: '6pt', color: '#94a3b8' }}>+{printMonthsSorted.length - MAX_PRINT_COLS} m.</th>}
+                                                    <th style={{ textAlign: 'right' }}>Total L</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {printGroupRows.map((row, i) => (
+                                                    <tr key={row.name} style={{ backgroundColor: i % 2 === 0 ? '#f8fafc' : 'white' }}>
+                                                        <td style={{ fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: COLORS[i % COLORS.length], flexShrink: 0 }} />
+                                                            {row.name}
+                                                        </td>
+                                                        {printMonthCols.map(mk => (
+                                                            <td key={mk} style={{ textAlign: 'right' }}>
+                                                                {row.byMonth[mk] ? row.byMonth[mk].toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—'}
+                                                            </td>
+                                                        ))}
+                                                        {printMonthsSorted.length > MAX_PRINT_COLS && <td />}
+                                                        <td style={{ textAlign: 'right', fontWeight: 900, color: '#0e0c9b' }}>
+                                                            {row.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Categoría de Productos — monthly breakdown */}
+                        <div className="print-break print-no-break" style={{ marginTop: '30px', paddingBottom: '10px', borderBottom: '1px solid #f1f5f9' }}>
+                            <h3 style={{ fontSize: '14pt', fontWeight: 900, color: '#0e0c9b', borderLeft: '4px solid #0e0c9b', paddingLeft: '12px', marginBottom: '12px' }}>
+                                Producción por Categoría de Productos (L equiv.)
+                            </h3>
+                            {printFamilyRows.length === 0 ? (
+                                <p style={{ fontSize: '9pt', color: '#94a3b8' }}>Sin datos disponibles para el periodo seleccionado.</p>
+                            ) : (
+                                <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
+                                    <div style={{ flex: '0 0 auto' }}>
+                                        <PieChart width={200} height={200}>
+                                            <Pie data={printFamilyRows} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={2} dataKey="total" stroke="none">
+                                                {printFamilyRows.map((_e, idx) => <Cell key={idx} fill={COLORS[idx % COLORS.length]} />)}
+                                            </Pie>
+                                            <Tooltip formatter={(v: any) => `${Number(v).toLocaleString()} L`} />
+                                        </PieChart>
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <table className="print-table" style={{ marginBottom: 0 }}>
+                                            <thead>
+                                                <tr>
+                                                    <th>Categoría</th>
+                                                    {printMonthCols.map(mk => <th key={mk} style={{ textAlign: 'right' }}>{fmtPrintMonth(mk)}</th>)}
+                                                    {printMonthsSorted.length > MAX_PRINT_COLS && <th style={{ textAlign: 'center', fontSize: '6pt', color: '#94a3b8' }}>+{printMonthsSorted.length - MAX_PRINT_COLS} m.</th>}
+                                                    <th style={{ textAlign: 'right' }}>Total L</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {printFamilyRows.map((row, i) => (
+                                                    <tr key={row.name} style={{ backgroundColor: i % 2 === 0 ? '#f8fafc' : 'white' }}>
+                                                        <td style={{ fontWeight: 600, color: '#334155' }}>{row.name}</td>
+                                                        {printMonthCols.map(mk => (
+                                                            <td key={mk} style={{ textAlign: 'right' }}>
+                                                                {row.byMonth[mk] ? row.byMonth[mk].toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—'}
+                                                            </td>
+                                                        ))}
+                                                        {printMonthsSorted.length > MAX_PRINT_COLS && <td />}
+                                                        <td style={{ textAlign: 'right', fontWeight: 900, color: '#0e0c9b' }}>
+                                                            {row.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Código de Producto — top 15 monthly breakdown */}
+                        <div className="print-break print-no-break" style={{ marginTop: '30px', paddingBottom: '10px', borderBottom: '1px solid #f1f5f9' }}>
+                            <h3 style={{ fontSize: '14pt', fontWeight: 900, color: '#0e0c9b', borderLeft: '4px solid #0e0c9b', paddingLeft: '12px', marginBottom: '12px' }}>
+                                Producción por Código de Producto — Top 15 (L equiv.)
+                            </h3>
+                            {printCodeRows.length === 0 ? (
+                                <p style={{ fontSize: '9pt', color: '#94a3b8' }}>Sin datos disponibles para el periodo seleccionado.</p>
+                            ) : (
+                                <table className="print-table">
+                                    <thead>
+                                        <tr>
+                                            <th style={{ width: '28px', textAlign: 'center' }}>#</th>
+                                            <th>Código</th>
+                                            {printMonthCols.map(mk => <th key={mk} style={{ textAlign: 'right' }}>{fmtPrintMonth(mk)}</th>)}
+                                            {printMonthsSorted.length > MAX_PRINT_COLS && <th style={{ textAlign: 'center', fontSize: '6pt', color: '#94a3b8' }}>+{printMonthsSorted.length - MAX_PRINT_COLS} m.</th>}
+                                            <th style={{ textAlign: 'right' }}>Total L</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {printCodeRows.map((row, i) => (
+                                            <tr key={row.name} style={{ backgroundColor: i % 2 === 0 ? '#f8fafc' : 'white' }}>
+                                                <td style={{ textAlign: 'center', fontWeight: 700, color: '#94a3b8' }}>{i + 1}</td>
+                                                <td style={{ fontWeight: 700, color: '#0f172a' }}>{row.name}</td>
+                                                {printMonthCols.map(mk => (
+                                                    <td key={mk} style={{ textAlign: 'right' }}>
+                                                        {row.byMonth[mk] ? row.byMonth[mk].toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—'}
+                                                    </td>
+                                                ))}
+                                                {printMonthsSorted.length > MAX_PRINT_COLS && <td />}
+                                                <td style={{ textAlign: 'right', fontWeight: 900, color: '#0e0c9b' }}>
+                                                    {row.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+
                         {/* Improved Bottom Info - Performance Summary instead of repeats */}
                         <div className="print-break print-no-break" style={{ marginTop: '40px' }}>
                             <h3 style={{ fontSize: '14pt', fontWeight: 900, color: '#0e0c9b', borderLeft: '4px solid #0e0c9b', paddingLeft: '12px', marginBottom: '20px' }}>Resumen de Rendimiento Comercial Detallado</h3>
@@ -2870,6 +3393,7 @@ export default function ReportesPage() {
                                 </div>
                             </div>
                         </div>
+
                     </PrintReportWrapper>
                 )
             })()}

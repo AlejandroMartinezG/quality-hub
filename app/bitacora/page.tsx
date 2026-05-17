@@ -265,7 +265,6 @@ export default function BitacoraPage() {
                 toast.error('⚠️ Producto No Conforme — NCR Abierto', {
                     description: `Lote ${lotNumber} requiere revisión inmediata. Se abrió un caso NCR automáticamente.`,
                     duration: 8000,
-                    action: { label: 'Ver NCRs', onClick: () => window.location.href = "/calidad" }
                 })
             } else if (estado_calidad === 'RETENER') {
                 toast.warning('⚠️ Producto en Tolerancia (Retener)', {
@@ -423,7 +422,7 @@ export default function BitacoraPage() {
                                     variant={rec.estado === 'CONFORME' ? 'default' : rec.estado === 'RETENER' ? 'outline' : 'destructive'}
                                     className="text-[10px] shrink-0"
                                 >
-                                    {rec.estado}
+                                    {rec.estado === 'RETENER' ? 'SEMI-CONFORME' : rec.estado}
                                 </Badge>
                             </motion.div>
                         ))}
