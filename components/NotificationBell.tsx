@@ -84,13 +84,13 @@ export function NotificationBell() {
 
     const handleNotificationClick = (notif: Notification) => {
         setOpen(false)
+        if (!notif.read) markAsRead(notif.id)
         const isMessageType = notif.type === 'CHAT_CALIDAD' || notif.type === 'COMENTARIO_NUEVO'
         if (isMessageType) {
             const mid = notif.metadata?.measurement_id
             router.push(mid ? `/calidad?chat=${mid}` : '/calidad')
             return
         }
-        if (!notif.read) markAsRead(notif.id)
         if (notif.link) router.push(notif.link)
     }
 
@@ -108,31 +108,38 @@ export function NotificationBell() {
             </PopoverTrigger>
 
             <PopoverContent className="w-80 p-0" align="end">
-                <div className="flex items-center justify-between px-4 py-2 border-b">
-                    <h3 className="font-semibold text-sm">Notificaciones</h3>
-                    <div className="flex items-center gap-1">
+                <div className="px-4 pt-2.5 pb-2 border-b">
+                    <div className="flex items-center justify-between">
+                        <h3 className="font-semibold text-sm">Notificaciones</h3>
                         {unreadCount > 0 && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-xs h-auto py-1 text-blue-600 hover:text-blue-800"
-                                onClick={markAllRead}
-                            >
-                                Marcar todo leído
-                            </Button>
-                        )}
-                        {notifications.length > 0 && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-xs h-auto py-1 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                onClick={deleteAll}
-                            >
-                                <Trash2 className="h-3.5 w-3.5 mr-1" />
-                                Borrar todo
-                            </Button>
+                            <span className="text-[10px] font-medium text-slate-400">{unreadCount} sin leer</span>
                         )}
                     </div>
+                    {(unreadCount > 0 || notifications.length > 0) && (
+                        <div className="flex items-center gap-1 mt-1.5">
+                            {unreadCount > 0 && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-xs h-6 px-2 py-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                    onClick={markAllRead}
+                                >
+                                    Marcar todo leído
+                                </Button>
+                            )}
+                            {notifications.length > 0 && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-xs h-6 px-2 py-0 text-red-500 hover:text-red-700 hover:bg-red-50 ml-auto"
+                                    onClick={deleteAll}
+                                >
+                                    <Trash2 className="h-3 w-3 mr-1" />
+                                    Borrar todo
+                                </Button>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <div className="max-h-[300px] overflow-y-auto">

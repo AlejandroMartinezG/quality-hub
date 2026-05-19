@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { updateBitacoraRecord } from "./actions"
 import { useAuth } from "@/components/AuthProvider"
 import { Breadcrumbs } from "@/components/Breadcrumbs"
@@ -63,6 +63,7 @@ export default function CalidadPage() {
     const { user, profile, loading: authLoading } = useAuth()
     const isAdmin = !!profile && (profile.is_admin || profile.role === 'admin')
     const router = useRouter()
+    const searchParams = useSearchParams()
 
     const [records, setRecords] = useState<BitacoraRecord[]>([])
     const [loading, setLoading] = useState(true)
@@ -198,8 +199,12 @@ export default function CalidadPage() {
         if (!msgs || msgs.length === 0) { setChatMessages([]); return }
 
         const authorIds = Array.from(new Set((msgs as any[]).map((m: any) => m.author_user_id as string)))
-        const { data: profilesData } = await supabase
-            .from('profiles').select('id, full_name, avatar_url').in('id', authorIds)
+        const profilesRes = await fetch('/api/profiles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: authorIds }),
+        })
+        const profilesData = profilesRes.ok ? await profilesRes.json() : []
 
         const nameMap: Record<string, string> = {}
         const avatarMap: Record<string, string | null> = {}
@@ -274,16 +279,16 @@ export default function CalidadPage() {
 
     // Auto-open chat when navigating from a notification link (?chat=<measurement_id>)
     useEffect(() => {
-        if (loading || records.length === 0 || chatOpen) return
-        const chatMid = new URLSearchParams(window.location.search).get('chat')
+        if (loading || records.length === 0) return
+        const chatMid = searchParams.get('chat')
         if (!chatMid) return
         const record = records.find(r => String(r.id) === chatMid)
         if (record) {
-            window.history.replaceState({}, '', window.location.pathname)
+            router.replace(window.location.pathname, { scroll: false })
             openChat(record)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [records, loading])
+    }, [records, loading, searchParams])
 
     const getStatusInfo = (record: BitacoraRecord): 'success' | 'warning' | 'error' => {
         const std = PRODUCT_STANDARDS[record.codigo_producto]
