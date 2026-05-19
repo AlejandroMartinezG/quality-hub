@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { updateBitacoraRecord } from "./actions"
 import { useAuth } from "@/components/AuthProvider"
 import { Breadcrumbs } from "@/components/Breadcrumbs"
@@ -63,7 +63,6 @@ export default function CalidadPage() {
     const { user, profile, loading: authLoading } = useAuth()
     const isAdmin = !!profile && (profile.is_admin || profile.role === 'admin')
     const router = useRouter()
-    const searchParams = useSearchParams()
 
     const [records, setRecords] = useState<BitacoraRecord[]>([])
     const [loading, setLoading] = useState(true)
@@ -280,15 +279,27 @@ export default function CalidadPage() {
     // Auto-open chat when navigating from a notification link (?chat=<measurement_id>)
     useEffect(() => {
         if (loading || records.length === 0) return
-        const chatMid = searchParams.get('chat')
+        const chatMid = new URLSearchParams(window.location.search).get('chat')
         if (!chatMid) return
         const record = records.find(r => String(r.id) === chatMid)
         if (record) {
-            router.replace(window.location.pathname, { scroll: false })
+            window.history.replaceState({}, '', window.location.pathname)
             openChat(record)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [records, loading, searchParams])
+    }, [records, loading])
+
+    // Auto-open chat via custom event (when ya estamos en /calidad y llega notificación)
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const mid = (e as CustomEvent<{ mid: string }>).detail.mid
+            const record = records.find(r => String(r.id) === mid)
+            if (record) openChat(record)
+        }
+        window.addEventListener('openChatMeasurement', handler)
+        return () => window.removeEventListener('openChatMeasurement', handler)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [records])
 
     const getStatusInfo = (record: BitacoraRecord): 'success' | 'warning' | 'error' => {
         const std = PRODUCT_STANDARDS[record.codigo_producto]

@@ -88,7 +88,12 @@ export function NotificationBell() {
         const isMessageType = notif.type === 'CHAT_CALIDAD' || notif.type === 'COMENTARIO_NUEVO'
         if (isMessageType) {
             const mid = notif.metadata?.measurement_id
-            router.push(mid ? `/calidad?chat=${mid}` : '/calidad')
+            if (mid && window.location.pathname === '/calidad') {
+                // Ya estamos en calidad: custom event para abrir el chat sin navegar
+                window.dispatchEvent(new CustomEvent('openChatMeasurement', { detail: { mid } }))
+            } else {
+                router.push(mid ? `/calidad?chat=${mid}` : '/calidad')
+            }
             return
         }
         if (notif.link) router.push(notif.link)
