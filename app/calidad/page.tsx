@@ -487,10 +487,10 @@ export default function CalidadPage() {
             </div>
 
             {/* ── Stats Grid ── */}
-            <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-4">
+            <div className="flex flex-col md:grid md:grid-cols-4 md:grid-rows-2 gap-4">
 
                 {/* Total — spans 2 rows */}
-                <Card className="md:row-span-2 relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#0e0c9b] to-[#2a28b5] border-none text-white">
+                <Card className="md:row-span-2 relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#0e0c9b] to-[#2a28b5] border-none text-white shadow-xl">
                     <div className="absolute bottom-0 right-0 p-6 opacity-10">
                         <ClipboardList className="w-40 h-40 text-white" />
                     </div>
@@ -500,7 +500,7 @@ export default function CalidadPage() {
                     <CardContent className="relative z-10 p-6 flex flex-col h-full gap-4">
                         <div>
                             <p className="text-[10px] font-bold uppercase tracking-widest text-white/50 mb-0.5">Historial</p>
-                            <p className="text-sm font-bold text-white/80">Total Analizado</p>
+                            <p className="text-base font-bold text-white/90">Total Analizado</p>
                         </div>
                         <div className="flex items-baseline gap-2">
                             <span className="text-7xl font-extrabold tracking-tight">{filteredRecords.length}</span>
@@ -514,19 +514,23 @@ export default function CalidadPage() {
 
                         <div className="h-px bg-white/10" />
                         
-                        <div className="space-y-3 flex-1">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">Bases (Registradas en pzs)</p>
-                            <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs text-white/60 font-semibold leading-tight">🌿 Aromatizante Ambiental</span>
-                                <span className="text-lg font-extrabold shrink-0">{pzsAromatizantes} pzs</span>
-                            </div>
-                            <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs text-white/60 font-semibold leading-tight">🧴 Limpiadores Multiusos</span>
-                                <span className="text-lg font-extrabold shrink-0">{pzsLimpiadores} pzs</span>
-                            </div>
-                            <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/5">
-                                <span className="text-xs text-emerald-400/80 font-bold leading-tight">Total Bases (Equivalente)</span>
-                                <span className="text-lg font-extrabold text-emerald-400 shrink-0">{litrosBases.toLocaleString()} L</span>
+                        <div className="space-y-3 flex-1 flex flex-col justify-end">
+                            <div>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-2">Bases (Registradas en pzs)</p>
+                                <div className="space-y-1.5">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="text-xs text-white/70 font-medium leading-tight">🌿 Aromatizante Ambiental</span>
+                                        <span className="text-base font-bold shrink-0">{pzsAromatizantes} pzs</span>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="text-xs text-white/70 font-medium leading-tight">🧴 Limpiadores Multiusos</span>
+                                        <span className="text-base font-bold shrink-0">{pzsLimpiadores} pzs</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between gap-2 mt-3 pt-2 border-t border-white/10">
+                                    <span className="text-xs text-emerald-400 font-bold uppercase tracking-wider">Total Bases (Eq.)</span>
+                                    <span className="text-lg font-black text-emerald-400 shrink-0">{litrosBases.toLocaleString()} L</span>
+                                </div>
                             </div>
                             
                             {totalLitrosGeneral > 0 && (
@@ -534,7 +538,7 @@ export default function CalidadPage() {
                                     <div className="h-px bg-white/10 mt-4 mb-2" />
                                     <div className="flex items-center justify-between">
                                         <span className="text-sm text-white font-bold uppercase tracking-wider">Total General</span>
-                                        <span className="text-2xl font-black text-white drop-shadow-md">{totalLitrosGeneral.toLocaleString()} L</span>
+                                        <span className="text-3xl font-black text-white drop-shadow-md tracking-tight">{totalLitrosGeneral.toLocaleString()} L</span>
                                     </div>
                                 </>
                             )}
@@ -542,102 +546,128 @@ export default function CalidadPage() {
                     </CardContent>
                 </Card>
 
-                {/* Sólidos — Conformes */}
-                <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/20 dark:to-green-900/10 border-green-200 dark:border-green-900/30">
-                    <div className="absolute top-4 right-4 h-10 w-10 rounded-2xl bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
-                        <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                    </div>
-                    <CardContent className="pt-5 px-5 pb-5">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-green-600/60 dark:text-green-400/50 mb-0.5">% Sólidos</p>
-                        <p className="text-sm font-bold text-green-700 dark:text-green-400 mb-3">Conformes</p>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-4xl font-extrabold text-green-700 dark:text-green-400">
-                                {filteredRecords.filter(r => getStatusInfo(r) === 'success').length}
-                            </span>
-                            <span className="text-sm font-bold text-green-600/70">
-                                {pct(filteredRecords.filter(r => getStatusInfo(r) === 'success').length, filteredRecords.length)}
-                            </span>
-                        </div>
-                    </CardContent>
-                </Card>
+                {/* Sólidos Group */}
+                <div className="md:col-span-3 flex flex-col gap-2">
+                    <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest md:hidden pl-2">Análisis de % Sólidos</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 h-full">
+                        {/* Sólidos — Conformes */}
+                        <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/30 dark:to-green-900/10 border-green-200 dark:border-green-500/20 shadow-sm dark:shadow-[0_0_15px_rgba(34,197,94,0.05)]">
+                            <div className="absolute top-4 right-4 h-10 w-10 rounded-2xl bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
+                                <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                            </div>
+                            <CardContent className="p-6 flex flex-col h-full justify-between gap-6">
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-green-600/60 dark:text-green-400/50 mb-1">% Sólidos</p>
+                                    <p className="text-base font-bold text-green-700 dark:text-green-400">Conformes</p>
+                                </div>
+                                <div className="flex items-baseline gap-2 mt-auto">
+                                    <span className="text-5xl font-black tracking-tighter text-green-700 dark:text-green-400">
+                                        {filteredRecords.filter(r => getStatusInfo(r) === 'success').length}
+                                    </span>
+                                    <span className="text-lg font-bold text-green-600/70 dark:text-green-500/70">
+                                        {pct(filteredRecords.filter(r => getStatusInfo(r) === 'success').length, filteredRecords.length)}
+                                    </span>
+                                </div>
+                            </CardContent>
+                        </Card>
 
-                {/* Sólidos — Semi-Conforme */}
-                <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-yellow-50 to-yellow-100/50 dark:from-yellow-950/20 dark:to-yellow-900/10 border-yellow-200 dark:border-yellow-900/30">
-                    <div className="absolute top-4 right-4 h-10 w-10 rounded-2xl bg-yellow-100 dark:bg-yellow-900/40 flex items-center justify-center">
-                        <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                    </div>
-                    <CardContent className="pt-5 px-5 pb-5">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-yellow-600/60 dark:text-yellow-400/50 mb-0.5">% Sólidos</p>
-                        <p className="text-sm font-bold text-yellow-700 dark:text-yellow-400 mb-3">Semi-Conforme</p>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-4xl font-extrabold text-yellow-700 dark:text-yellow-400">
-                                {filteredRecords.filter(r => getStatusInfo(r) === 'warning').length}
-                            </span>
-                            <span className="text-sm font-bold text-yellow-600/70">
-                                {pct(filteredRecords.filter(r => getStatusInfo(r) === 'warning').length, filteredRecords.length)}
-                            </span>
-                        </div>
-                    </CardContent>
-                </Card>
+                        {/* Sólidos — Semi-Conforme */}
+                        <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-yellow-50 to-yellow-100/50 dark:from-yellow-950/30 dark:to-yellow-900/10 border-yellow-200 dark:border-yellow-500/20 shadow-sm dark:shadow-[0_0_15px_rgba(234,179,8,0.05)]">
+                            <div className="absolute top-4 right-4 h-10 w-10 rounded-2xl bg-yellow-100 dark:bg-yellow-900/40 flex items-center justify-center">
+                                <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                            </div>
+                            <CardContent className="p-6 flex flex-col h-full justify-between gap-6">
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-yellow-600/60 dark:text-yellow-400/50 mb-1">% Sólidos</p>
+                                    <p className="text-base font-bold text-yellow-700 dark:text-yellow-400">Semi-Conforme</p>
+                                </div>
+                                <div className="flex items-baseline gap-2 mt-auto">
+                                    <span className="text-5xl font-black tracking-tighter text-yellow-700 dark:text-yellow-400">
+                                        {filteredRecords.filter(r => getStatusInfo(r) === 'warning').length}
+                                    </span>
+                                    <span className="text-lg font-bold text-yellow-600/70 dark:text-yellow-500/70">
+                                        {pct(filteredRecords.filter(r => getStatusInfo(r) === 'warning').length, filteredRecords.length)}
+                                    </span>
+                                </div>
+                            </CardContent>
+                        </Card>
 
-                {/* Sólidos — No Conforme */}
-                <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/20 dark:to-red-900/10 border-[#C1272D]/20">
-                    <div className="absolute top-4 right-4 h-10 w-10 rounded-2xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
-                        <XCircle className="h-5 w-5 text-[#C1272D] dark:text-red-400" />
+                        {/* Sólidos — No Conforme */}
+                        <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/30 dark:to-red-900/10 border-red-200 dark:border-red-500/20 shadow-sm dark:shadow-[0_0_15px_rgba(220,38,38,0.05)]">
+                            <div className="absolute top-4 right-4 h-10 w-10 rounded-2xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
+                                <XCircle className="h-5 w-5 text-[#C1272D] dark:text-red-400" />
+                            </div>
+                            <CardContent className="p-6 flex flex-col h-full justify-between gap-6">
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#C1272D]/60 dark:text-red-400/50 mb-1">% Sólidos</p>
+                                    <p className="text-base font-bold text-[#C1272D] dark:text-red-400">No Conforme</p>
+                                </div>
+                                <div className="flex items-baseline gap-2 mt-auto">
+                                    <span className="text-5xl font-black tracking-tighter text-[#C1272D] dark:text-red-400">
+                                        {filteredRecords.filter(r => getStatusInfo(r) === 'error').length}
+                                    </span>
+                                    <span className="text-lg font-bold text-[#C1272D]/70 dark:text-red-500/70">
+                                        {pct(filteredRecords.filter(r => getStatusInfo(r) === 'error').length, filteredRecords.length)}
+                                    </span>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
-                    <CardContent className="pt-5 px-5 pb-5">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-[#C1272D]/50 dark:text-red-400/50 mb-0.5">% Sólidos</p>
-                        <p className="text-sm font-bold text-[#C1272D] dark:text-red-400 mb-3">No Conforme</p>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-4xl font-extrabold text-[#C1272D] dark:text-red-400">
-                                {filteredRecords.filter(r => getStatusInfo(r) === 'error').length}
-                            </span>
-                            <span className="text-sm font-bold text-[#C1272D]/70">
-                                {pct(filteredRecords.filter(r => getStatusInfo(r) === 'error').length, filteredRecords.length)}
-                            </span>
-                        </div>
-                    </CardContent>
-                </Card>
+                </div>
 
-                {/* pH — Conformes */}
-                <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/20 dark:to-emerald-900/10 border-emerald-200 dark:border-emerald-900/30">
-                    <div className="absolute top-4 right-4 h-10 w-10 rounded-2xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
-                        <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                    </div>
-                    <CardContent className="pt-5 px-5 pb-5">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600/60 dark:text-emerald-400/50 mb-0.5">pH</p>
-                        <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400 mb-3">Conformes</p>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-4xl font-extrabold text-emerald-700 dark:text-emerald-400">
-                                {phRecords.filter(r => getPhStatus(r) === 'success').length}
-                            </span>
-                            <span className="text-sm font-bold text-emerald-600/70">
-                                {pct(phRecords.filter(r => getPhStatus(r) === 'success').length, phRecords.length)}
-                            </span>
-                        </div>
-                        <p className="text-[10px] text-emerald-600/50 mt-1">de {phRecords.length} con estándar</p>
-                    </CardContent>
-                </Card>
+                {/* pH Group */}
+                <div className="md:col-span-3 flex flex-col gap-2 mt-2 md:mt-0">
+                    <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest md:hidden pl-2">Análisis de pH</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
+                        {/* pH — Conformes */}
+                        <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/10 border-emerald-200 dark:border-emerald-500/20 shadow-sm dark:shadow-[0_0_15px_rgba(16,185,129,0.05)]">
+                            <div className="absolute top-4 right-4 h-10 w-10 rounded-2xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
+                                <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <CardContent className="p-6 flex flex-col h-full justify-between gap-6">
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600/60 dark:text-emerald-400/50 mb-1">Análisis de pH</p>
+                                    <p className="text-base font-bold text-emerald-700 dark:text-emerald-400">Conformes</p>
+                                </div>
+                                <div>
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-5xl font-black tracking-tighter text-emerald-700 dark:text-emerald-400">
+                                            {phRecords.filter(r => getPhStatus(r) === 'success').length}
+                                        </span>
+                                        <span className="text-lg font-bold text-emerald-600/70 dark:text-emerald-500/70">
+                                            {pct(phRecords.filter(r => getPhStatus(r) === 'success').length, phRecords.length)}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs font-medium text-emerald-600/50 dark:text-emerald-400/40 mt-1">de {phRecords.length} muestras con estándar</p>
+                                </div>
+                            </CardContent>
+                        </Card>
 
-{/* pH — No Conforme */}
-                <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-rose-50 to-rose-100/50 dark:from-rose-950/20 dark:to-rose-900/10 border-rose-200 dark:border-rose-900/30">
-                    <div className="absolute top-4 right-4 h-10 w-10 rounded-2xl bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center">
-                        <XCircle className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+                        {/* pH — No Conforme */}
+                        <Card className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-rose-50 to-rose-100/50 dark:from-rose-950/30 dark:to-rose-900/10 border-rose-200 dark:border-rose-500/20 shadow-sm dark:shadow-[0_0_15px_rgba(244,63,94,0.05)]">
+                            <div className="absolute top-4 right-4 h-10 w-10 rounded-2xl bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center">
+                                <XCircle className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+                            </div>
+                            <CardContent className="p-6 flex flex-col h-full justify-between gap-6">
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-rose-600/60 dark:text-rose-400/50 mb-1">Análisis de pH</p>
+                                    <p className="text-base font-bold text-rose-700 dark:text-rose-400">No Conforme</p>
+                                </div>
+                                <div>
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-5xl font-black tracking-tighter text-rose-700 dark:text-rose-400">
+                                            {phRecords.filter(r => getPhStatus(r) === 'error').length}
+                                        </span>
+                                        <span className="text-lg font-bold text-rose-600/70 dark:text-rose-500/70">
+                                            {pct(phRecords.filter(r => getPhStatus(r) === 'error').length, phRecords.length)}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs font-medium text-rose-600/50 dark:text-rose-400/40 mt-1">de {phRecords.length} muestras con estándar</p>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
-                    <CardContent className="pt-5 px-5 pb-5">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-rose-600/60 dark:text-rose-400/50 mb-0.5">pH</p>
-                        <p className="text-sm font-bold text-rose-700 dark:text-rose-400 mb-3">No Conforme</p>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-4xl font-extrabold text-rose-700 dark:text-rose-400">
-                                {phRecords.filter(r => getPhStatus(r) === 'error').length}
-                            </span>
-                            <span className="text-sm font-bold text-rose-600/70">
-                                {pct(phRecords.filter(r => getPhStatus(r) === 'error').length, phRecords.length)}
-                            </span>
-                        </div>
-                        <p className="text-[10px] text-rose-600/50 mt-1">de {phRecords.length} con estándar</p>
-                    </CardContent>
-                </Card>
+                </div>
             </div>
 
             {/* ── Filtros ── */}
