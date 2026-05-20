@@ -346,15 +346,30 @@ export default function CalidadPage() {
     })
 
     const phRecords = filteredRecords.filter(r => getPhStatus(r) !== 'none')
-    const totalAromatizantes = filteredRecords.filter(r => {
-        const fam = (r.familia_producto || '').toLowerCase()
-        return fam.includes('base') && fam.includes('aromat')
-    }).length
-    const totalLimpiadores = filteredRecords.filter(r => {
-        const fam = (r.familia_producto || '').toLowerCase()
-        return fam.includes('base') && fam.includes('limp')
-    }).length
-    const totalLitros = filteredRecords.reduce((s, r) => s + (r.tamano_lote || 0), 0)
+    const pzsAromatizantes = filteredRecords
+        .filter(r => {
+            const fam = (r.familia_producto || '').toLowerCase()
+            return fam.includes('base') && fam.includes('aromat')
+        })
+        .reduce((sum, r) => sum + (r.tamano_lote || 0), 0)
+
+    const pzsLimpiadores = filteredRecords
+        .filter(r => {
+            const fam = (r.familia_producto || '').toLowerCase()
+            return fam.includes('base') && fam.includes('limp')
+        })
+        .reduce((sum, r) => sum + (r.tamano_lote || 0), 0)
+
+    const litrosBases = (pzsAromatizantes + pzsLimpiadores) * 20
+
+    const litrosProductos = filteredRecords
+        .filter(r => {
+            const fam = (r.familia_producto || '').toLowerCase()
+            return !fam.includes('base')
+        })
+        .reduce((sum, r) => sum + (r.tamano_lote || 0), 0)
+
+    const totalLitrosGeneral = litrosProductos + litrosBases
 
     const pct = (n: number, total: number) => total > 0 ? ((n / total) * 100).toFixed(1) + '%' : '—'
 
@@ -491,23 +506,35 @@ export default function CalidadPage() {
                             <span className="text-7xl font-extrabold tracking-tight">{filteredRecords.length}</span>
                             <span className="text-base font-medium text-white/60">muestras</span>
                         </div>
+                        
+                        <div className="flex items-center justify-between mt-1">
+                            <span className="text-xs font-bold uppercase tracking-widest text-white/50">Total Productos (sin bases)</span>
+                            <span className="text-lg font-bold text-white/90">{litrosProductos.toLocaleString()} L</span>
+                        </div>
+
                         <div className="h-px bg-white/10" />
+                        
                         <div className="space-y-3 flex-1">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">Cantidad de bases en piezas</p>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">Bases (Registradas en pzs)</p>
                             <div className="flex items-center justify-between gap-2">
                                 <span className="text-xs text-white/60 font-semibold leading-tight">🌿 Aromatizante Ambiental</span>
-                                <span className="text-xl font-extrabold shrink-0">{totalAromatizantes}</span>
+                                <span className="text-lg font-extrabold shrink-0">{pzsAromatizantes} pzs</span>
                             </div>
                             <div className="flex items-center justify-between gap-2">
                                 <span className="text-xs text-white/60 font-semibold leading-tight">🧴 Limpiadores Multiusos</span>
-                                <span className="text-xl font-extrabold shrink-0">{totalLimpiadores}</span>
+                                <span className="text-lg font-extrabold shrink-0">{pzsLimpiadores} pzs</span>
                             </div>
-                            {totalLitros > 0 && (
+                            <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/5">
+                                <span className="text-xs text-emerald-400/80 font-bold leading-tight">Total Bases (Equivalente)</span>
+                                <span className="text-lg font-extrabold text-emerald-400 shrink-0">{litrosBases.toLocaleString()} L</span>
+                            </div>
+                            
+                            {totalLitrosGeneral > 0 && (
                                 <>
-                                    <div className="h-px bg-white/10" />
+                                    <div className="h-px bg-white/10 mt-4 mb-2" />
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm text-white/60 font-semibold">Total L producidos</span>
-                                        <span className="text-xl font-extrabold">{totalLitros.toLocaleString()}</span>
+                                        <span className="text-sm text-white font-bold uppercase tracking-wider">Total General</span>
+                                        <span className="text-2xl font-black text-white drop-shadow-md">{totalLitrosGeneral.toLocaleString()} L</span>
                                     </div>
                                 </>
                             )}
