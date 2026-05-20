@@ -560,13 +560,16 @@ export default function CalidadPage() {
                                     <p className="text-[10px] font-bold uppercase tracking-widest text-green-600/60 dark:text-green-400/50 mb-1">% Sólidos</p>
                                     <p className="text-base font-bold text-green-700 dark:text-green-400">Conformes</p>
                                 </div>
-                                <div className="flex items-baseline gap-2 mt-auto">
-                                    <span className="text-5xl font-black tracking-tighter text-green-700 dark:text-green-400">
-                                        {filteredRecords.filter(r => getStatusInfo(r) === 'success').length}
-                                    </span>
-                                    <span className="text-lg font-bold text-green-600/70 dark:text-green-500/70">
-                                        {pct(filteredRecords.filter(r => getStatusInfo(r) === 'success').length, filteredRecords.length)}
-                                    </span>
+                                <div className="mt-auto">
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-5xl font-black tracking-tighter text-green-700 dark:text-green-400">
+                                            {filteredRecords.filter(r => getStatusInfo(r) === 'success').length}
+                                        </span>
+                                        <span className="text-lg font-bold text-green-600/70 dark:text-green-500/70">
+                                            {pct(filteredRecords.filter(r => getStatusInfo(r) === 'success').length, filteredRecords.length)}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs font-medium text-green-600/50 dark:text-green-400/40 mt-1">de {filteredRecords.length} muestras totales</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -581,13 +584,16 @@ export default function CalidadPage() {
                                     <p className="text-[10px] font-bold uppercase tracking-widest text-yellow-600/60 dark:text-yellow-400/50 mb-1">% Sólidos</p>
                                     <p className="text-base font-bold text-yellow-700 dark:text-yellow-400">Semi-Conforme</p>
                                 </div>
-                                <div className="flex items-baseline gap-2 mt-auto">
-                                    <span className="text-5xl font-black tracking-tighter text-yellow-700 dark:text-yellow-400">
-                                        {filteredRecords.filter(r => getStatusInfo(r) === 'warning').length}
-                                    </span>
-                                    <span className="text-lg font-bold text-yellow-600/70 dark:text-yellow-500/70">
-                                        {pct(filteredRecords.filter(r => getStatusInfo(r) === 'warning').length, filteredRecords.length)}
-                                    </span>
+                                <div className="mt-auto">
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-5xl font-black tracking-tighter text-yellow-700 dark:text-yellow-400">
+                                            {filteredRecords.filter(r => getStatusInfo(r) === 'warning').length}
+                                        </span>
+                                        <span className="text-lg font-bold text-yellow-600/70 dark:text-yellow-500/70">
+                                            {pct(filteredRecords.filter(r => getStatusInfo(r) === 'warning').length, filteredRecords.length)}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs font-medium text-yellow-600/50 dark:text-yellow-400/40 mt-1">de {filteredRecords.length} muestras totales</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -602,13 +608,16 @@ export default function CalidadPage() {
                                     <p className="text-[10px] font-bold uppercase tracking-widest text-[#C1272D]/60 dark:text-red-400/50 mb-1">% Sólidos</p>
                                     <p className="text-base font-bold text-[#C1272D] dark:text-red-400">No Conforme</p>
                                 </div>
-                                <div className="flex items-baseline gap-2 mt-auto">
-                                    <span className="text-5xl font-black tracking-tighter text-[#C1272D] dark:text-red-400">
-                                        {filteredRecords.filter(r => getStatusInfo(r) === 'error').length}
-                                    </span>
-                                    <span className="text-lg font-bold text-[#C1272D]/70 dark:text-red-500/70">
-                                        {pct(filteredRecords.filter(r => getStatusInfo(r) === 'error').length, filteredRecords.length)}
-                                    </span>
+                                <div className="mt-auto">
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-5xl font-black tracking-tighter text-[#C1272D] dark:text-red-400">
+                                            {filteredRecords.filter(r => getStatusInfo(r) === 'error').length}
+                                        </span>
+                                        <span className="text-lg font-bold text-[#C1272D]/70 dark:text-red-500/70">
+                                            {pct(filteredRecords.filter(r => getStatusInfo(r) === 'error').length, filteredRecords.length)}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs font-medium text-red-600/50 dark:text-red-400/40 mt-1">de {filteredRecords.length} muestras totales</p>
                                 </div>
                             </CardContent>
                         </Card>
