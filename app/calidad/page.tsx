@@ -1095,7 +1095,7 @@ export default function CalidadPage() {
 
             {/* ── Export Dialog ── */}
             <Dialog open={exportOpen} onOpenChange={setExportOpen}>
-                <DialogContent className="sm:max-w-[420px] sm:rounded-[2rem]">
+                <DialogContent className="sm:max-w-[500px] sm:rounded-[2rem]">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <Download className="h-5 w-5 text-blue-600" />
