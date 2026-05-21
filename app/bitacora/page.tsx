@@ -499,20 +499,35 @@ export default function BitacoraPage() {
                                         </div>
                                         <div className="space-y-2">
                                             <Label>Código del Producto</Label>
-                                            <Select
-                                                value={formData.codigo_producto}
-                                                onValueChange={(val) => handleSelectChange("codigo_producto", val)}
-                                                disabled={!selectedCategory}
-                                            >
-                                                <SelectTrigger className={cn("rounded-full", selectedCategory && !formData.codigo_producto ? "border-red-500" : "")}>
-                                                    <SelectValue placeholder={selectedCategory ? "Selecciona código" : "Primero elige categoría"} />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {(CATEGORY_PRODUCTS[selectedCategory || ""] || []).map((code) => (
-                                                        <SelectItem key={code} value={code}>{code}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                            {selectedCategory === "Producto especial" ? (
+                                                <Input
+                                                    type="text"
+                                                    placeholder="Ej: ESPECIAL"
+                                                    value={formData.codigo_producto}
+                                                    maxLength={8}
+                                                    onChange={(e) => {
+                                                        const rawVal = e.target.value.toUpperCase();
+                                                        const cleanVal = rawVal.replace(/[^A-Z0-9-]/g, "").slice(0, 8);
+                                                        handleSelectChange("codigo_producto", cleanVal);
+                                                    }}
+                                                    className={cn("rounded-full", !formData.codigo_producto ? "border-red-500" : "font-bold")}
+                                                />
+                                            ) : (
+                                                <Select
+                                                    value={formData.codigo_producto}
+                                                    onValueChange={(val) => handleSelectChange("codigo_producto", val)}
+                                                    disabled={!selectedCategory}
+                                                >
+                                                    <SelectTrigger className={cn("rounded-full", selectedCategory && !formData.codigo_producto ? "border-red-500" : "")}>
+                                                        <SelectValue placeholder={selectedCategory ? "Selecciona código" : "Primero elige categoría"} />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {(CATEGORY_PRODUCTS[selectedCategory || ""] || []).map((code) => (
+                                                            <SelectItem key={code} value={code}>{code}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
                                         </div>
                                     </div>
 
