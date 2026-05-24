@@ -25,7 +25,7 @@ export function DashboardBanner() {
         },
         {
             id: 2,
-            image: "/banners/slide2.png",
+            image: "/banners/slide_2.png",
             alt: "Ambientadores Ginez",
         },
         {
