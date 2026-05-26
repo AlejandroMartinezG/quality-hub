@@ -8,7 +8,7 @@ import { analyzeRecord, EnrichedRecord } from "@/lib/analysis-utils"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Loader2, RefreshCcw, Filter, Download, Factory, Trophy, TrendingUp, Package, Activity, AlertCircle, ChevronRight, Printer, Box, AlertTriangle, Search } from "lucide-react"
+import { Loader2, RefreshCcw, Filter, Download, Factory, Trophy, TrendingUp, Package, Activity, AlertCircle, ChevronRight, Printer, Box, Search } from "lucide-react"
 import { PrintReportWrapper } from "@/components/PrintReportWrapper"
 import { DateRangeModal } from "@/components/DateRangeModal"
 import { toast } from "sonner"
@@ -46,11 +46,10 @@ import SPYReportPage from "./spy/page"
 // --- Helper functions ---
 
 function getHeatColor(ratio: number): string {
-    // 0=low dark blue, 1=high cyan
-    const hue = Math.round(270 - ratio * 110)
-    const sat = Math.round(55 + ratio * 30)
-    const light = Math.round(22 + ratio * 42)
-    return `hsl(${hue},${sat}%,${light}%)`
+    // 0 = corporate blue, 1 = corporate red (via purple)
+    const hue = Math.round((232 + ratio * 130) % 360)
+    const light = Math.round(42 - ratio * 8)
+    return `hsl(${hue},72%,${light}%)`
 }
 
 // --- Components ---
@@ -84,15 +83,11 @@ export default function ReportesPage() {
     const isPreparador = role === 'preparador'
     const isGerente = role === 'gerente_sucursal' || role === 'gerente'
     const isGlobalRole = role === 'admin' || role === 'gerente_calidad' || role === 'coordinador'
-    const isSpyAllowed = role === 'admin' || role === 'gerente_calidad'
-
     // Filters
     const [selectedSucursal, setSelectedSucursal] = useState("all")
-    const [selectedBranch, setSelectedBranch] = useState<string>("all")
     const [selectedProduct, setSelectedProduct] = useState<string>("all")
-    const [selectedCategory, setSelectedCategory] = useState<string>("all") // NEW: Category filter
-    const [selectedPreparer, setSelectedPreparer] = useState<string>("all") // NEW: Preparer filter
-    const [dateRange, setDateRange] = useState<string>("all")
+    const [selectedCategory, setSelectedCategory] = useState<string>("all")
+    const [selectedPreparer, setSelectedPreparer] = useState<string>("all")
     const [showAllProducts, setShowAllProducts] = useState(false)
     const [rankingCategoryFilter, setRankingCategoryFilter] = useState<string>("all")
     const [selectedDateRange, setSelectedDateRange] = useState("all") // Date range filter
@@ -120,6 +115,12 @@ export default function ReportesPage() {
     const [showHeatColors, setShowHeatColors] = useState(true)
     const [heatmapSortKey, setHeatmapSortKey] = useState<string | null>(null)
     const [heatmapSortDir, setHeatmapSortDir] = useState<'asc' | 'desc'>('desc')
+    const [familySortKey, setFamilySortKey] = useState<string | null>(null)
+    const [familySortDir, setFamilySortDir] = useState<'asc' | 'desc'>('desc')
+    const [categoriaSortKey, setCategoriaSortKey] = useState<string | null>(null)
+    const [categoriaSortDir, setCategoriaSortDir] = useState<'asc' | 'desc'>('desc')
+    const [codigoSortKey, setCodigoSortKey] = useState<string | null>(null)
+    const [codigoSortDir, setCodigoSortDir] = useState<'asc' | 'desc'>('desc')
 
     // Permissions check
     useEffect(() => {
@@ -440,136 +441,7 @@ export default function ReportesPage() {
         return { months, monthlyData, sucursalRows, familyData, familyTableData, groupData, groupTableData, codeData, codeTableData }
     }, [prodAnalysisRecords])
 
-    // 3. Stacked Bar Chart (Sucursales)
-    const sucursalChartData = useMemo(() => {
-        const grouped: Record<string, { name: string, conformes: number, semiConformes: number, noConformes: number }> = {}
-
-        filteredRecords.forEach(r => {
-            const suc = r.sucursal || "Sin Sucursal"
-            if (!grouped[suc]) {
-                grouped[suc] = { name: suc, conformes: 0, semiConformes: 0, noConformes: 0 }
-            }
-            // Use new control chart-based conformity levels
-            if (r.analysis.overallStatus === 'conforme') {
-                grouped[suc].conformes++
-            } else if (r.analysis.overallStatus === 'semi-conforme') {
-                grouped[suc].semiConformes++
-            } else if (r.analysis.overallStatus === 'no-conforme') {
-                grouped[suc].noConformes++
-            }
-            // 'na' status is not counted
-        })
-
-        return Object.values(grouped).sort((a, b) => (b.conformes + b.semiConformes + b.noConformes) - (a.conformes + a.semiConformes + a.noConformes))
-    }, [filteredRecords])
-
-    // 4. Pareto Data (Defectos)
-    const paretoData = useMemo(() => {
-        const defects = {
-            ph: 0,
-            solidos: 0,
-            apariencia: 0,
-            // color: 0, // Not analyzing yet
-            // aroma: 0
-        }
-
-        filteredRecords.forEach(r => {
-            if (!r.analysis.isConform) {
-                r.analysis.failedParams.forEach(param => {
-                    if (defects[param as keyof typeof defects] !== undefined) {
-                        defects[param as keyof typeof defects]++
-                    }
-                })
-            }
-        })
-
-        const data = [
-            { name: "pH", count: defects.ph },
-            { name: "Sólidos", count: defects.solidos },
-            { name: "Apariencia", count: defects.apariencia }
-        ].sort((a, b) => b.count - a.count)
-
-        // Calculate cumulative percentage
-        let accumulated = 0
-        const totalDefects = data.reduce((sum, item) => sum + item.count, 0)
-
-        return data.map(item => {
-            accumulated += item.count
-            return {
-                ...item,
-                accumulatedPercent: totalDefects > 0 ? Math.round((accumulated / totalDefects) * 100) : 0
-            }
-        })
-    }, [filteredRecords])
-
-    // 5. Control Charts Data (pH & Solids)
-    const controlChartData = useMemo(() => {
-        return filteredRecords.map((r, i) => ({
-            index: i + 1,
-            lote: r.lote_producto,
-            ph: r.ph,
-            solidos: r.solidos_promedio,
-        }))
-    }, [filteredRecords])
-
-    // Get Standards for Selected Product (if any)
-    const currentStandards = useMemo(() => {
-        if (selectedProduct === "all") return null
-
-        return {
-            ph: PH_STANDARDS[selectedProduct],
-            solids: PRODUCT_STANDARDS[selectedProduct]
-        }
-    }, [selectedProduct])
-
-    // 6. Dynamic Y-Axis Domain Calculation
-    // Calculates the min/max scale to ensure both Data and Limits are visible
-    const canvasSolids = useMemo(() => {
-        if (selectedProduct === "all" || !currentStandards?.solids) return ['auto', 'auto']
-
-        const dataValues = controlChartData.map(d => d.solidos).filter(v => v !== null) as number[]
-        const limits = [
-            (currentStandards.solids.min || 0) * 0.95, // Tolerance Min
-            (currentStandards.solids.max || 100) * 1.05, // Tolerance Max
-            (currentStandards.solids.min || 0),
-            (currentStandards.solids.max || 100)
-        ]
-
-
-
-        const allValues = [...dataValues, ...limits]
-        if (allValues.length === 0) return ['auto', 'auto']
-
-        const min = Math.min(...allValues)
-        const max = Math.max(...allValues)
-
-        // Add 5% padding
-        const padding = (max - min) * 0.05
-        return [parseFloat((min - padding).toFixed(2)), parseFloat((max + padding).toFixed(2))]
-
-    }, [controlChartData, selectedProduct, currentStandards])
-
-    const canvasPH = useMemo(() => {
-        if (selectedProduct === "all" || !currentStandards?.ph) return ['auto', 'auto']
-
-        const dataValues = controlChartData.map(d => d.ph).filter(v => v !== null) as number[]
-        const limits = [
-            currentStandards.ph.min,
-            currentStandards.ph.max
-        ]
-
-        const allValues = [...dataValues, ...limits]
-        if (allValues.length === 0) return ['auto', 'auto']
-
-        const min = Math.min(...allValues)
-        const max = Math.max(...allValues)
-
-        // Add 0.5 unit padding for pH as it is small scale
-        return [parseFloat((min - 0.5).toFixed(1)), parseFloat((max + 0.5).toFixed(1))]
-
-    }, [controlChartData, selectedProduct, currentStandards])
-
-    // --- 7. Commercial Analysis Data ---
+    // --- 3. Commercial Analysis Data ---
     const commercialData = useMemo(() => {
         const PIECE_FAMILIES = ["Bases aromatizante ambiental", "Bases limpiadores liquidos multiusos", "Bases Aromatizantes"]
 
@@ -810,7 +682,7 @@ export default function ReportesPage() {
     }, [filteredRecords])
 
     // Corporate GINEZ colors - Red and Blue from logo
-    const COLORS = ['#C1272D', '#0000A0', '#E63946', '#1E3A8A', '#DC2626', '#1E40AF', '#B91C1C', '#1D4ED8'];
+    const COLORS = ['#0b109f', '#e2211c', '#2a35b8', '#c02820', '#4352cc', '#a02019', '#5d6fd9', '#d43630'];
 
     if (loading) {
         return (
@@ -929,492 +801,15 @@ export default function ReportesPage() {
             ) : (
                 <Tabs defaultValue={(isPreparador || isGerente) ? "calidad" : "comercial"} className="space-y-6">
                     <TabsList className={`grid w-full ${
-                        (isPreparador || isGerente) ? 'grid-cols-1 max-w-[200px]'
-                        : isSpyAllowed ? 'grid-cols-3 max-w-[600px]'
-                        : 'grid-cols-2 max-w-[400px]'
+                        (isPreparador || isGerente) ? 'grid-cols-1 max-w-[260px]'
+                        : 'grid-cols-2 max-w-[640px]'
                     }`}>
                         {(!isPreparador && !isGerente) && <TabsTrigger value="comercial">Análisis de Operación</TabsTrigger>}
-                        <TabsTrigger value="calidad">First Time Quality</TabsTrigger>
-                        {isSpyAllowed && <TabsTrigger value="spy">SPY (Yield)</TabsTrigger>}
+                        <TabsTrigger value="calidad">Calidad y Rendimiento (FTQ / SPY)</TabsTrigger>
                     </TabsList>
 
-                    {isSpyAllowed && (
-                        <TabsContent value="spy" className="space-y-6">
-                            <SPYReportPage />
-                        </TabsContent>
-                    )}
-
                     <TabsContent value="calidad" className="space-y-6">
-                        {/* Print Button */}
-                        <div className="flex justify-end">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="rounded-full gap-2 text-[#0e0c9b] border-[#0e0c9b]/30 hover:bg-[#0e0c9b]/5"
-                                onClick={() => setPrintModal('calidad')}
-                            >
-                                <Printer className="h-4 w-4" />
-                                Generar Reporte
-                            </Button>
-                        </div>
-                        {/* KPI Section */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            {/* KPI 1: Total Registros + Volumen Total (Merged) - Enhanced */}
-                            <Card className="border-none shadow-md bg-gradient-to-br from-blue-900 to-blue-950 text-white dark:from-blue-950 dark:to-slate-900 rounded-[2rem]">
-                                <CardContent className="p-8 relative overflow-hidden">
-                                    <div className="relative z-10">
-                                        {/* Total Registros - Top Section */}
-                                        <div className="mb-8">
-                                            <p className="text-blue-200 font-semibold mb-3 flex items-center gap-2 text-base">
-                                                <Activity className="h-6 w-6" />
-                                                Total Registros
-                                            </p>
-                                            <div className="text-7xl font-extrabold tracking-tight leading-none">
-                                                {kpis.total}
-                                                <span className="text-3xl font-semibold opacity-80 ml-3">lotes</span>
-                                            </div>
-                                            <p className="text-base text-blue-200 mt-3 opacity-80 font-medium">
-                                                Registros de calidad
-                                            </p>
-                                        </div>
-
-                                        {/* Divider */}
-                                        <div className="border-t border-blue-700 opacity-30 my-6"></div>
-
-                                        {/* Volumen Total - Bottom Section */}
-                                        <div>
-                                            <p className="text-blue-300 text-sm font-semibold mb-2 flex items-center gap-1.5">
-                                                <Factory className="h-4 w-4" />
-                                                Volumen Total Producido
-                                            </p>
-                                            <div className="text-3xl font-extrabold">
-                                                {kpis.totalVolume.toLocaleString()}
-                                                <span className="text-lg font-semibold opacity-70 ml-2">L</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <Activity className="absolute -right-8 -bottom-8 h-48 w-48 text-white opacity-10 rotate-12" />
-                                </CardContent>
-                            </Card>
-
-                            {/* Pareto de Defectos - Now in Top Row occupying 3 columns */}
-                            <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem] md:col-span-1 lg:col-span-3">
-                                <CardHeader>
-                                    <CardTitle className="text-lg font-bold">Pareto de Defectos</CardTitle>
-                                    <CardDescription>Frecuencia de fallos por parámetro de calidad</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="h-[320px] w-full">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <ComposedChart data={paretoData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                                                <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                                                <YAxis yAxisId="left" fontSize={12} tickLine={false} axisLine={false} />
-                                                <YAxis yAxisId="right" orientation="right" fontSize={12} tickLine={false} axisLine={false} unit="%" />
-                                                <Tooltip
-                                                    contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                                />
-                                                <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                                                <Bar yAxisId="left" dataKey="count" name="Cantidad Fallos" fill="#C1272D" barSize={40} radius={[4, 4, 0, 0]} />
-                                                <Line yAxisId="right" type="monotone" dataKey="accumulatedPercent" name="% Acumulado" stroke="#0000A0" strokeWidth={2} dot={{ r: 4 }} />
-                                            </ComposedChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
-
-                        {/* Charts Section - Full Width Stacked */}
-                        <div className="grid grid-cols-1 gap-6">
-                            {/* Conformidad por Sucursal - Full Width */}
-                            <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
-                                <CardHeader>
-                                    <CardTitle className="text-lg font-bold">Conformidad por Sucursal</CardTitle>
-                                    <CardDescription>Volumen de producción conforme vs no conforme</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    {(isPreparador || isGerente) && sucursalChartData.length > 0 ? (
-                                        // Donut chart for single-branch roles
-                                        <div className="h-[340px] w-full flex flex-col items-center justify-center">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <PieChart>
-                                                    <Pie
-                                                        data={[
-                                                            { name: 'Conformes', value: sucursalChartData[0].conformes },
-                                                            { name: 'Semi-Conformes', value: sucursalChartData[0].semiConformes },
-                                                            { name: 'No Conformes', value: sucursalChartData[0].noConformes },
-                                                        ].filter(d => d.value > 0)}
-                                                        cx="50%"
-                                                        cy="50%"
-                                                        innerRadius="52%"
-                                                        outerRadius="72%"
-                                                        paddingAngle={3}
-                                                        dataKey="value"
-                                                    >
-                                                        <Cell fill="#22c55e" />
-                                                        <Cell fill="#eab308" />
-                                                        <Cell fill="#C1272D" />
-                                                    </Pie>
-                                                    <Tooltip
-                                                        contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                                        formatter={(value) => [`${value} lotes`]}
-                                                    />
-                                                    <Legend />
-                                                </PieChart>
-                                            </ResponsiveContainer>
-                                        </div>
-                                    ) : (
-                                        // Bar chart for global roles
-                                        <div className="h-[400px] w-full">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <BarChart data={sucursalChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                                                    <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                                                    <YAxis fontSize={12} tickLine={false} axisLine={false} />
-                                                    <Tooltip
-                                                        contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                                        cursor={{ fill: '#F1F5F9' }}
-                                                    />
-                                                    <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                                                    <Bar dataKey="conformes" name="Conformes" stackId="a" fill="#22c55e" radius={[0, 0, 0, 0]} />
-                                                    <Bar dataKey="semiConformes" name="Semi-Conformes" stackId="a" fill="#eab308" radius={[0, 0, 0, 0]} />
-                                                    <Bar dataKey="noConformes" name="No Conformes" stackId="a" fill="#C1272D" radius={[4, 4, 0, 0]} />
-                                                </BarChart>
-                                            </ResponsiveContainer>
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        </div>
-
-                        {/* Titulo Conformidad Solidos */}
-                        <div className="mb-2 mt-4">
-                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Conformidad del % de sólidos</h3>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">
-                                Desglose de lotes según cumplimiento de especificaciones de sólidos.
-                            </p>
-                        </div>
-
-                        {/* KPI Cards Row (Moved Down) */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {/* KPI 2: Total Conformes - Enhanced */}
-                            <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-slate-900 dark:to-slate-800 relative overflow-visible rounded-[2rem]">
-                                <CardContent className="p-6 h-full flex flex-col justify-between">
-                                    <div>
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div className="flex-1 pr-12">
-                                                <h3 className="text-base font-extrabold text-green-700 dark:text-green-400 tracking-wide mb-2">TOTAL CONFORMES</h3>
-                                                <div className="text-5xl font-extrabold text-slate-900 dark:text-white mt-1 leading-none">
-                                                    {kpis.conformes}
-                                                </div>
-                                                <p className="text-sm text-green-700 dark:text-green-400 font-medium mt-2">registros</p>
-                                                <div className="flex items-baseline gap-1.5 mt-3">
-                                                    <span className="text-3xl font-extrabold text-green-700 dark:text-green-400">
-                                                        {kpis.percentConformidad}%
-                                                    </span>
-                                                    <span className="text-base font-bold text-green-700/70 dark:text-green-400/70">del total</span>
-                                                </div>
-                                            </div>
-                                            <div className="absolute -top-3 -right-3 p-4 bg-green-100 dark:bg-green-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
-                                                <TrendingUp className="h-10 w-10 text-green-700 dark:text-green-400" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            {/* KPI 3: Semi-Conformes - Enhanced */}
-                            <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-slate-900 dark:to-slate-800 relative overflow-visible rounded-[2rem]">
-                                <CardContent className="p-6 h-full flex flex-col justify-between">
-                                    <div>
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div className="flex-1 pr-12">
-                                                <h3 className="text-base font-extrabold text-yellow-700 dark:text-yellow-400 tracking-wide mb-2">SEMI-CONFORMES</h3>
-                                                <div className="text-5xl font-extrabold text-slate-900 dark:text-white mt-1 leading-none">
-                                                    {kpis.semiConformes}
-                                                </div>
-                                                <p className="text-sm text-yellow-700 dark:text-yellow-400 font-medium mt-2">registros</p>
-                                                <div className="flex items-baseline gap-1.5 mt-3">
-                                                    <span className="text-3xl font-extrabold text-yellow-700 dark:text-yellow-400">
-                                                        {kpis.percentSemiConformidad}%
-                                                    </span>
-                                                    <span className="text-base font-bold text-yellow-700/70 dark:text-yellow-400/70">del total</span>
-                                                </div>
-                                            </div>
-                                            <div className="absolute -top-3 -right-3 p-4 bg-yellow-100 dark:bg-yellow-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
-                                                <AlertCircle className="h-10 w-10 text-yellow-700 dark:text-yellow-400" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            {/* KPI 4: Total No Conformes - Enhanced */}
-                            <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-red-50 to-red-100 dark:from-slate-900 dark:to-slate-800 relative overflow-visible rounded-[2rem]">
-                                <CardContent className="p-6 h-full flex flex-col justify-between">
-                                    <div>
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div className="flex-1 pr-12">
-                                                <h3 className="text-base font-extrabold text-red-700 dark:text-red-400 tracking-wide mb-2">NO CONFORMES</h3>
-                                                <div className="text-5xl font-extrabold text-slate-900 dark:text-white mt-1 leading-none">
-                                                    {kpis.noConformes}
-                                                </div>
-                                                <p className="text-sm text-red-700 dark:text-red-400 font-medium mt-2">registros</p>
-                                                <div className="flex items-baseline gap-1.5 mt-3">
-                                                    <span className="text-3xl font-extrabold text-red-700 dark:text-red-400">
-                                                        {kpis.percentNoConformidad}%
-                                                    </span>
-                                                    <span className="text-base font-bold text-red-700/70 dark:text-red-400/70">del total</span>
-                                                </div>
-                                            </div>
-                                            <div className="absolute -top-3 -right-3 p-4 bg-red-100 dark:bg-red-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
-                                                <Activity className="h-10 w-10 text-red-700 dark:text-red-400" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
-
-                        {/* Secondary Filters - Compact Design for Control Charts */}
-                        <Card className="border-none shadow-sm bg-gradient-to-r from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-950/30 rounded-[2rem]">
-                            <CardContent className="p-4">
-                                <div className="flex flex-wrap items-center gap-3">
-                                    <div className="flex items-center gap-2">
-                                        <Filter className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Filtros Rápidos:</span>
-                                    </div>
-
-                                    {/* Sucursal Filter - Hidden for branch roles */}
-                                    {!isGerente && !isPreparador && (
-                                        <div className="flex flex-col gap-0.5">
-                                            <Select value={selectedSucursal} onValueChange={setSelectedSucursal}>
-                                                <SelectTrigger className="h-9 w-[160px] bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700">
-                                                    <SelectValue placeholder="Sucursal" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="all">Todas</SelectItem>
-                                                    {SUCURSALES.map((suc: string) => (
-                                                        <SelectItem key={suc} value={suc}>{suc}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            <span className="text-[10px] text-slate-400 dark:text-slate-500 px-1">Ubicación</span>
-                                        </div>
-                                    )}
-
-                                    {/* Category Filter */}
-                                    <div className="flex flex-col gap-0.5">
-                                        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                                            <SelectTrigger className="h-9 w-[160px] bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700">
-                                                <SelectValue placeholder="Categoría" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="all">Todas</SelectItem>
-                                                {PRODUCT_CATEGORIES.map((cat) => (
-                                                    <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 px-1">Familia</span>
-                                    </div>
-
-                                    {/* Product Filter */}
-                                    <div className="flex flex-col gap-0.5">
-                                        <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-                                            <SelectTrigger className="h-9 w-[160px] bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700">
-                                                <SelectValue placeholder="Producto" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="all">Todos</SelectItem>
-                                                {uniqueProducts.map((p) => (
-                                                    <SelectItem key={p} value={p}>{p}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 px-1">Código</span>
-                                    </div>
-
-                                    {/* Date Filter */}
-                                    <div className="flex flex-col gap-0.5">
-                                        <Select value={selectedDateRange} onValueChange={setSelectedDateRange}>
-                                            <SelectTrigger className="h-9 w-[160px] bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700">
-                                                <SelectValue placeholder="Fecha" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="all">Todo</SelectItem>
-                                                <SelectItem value="7d">7 días</SelectItem>
-                                                <SelectItem value="30d">30 días</SelectItem>
-                                                <SelectItem value="3m">3 meses</SelectItem>
-                                                <SelectItem value="6m">6 meses</SelectItem>
-                                                <SelectItem value="1y">1 año</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 px-1">Período</span>
-                                    </div>
-
-                                    <div className="ml-auto flex items-center gap-2">
-                                        <span className="text-xs text-slate-500 dark:text-slate-400">
-                                            {filteredRecords.length} registros
-                                        </span>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        {/* Row 2: Control Charts (Solids & pH) */}
-                        <div className="grid grid-cols-1 gap-6">
-                            {/* 1. Gráfico de Sólidos (Primero) */}
-                            <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
-                                <CardHeader>
-                                    <div className="flex justify-between items-center">
-                                        <div>
-                                            <CardTitle className="text-lg font-bold">Gráfico de Control: % Sólidos</CardTitle>
-                                            <CardDescription>Historial de mediciones de Sólidos de todos los lotes</CardDescription>
-                                        </div>
-                                        {selectedProduct !== "all" && currentStandards?.solids && (
-                                            <div className="text-xs text-slate-500 text-right">
-                                                Std: <span className="font-mono font-bold">{(currentStandards.solids.min || 0)}% - {(currentStandards.solids.max || 0)}%</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="h-[300px] w-full">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <LineChart data={controlChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                                                <XAxis dataKey="lote" fontSize={10} angle={-45} textAnchor="end" height={60} interval={0} tick={{ fill: '#64748b' }} />
-                                                <YAxis domain={canvasSolids as any} fontSize={12} tickLine={false} axisLine={false} unit="%" />
-                                                <Tooltip
-                                                    contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                                />
-                                                <Legend verticalAlign="top" height={36} />
-                                                <Line type="monotone" dataKey="solidos" name="% Sólidos" stroke="#eab308" strokeWidth={2} dot={{ r: 3, fill: '#eab308' }} activeDot={{ r: 6 }} />
-
-                                                {/* Reference Lines for Solids */}
-                                                {selectedProduct !== "all" && currentStandards?.solids && (
-                                                    <>
-                                                        {/* Tolerance Limits (+-5% Error Relativo) - YELLOW */}
-                                                        <ReferenceLine y={(currentStandards.solids.max || 0) * 1.05} label={{ value: 'TLS (+5%)', position: 'insideTopRight', fill: '#eab308', fontSize: 10 }} stroke="#eab308" strokeDasharray="5 5" strokeWidth={2} />
-                                                        <ReferenceLine y={(currentStandards.solids.min || 0) * 0.95} label={{ value: 'TLI (-5%)', position: 'insideBottomRight', fill: '#eab308', fontSize: 10 }} stroke="#eab308" strokeDasharray="5 5" strokeWidth={2} />
-
-                                                        {/* Standard Limits (Rango Estándar) - RED */}
-                                                        <ReferenceLine y={(currentStandards.solids.max || 0)} label={{ value: 'LCS', position: 'insideTopRight', fill: '#C1272D', fontSize: 10, dy: 10 }} stroke="#C1272D" strokeWidth={2} />
-                                                        <ReferenceLine y={(currentStandards.solids.min || 0)} label={{ value: 'LCI', position: 'insideBottomRight', fill: '#C1272D', fontSize: 10, dy: -10 }} stroke="#C1272D" strokeWidth={2} />
-                                                    </>
-                                                )}
-
-                                            </LineChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            {/* Titulo Conformidad pH */}
-                            <div className="mb-2 mt-8">
-                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Conformidad de pH</h3>
-                                <p className="text-sm text-slate-500 dark:text-slate-400">
-                                    Desglose de lotes según cumplimiento de especificaciones de pH.
-                                </p>
-                            </div>
-
-                            {/* KPI Cards Row for pH */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                {/* KPI 1: pH Conformes */}
-                                <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-slate-900 dark:to-slate-800 relative overflow-visible rounded-[2rem]">
-                                    <CardContent className="p-6 h-full flex flex-col justify-between">
-                                        <div>
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div className="flex-1 pr-12">
-                                                    <h3 className="text-base font-extrabold text-green-700 dark:text-green-400 tracking-wide mb-2">TOTAL CONFORMES</h3>
-                                                    <div className="text-5xl font-extrabold text-slate-900 dark:text-white mt-1 leading-none">
-                                                        {kpis.conformesPH}
-                                                    </div>
-                                                    <p className="text-sm text-green-700 dark:text-green-400 font-medium mt-2">registros</p>
-                                                    <div className="flex items-baseline gap-1.5 mt-3">
-                                                        <span className="text-3xl font-extrabold text-green-700 dark:text-green-400">
-                                                            {kpis.percentConformidadPH}%
-                                                        </span>
-                                                        <span className="text-base font-bold text-green-700/70 dark:text-green-400/70">del total</span>
-                                                    </div>
-                                                </div>
-                                                <div className="absolute -top-3 -right-3 p-4 bg-green-100 dark:bg-green-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
-                                                    <TrendingUp className="h-10 w-10 text-green-700 dark:text-green-400" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-
-                                {/* KPI 2: pH No Conformes */}
-                                <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-red-50 to-red-100 dark:from-slate-900 dark:to-slate-800 relative overflow-visible rounded-[2rem]">
-                                    <CardContent className="p-6 h-full flex flex-col justify-between">
-                                        <div>
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div className="flex-1 pr-12">
-                                                    <h3 className="text-base font-extrabold text-red-700 dark:text-red-400 tracking-wide mb-2">NO CONFORMES</h3>
-                                                    <div className="text-5xl font-extrabold text-slate-900 dark:text-white mt-1 leading-none">
-                                                        {kpis.noConformesPH}
-                                                    </div>
-                                                    <p className="text-sm text-red-700 dark:text-red-400 font-medium mt-2">registros</p>
-                                                    <div className="flex items-baseline gap-1.5 mt-3">
-                                                        <span className="text-3xl font-extrabold text-red-700 dark:text-red-400">
-                                                            {kpis.percentNoConformidadPH}%
-                                                        </span>
-                                                        <span className="text-base font-bold text-red-700/70 dark:text-red-400/70">del total</span>
-                                                    </div>
-                                                </div>
-                                                <div className="absolute -top-3 -right-3 p-4 bg-red-100 dark:bg-red-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
-                                                    <Activity className="h-10 w-10 text-red-700 dark:text-red-400" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </div>
-
-                            {/* 2. Gráfico de pH (Segundo) */}
-                            <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
-                                <CardHeader>
-                                    <div className="flex justify-between items-center">
-                                        <div>
-                                            <CardTitle className="text-lg font-bold">Gráfico de Control: pH</CardTitle>
-                                            <CardDescription>Historial de mediciones de pH de todos los lotes</CardDescription>
-                                        </div>
-                                        {selectedProduct !== "all" && currentStandards?.ph && (
-                                            <div className="text-xs text-slate-500 text-right">
-                                                Rango: <span className="font-mono font-bold">{currentStandards.ph.min} - {currentStandards.ph.max}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="h-[300px] w-full">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <LineChart data={controlChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                                                <XAxis dataKey="lote" fontSize={10} angle={-45} textAnchor="end" height={60} interval={0} tick={{ fill: '#64748b' }} />
-                                                <YAxis domain={canvasPH as [number, number]} fontSize={12} tickLine={false} axisLine={false} />
-                                                <Tooltip
-                                                    contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                                />
-                                                <Legend verticalAlign="top" height={36} />
-                                                <Line type="monotone" dataKey="ph" name="Valor pH" stroke="#0000A0" strokeWidth={2} dot={{ r: 3, fill: '#0000A0' }} activeDot={{ r: 6 }} />
-
-                                                {/* Reference Lines for pH */}
-                                                {selectedProduct !== "all" && currentStandards?.ph && (
-                                                    <>
-                                                        <ReferenceLine y={currentStandards.ph.max} label={{ value: 'LCS', position: 'insideTopRight', fill: '#C1272D', fontSize: 10 }} stroke="#C1272D" strokeWidth={2} />
-                                                        <ReferenceLine y={currentStandards.ph.min} label={{ value: 'LCI', position: 'insideBottomRight', fill: '#C1272D', fontSize: 10 }} stroke="#C1272D" strokeWidth={2} />
-                                                    </>
-                                                )}
-                                            </LineChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
+                        <SPYReportPage records={records} profile={profile} />
                     </TabsContent>
 
                     {(!isPreparador && !isGerente) && (
@@ -1436,10 +831,10 @@ export default function ReportesPage() {
                                 {/* Row 1: Volume KPIs */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     {/* KPI: Total Unificado */}
-                                    <Card className="border-none shadow-md bg-gradient-to-br from-blue-900 to-blue-950 text-white dark:from-blue-950 dark:to-slate-900 rounded-[2rem]">
+                                    <Card className="border-none shadow-md bg-gradient-to-br from-[#0d1490] to-[#090e72] text-white rounded-[2rem]">
                                         <CardContent className="p-6 relative overflow-hidden">
                                             <div className="relative z-10">
-                                                <p className="text-blue-200 font-medium mb-3 flex items-center gap-2 text-sm uppercase tracking-wide">
+                                                <p className="text-[#a0a8e8] font-medium mb-3 flex items-center gap-2 text-sm uppercase tracking-wide">
                                                     <Activity className="h-4 w-4" />
                                                     Total Unificado
                                                 </p>
@@ -1447,7 +842,7 @@ export default function ReportesPage() {
                                                     {kpis.totalLitrosUnificado.toLocaleString()}
                                                     <span className="text-xl font-normal opacity-80 ml-2">L</span>
                                                 </div>
-                                                <p className="text-xs text-blue-300 mt-2 opacity-80">
+                                                <p className="text-xs text-[#a0a8e8] mt-2 opacity-80">
                                                     Terminados + Bases ×20
                                                 </p>
                                             </div>
@@ -1456,10 +851,10 @@ export default function ReportesPage() {
                                     </Card>
 
                                     {/* KPI: Productos Terminados */}
-                                    <Card className="border-none shadow-md bg-gradient-to-br from-indigo-600 to-indigo-700 text-white rounded-[2rem]">
+                                    <Card className="border-none shadow-md bg-gradient-to-br from-[#1e2dbf] to-[#1622a8] text-white rounded-[2rem]">
                                         <CardContent className="p-6 relative overflow-hidden">
                                             <div className="relative z-10">
-                                                <p className="text-indigo-200 font-medium mb-3 flex items-center gap-2 text-sm uppercase tracking-wide">
+                                                <p className="text-[#b0baf5] font-medium mb-3 flex items-center gap-2 text-sm uppercase tracking-wide">
                                                     <Package className="h-4 w-4" />
                                                     Productos Terminados
                                                 </p>
@@ -1467,7 +862,7 @@ export default function ReportesPage() {
                                                     {kpis.totalVolume.toLocaleString()}
                                                     <span className="text-xl font-normal opacity-80 ml-2">L</span>
                                                 </div>
-                                                <p className="text-xs text-indigo-200 mt-2 opacity-80">
+                                                <p className="text-xs text-[#b0baf5] mt-2 opacity-80">
                                                     Volumen producido en litros
                                                 </p>
                                             </div>
@@ -1476,10 +871,10 @@ export default function ReportesPage() {
                                     </Card>
 
                                     {/* KPI: Bases */}
-                                    <Card className="border-none shadow-md bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-[2rem]">
+                                    <Card className="border-none shadow-md bg-gradient-to-br from-[#b82820] to-[#9c2019] text-white rounded-[2rem]">
                                         <CardContent className="p-6 relative overflow-hidden">
                                             <div className="relative z-10">
-                                                <p className="text-amber-100 font-medium mb-3 flex items-center gap-2 text-sm uppercase tracking-wide">
+                                                <p className="text-[#f0b0ae] font-medium mb-3 flex items-center gap-2 text-sm uppercase tracking-wide">
                                                     <Box className="h-4 w-4" />
                                                     Bases
                                                 </p>
@@ -1487,7 +882,7 @@ export default function ReportesPage() {
                                                     {kpis.totalPieces.toLocaleString()}
                                                     <span className="text-xl font-normal opacity-80 ml-2">pzs</span>
                                                 </div>
-                                                <p className="text-xs text-amber-100 mt-2 opacity-80">
+                                                <p className="text-xs text-[#f0b0ae] mt-2 opacity-80">
                                                     {(kpis.totalPieces * 20).toLocaleString()} L equiv. (×20)
                                                 </p>
                                             </div>
@@ -1499,30 +894,30 @@ export default function ReportesPage() {
                                 {/* Row 2: Leader KPIs */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* KPI 3: Categoría Leader + Top 3 - Enhanced */}
-                                <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-red-50 to-red-100 dark:from-slate-900 dark:to-slate-800 relative overflow-visible rounded-[2rem]">
+                                <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-[#fdf2f1] to-[#fae7e6] dark:from-slate-900 dark:to-slate-800 relative overflow-visible rounded-[2rem]">
                                     <CardContent className="p-8 h-full flex flex-col justify-between">
                                         <div>
                                             <div className="flex justify-between items-start mb-6">
                                                 <div className="flex-1 pr-12">
-                                                    <h3 className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wider mb-2">Categoría Más Producida</h3>
+                                                    <h3 className="text-xs font-semibold text-[#b82820] dark:text-red-400 uppercase tracking-wider mb-2">Categoría Más Producida</h3>
                                                     <div className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1 leading-tight">
                                                         {commercialData.top3Categories.length > 0 ? commercialData.top3Categories[0].name : '-'}
                                                     </div>
-                                                    <p className="text-lg text-red-700 dark:text-red-400 font-bold mt-3">
+                                                    <p className="text-lg text-[#b82820] dark:text-red-400 font-bold mt-3">
                                                         {commercialData.top3Categories.length > 0 ? `${commercialData.top3Categories[0].value.toLocaleString()} ${commercialData.top3Categories[0].type}` : ''}
                                                     </p>
                                                 </div>
-                                                <div className="absolute -top-3 -right-3 p-4 bg-red-100 dark:bg-red-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
-                                                    <TrendingUp className="h-10 w-10 text-red-700 dark:text-red-400" />
+                                                <div className="absolute -top-3 -right-3 p-4 bg-[#fae7e6] dark:bg-red-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
+                                                    <TrendingUp className="h-10 w-10 text-[#b82820] dark:text-red-400" />
                                                 </div>
                                             </div>
 
                                             {/* Top 3 Small List */}
-                                            <div className="space-y-3 pt-4 border-t-2 border-red-200 dark:border-slate-700">
+                                            <div className="space-y-3 pt-4 border-t-2 border-[#f0c8c6] dark:border-slate-700">
                                                 {commercialData.top3Categories.slice(1).map((cat, i) => (
                                                     <div key={i} className="flex justify-between items-center">
                                                         <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate max-w-[140px]">{cat.name}</span>
-                                                        <span className="text-sm font-bold font-mono text-red-700 dark:text-red-400">{cat.value.toLocaleString()}</span>
+                                                        <span className="text-sm font-bold font-mono text-[#b82820] dark:text-red-400">{cat.value.toLocaleString()}</span>
                                                     </div>
                                                 ))}
                                             </div>
@@ -1531,30 +926,30 @@ export default function ReportesPage() {
                                 </Card>
 
                                 {/* KPI 4: Sucursal Leader + Top 3 - Enhanced */}
-                                <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-slate-900 dark:to-slate-800 relative overflow-visible rounded-[2rem]">
+                                <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-[#f0f2fd] to-[#e6e8fb] dark:from-slate-900 dark:to-slate-800 relative overflow-visible rounded-[2rem]">
                                     <CardContent className="p-8 h-full flex flex-col justify-between">
                                         <div>
                                             <div className="flex justify-between items-start mb-6">
                                                 <div className="flex-1 pr-12">
-                                                    <h3 className="text-xs font-semibold text-blue-900 dark:text-blue-400 uppercase tracking-wider mb-2">Sucursal Líder</h3>
+                                                    <h3 className="text-xs font-semibold text-[#1828a8] dark:text-blue-400 uppercase tracking-wider mb-2">Sucursal Líder</h3>
                                                     <div className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1 leading-tight">
                                                         {commercialData.top3Sucursales.length > 0 ? commercialData.top3Sucursales[0].name : '-'}
                                                     </div>
-                                                    <p className="text-lg text-blue-900 dark:text-blue-400 font-bold mt-3">
+                                                    <p className="text-lg text-[#1828a8] dark:text-blue-400 font-bold mt-3">
                                                         {commercialData.top3Sucursales.length > 0 ? `${commercialData.top3Sucursales[0].litros.toLocaleString()} L` : ''}
                                                     </p>
                                                 </div>
-                                                <div className="absolute -top-3 -right-3 p-4 bg-blue-100 dark:bg-blue-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
-                                                    <Trophy className="h-10 w-10 text-blue-900 dark:text-blue-400" />
+                                                <div className="absolute -top-3 -right-3 p-4 bg-[#e6e8fb] dark:bg-blue-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
+                                                    <Trophy className="h-10 w-10 text-[#1828a8] dark:text-blue-400" />
                                                 </div>
                                             </div>
 
                                             {/* Top 3 Small List */}
-                                            <div className="space-y-3 pt-4 border-t-2 border-blue-200 dark:border-slate-700">
+                                            <div className="space-y-3 pt-4 border-t-2 border-[#c8ccf5] dark:border-slate-700">
                                                 {commercialData.top3Sucursales.slice(1).map((suc, i) => (
                                                     <div key={i} className="flex justify-between items-center">
                                                         <span className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate max-w-[140px]">{suc.name}</span>
-                                                        <span className="text-sm font-bold font-mono text-blue-900 dark:text-blue-400">{suc.litros.toLocaleString()} L</span>
+                                                        <span className="text-sm font-bold font-mono text-[#1828a8] dark:text-blue-400">{suc.litros.toLocaleString()} L</span>
                                                     </div>
                                                 ))}
                                             </div>
@@ -1912,8 +1307,8 @@ export default function ReportesPage() {
                                                         formatter={(value) => [`${Number(value).toLocaleString()} L`]}
                                                     />
                                                     <Legend wrapperStyle={{ paddingTop: '12px' }} />
-                                                    <Bar dataKey="productos" name="Productos" stackId="a" fill="#C1272D" radius={[0, 0, 0, 0]} />
-                                                    <Bar dataKey="bases" name="Bases" stackId="a" fill="#06b6d4" radius={[3, 3, 0, 0]} />
+                                                    <Bar dataKey="productos" name="Productos" stackId="a" fill="#c02820" radius={[0, 0, 0, 0]} />
+                                                    <Bar dataKey="bases" name="Bases" stackId="a" fill="#2a35b8" radius={[3, 3, 0, 0]} />
                                                 </BarChart>
                                             </ResponsiveContainer>
                                         </div>
@@ -1973,7 +1368,7 @@ export default function ReportesPage() {
                                                         cx="50%" cy="50%" innerRadius="45%" outerRadius="68%"
                                                         paddingAngle={2} dataKey="value" nameKey="name">
                                                         {productionAnalysisData.groupData.map((_, i) => {
-                                                            const colors = ['#C1272D','#06b6d4','#8b5cf6','#f59e0b','#10b981','#3b82f6','#ec4899','#14b8a6','#f97316','#6366f1','#84cc16','#e11d48']
+                                                            const colors = ['#0b109f','#e2211c','#2a35b8','#c02820','#4352cc','#a02019','#5d6fd9','#d43630','#7585e2','#b84540','#8e9dee','#cc5550']
                                                             return <Cell key={i} fill={colors[i % colors.length]} />
                                                         })}
                                                     </Pie>
@@ -1989,15 +1384,24 @@ export default function ReportesPage() {
                                                         <tr>
                                                             <th className="sticky left-0 bg-slate-50 dark:bg-slate-800 text-left px-3 py-2 font-semibold text-slate-600 dark:text-slate-300 min-w-[180px]">Familia</th>
                                                             {productionAnalysisData.months.map(mk => (
-                                                                <th key={mk} className="text-right px-2 py-2 font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                                                                    {productionAnalysisData.monthlyData.find(m => m.key === mk)?.label ?? mk}
+                                                                <th key={mk} onClick={() => { if (familySortKey === mk) setFamilySortDir(d => d === 'desc' ? 'asc' : 'desc'); else { setFamilySortKey(mk); setFamilySortDir('desc') } }}
+                                                                    className="text-right px-2 py-2 font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap cursor-pointer hover:text-[#0b109f] select-none">
+                                                                    {productionAnalysisData.monthlyData.find(m => m.key === mk)?.label ?? mk}{familySortKey === mk ? (familySortDir === 'desc' ? ' ↓' : ' ↑') : ' ↕'}
                                                                 </th>
                                                             ))}
-                                                            <th className="text-right px-3 py-2 font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 whitespace-nowrap">Total L</th>
+                                                            <th onClick={() => { if (familySortKey === 'total') setFamilySortDir(d => d === 'desc' ? 'asc' : 'desc'); else { setFamilySortKey('total'); setFamilySortDir('desc') } }}
+                                                                className="text-right px-3 py-2 font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 whitespace-nowrap cursor-pointer hover:text-[#0b109f] select-none">
+                                                                Total L{familySortKey === 'total' ? (familySortDir === 'desc' ? ' ↓' : ' ↑') : ' ↕'}
+                                                            </th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                                        {productionAnalysisData.groupTableData.map(g => (
+                                                        {[...productionAnalysisData.groupTableData].sort((a, b) => {
+                                                            if (!familySortKey) return 0
+                                                            const av = familySortKey === 'total' ? a.total : (a.byMonth[familySortKey] ?? 0)
+                                                            const bv = familySortKey === 'total' ? b.total : (b.byMonth[familySortKey] ?? 0)
+                                                            return familySortDir === 'desc' ? bv - av : av - bv
+                                                        }).map(g => (
                                                             <tr key={g.name} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                                                                 <td className="sticky left-0 bg-white dark:bg-slate-900 px-3 py-1.5 font-medium text-slate-700 dark:text-slate-300 truncate max-w-[180px]">{g.name}</td>
                                                                 {productionAnalysisData.months.map(mk => (
@@ -2031,7 +1435,7 @@ export default function ReportesPage() {
                                                         cx="50%" cy="50%" innerRadius="45%" outerRadius="68%"
                                                         paddingAngle={2} dataKey="value" nameKey="name">
                                                         {productionAnalysisData.familyData.slice(0, 15).map((_, i) => {
-                                                            const colors = ['#C1272D','#06b6d4','#8b5cf6','#f59e0b','#10b981','#3b82f6','#ec4899','#14b8a6','#f97316','#6366f1','#84cc16','#e11d48','#0891b2','#7c3aed','#d97706']
+                                                            const colors = ['#0b109f','#e2211c','#2a35b8','#c02820','#4352cc','#a02019','#5d6fd9','#d43630','#7585e2','#b84540','#8e9dee','#cc5550','#a6b3f5','#d96a65','#becaf8']
                                                             return <Cell key={i} fill={colors[i % colors.length]} />
                                                         })}
                                                     </Pie>
@@ -2045,16 +1449,28 @@ export default function ReportesPage() {
                                                     <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 z-10">
                                                         <tr>
                                                             <th className="sticky left-0 bg-slate-50 dark:bg-slate-800 text-left px-3 py-2 font-semibold text-slate-600 dark:text-slate-300 min-w-[160px]">Categoría</th>
-                                                            {productionAnalysisData.months.map(mk => (
-                                                                <th key={mk} className="text-right px-2 py-2 font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                                                                    {productionAnalysisData.monthlyData.find(m => m.key === mk)?.label ?? mk}
-                                                                </th>
-                                                            ))}
-                                                            <th className="text-right px-3 py-2 font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 whitespace-nowrap">Total L</th>
+                                                            {productionAnalysisData.months.map(mk => {
+                                                                const label = productionAnalysisData.monthlyData.find(m => m.key === mk)?.label ?? mk
+                                                                return (
+                                                                    <th key={mk} onClick={() => { if (categoriaSortKey === mk) setCategoriaSortDir(d => d === 'desc' ? 'asc' : 'desc'); else { setCategoriaSortKey(mk); setCategoriaSortDir('desc') } }}
+                                                                        className="text-right px-2 py-2 font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap cursor-pointer hover:text-[#0b109f] select-none">
+                                                                        {label}{categoriaSortKey === mk ? (categoriaSortDir === 'desc' ? ' ↓' : ' ↑') : ' ↕'}
+                                                                    </th>
+                                                                )
+                                                            })}
+                                                            <th onClick={() => { if (categoriaSortKey === 'total') setCategoriaSortDir(d => d === 'desc' ? 'asc' : 'desc'); else { setCategoriaSortKey('total'); setCategoriaSortDir('desc') } }}
+                                                                className="text-right px-3 py-2 font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 whitespace-nowrap cursor-pointer hover:text-[#0b109f] select-none">
+                                                                Total L{categoriaSortKey === 'total' ? (categoriaSortDir === 'desc' ? ' ↓' : ' ↑') : ' ↕'}
+                                                            </th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                                        {productionAnalysisData.familyTableData.map(f => (
+                                                        {[...productionAnalysisData.familyTableData].sort((a, b) => {
+                                                            if (!categoriaSortKey) return 0
+                                                            const av = categoriaSortKey === 'total' ? a.total : (a.byMonth[categoriaSortKey] ?? 0)
+                                                            const bv = categoriaSortKey === 'total' ? b.total : (b.byMonth[categoriaSortKey] ?? 0)
+                                                            return categoriaSortDir === 'desc' ? bv - av : av - bv
+                                                        }).map(f => (
                                                             <tr key={f.name} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                                                                 <td className="sticky left-0 bg-white dark:bg-slate-900 px-3 py-1.5 font-medium text-slate-700 dark:text-slate-300 truncate max-w-[160px]">{f.name}</td>
                                                                 {productionAnalysisData.months.map(mk => (
@@ -2098,7 +1514,7 @@ export default function ReportesPage() {
                                                         cx="50%" cy="50%" innerRadius="45%" outerRadius="68%"
                                                         paddingAngle={2} dataKey="value" nameKey="name">
                                                         {productionAnalysisData.codeData.slice(0, 12).map((_, i) => {
-                                                            const colors = ['#C1272D','#06b6d4','#8b5cf6','#f59e0b','#10b981','#3b82f6','#ec4899','#14b8a6','#f97316','#6366f1','#84cc16','#e11d48']
+                                                            const colors = ['#0b109f','#e2211c','#2a35b8','#c02820','#4352cc','#a02019','#5d6fd9','#d43630','#7585e2','#b84540','#8e9dee','#cc5550']
                                                             return <Cell key={i} fill={colors[i % colors.length]} />
                                                         })}
                                                     </Pie>
@@ -2112,17 +1528,30 @@ export default function ReportesPage() {
                                                     <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 z-10">
                                                         <tr>
                                                             <th className="sticky left-0 bg-slate-50 dark:bg-slate-800 text-left px-3 py-2 font-semibold text-slate-600 dark:text-slate-300 min-w-[140px]">Código</th>
-                                                            {productionAnalysisData.months.map(mk => (
-                                                                <th key={mk} className="text-right px-2 py-2 font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                                                                    {productionAnalysisData.monthlyData.find(m => m.key === mk)?.label ?? mk}
-                                                                </th>
-                                                            ))}
-                                                            <th className="text-right px-3 py-2 font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 whitespace-nowrap">Total L</th>
+                                                            {productionAnalysisData.months.map(mk => {
+                                                                const label = productionAnalysisData.monthlyData.find(m => m.key === mk)?.label ?? mk
+                                                                return (
+                                                                    <th key={mk} onClick={() => { if (codigoSortKey === mk) setCodigoSortDir(d => d === 'desc' ? 'asc' : 'desc'); else { setCodigoSortKey(mk); setCodigoSortDir('desc') } }}
+                                                                        className="text-right px-2 py-2 font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap cursor-pointer hover:text-[#0b109f] select-none">
+                                                                        {label}{codigoSortKey === mk ? (codigoSortDir === 'desc' ? ' ↓' : ' ↑') : ' ↕'}
+                                                                    </th>
+                                                                )
+                                                            })}
+                                                            <th onClick={() => { if (codigoSortKey === 'total') setCodigoSortDir(d => d === 'desc' ? 'asc' : 'desc'); else { setCodigoSortKey('total'); setCodigoSortDir('desc') } }}
+                                                                className="text-right px-3 py-2 font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 whitespace-nowrap cursor-pointer hover:text-[#0b109f] select-none">
+                                                                Total L{codigoSortKey === 'total' ? (codigoSortDir === 'desc' ? ' ↓' : ' ↑') : ' ↕'}
+                                                            </th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                                        {productionAnalysisData.codeTableData
+                                                        {[...productionAnalysisData.codeTableData]
                                                             .filter(c => !codeSearch || c.name.toLowerCase().includes(codeSearch.toLowerCase()))
+                                                            .sort((a, b) => {
+                                                                if (!codigoSortKey) return 0
+                                                                const av = codigoSortKey === 'total' ? a.total : (a.byMonth[codigoSortKey] ?? 0)
+                                                                const bv = codigoSortKey === 'total' ? b.total : (b.byMonth[codigoSortKey] ?? 0)
+                                                                return codigoSortDir === 'desc' ? bv - av : av - bv
+                                                            })
                                                             .map(c => (
                                                             <tr key={c.name} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                                                                 <td className="sticky left-0 bg-white dark:bg-slate-900 px-3 py-1.5 font-mono font-semibold text-slate-700 dark:text-slate-300">{c.name}</td>
@@ -2416,12 +1845,6 @@ export default function ReportesPage() {
 
             {/* Print Modals */}
             <DateRangeModal
-                open={printModal === 'calidad'}
-                onClose={() => setPrintModal(null)}
-                onConfirm={handlePrintConfirm('calidad')}
-                title="Reporte First Time Quality"
-            />
-            <DateRangeModal
                 open={printModal === 'comercial'}
                 onClose={() => setPrintModal(null)}
                 onConfirm={handlePrintConfirm('comercial')}
@@ -2429,318 +1852,6 @@ export default function ReportesPage() {
             />
 
             {/* Print Views */}
-            {printView && printView.tab === 'calidad' && (() => {
-                const pr = printFilteredRecords
-                if (!pr || pr.length === 0) {
-                    return (
-                        <PrintReportWrapper
-                            title="Reporte First Time Quality"
-                            dateFrom={printView.dateFrom}
-                            dateTo={printView.dateTo}
-                            userName={profile?.full_name}
-                            onClose={() => setPrintView(null)}
-                        >
-                            <div className="p-8 text-center text-slate-500">
-                                No hay datos disponibles para el periodo seleccionado.
-                            </div>
-                        </PrintReportWrapper>
-                    )
-                }
-
-                const total = pr.length
-                const conformes = pr.filter(r => r.analysis.overallStatus === 'conforme').length
-                const semiConformes = pr.filter(r => r.analysis.overallStatus === 'semi-conforme').length
-                const noConformes = pr.filter(r => r.analysis.overallStatus === 'no-conforme').length
-                
-                const PIECE_FAMILIES = ["Bases aromatizante ambiental", "Bases limpiadores liquidos multiusos", "Bases Aromatizantes"]
-                const totalVol = pr.reduce((s, r) => !PIECE_FAMILIES.includes(r.familia_producto) ? s + (r.tamano_lote || 0) : s, 0)
-                
-                const conformesPH = pr.filter(r => r.analysis.phStatus === 'conforme').length
-                const noConformesPH = pr.filter(r => r.analysis.phStatus === 'no-conforme').length
-
-                // Quality Detail Processing for Images 3 & 4
-                const solidsStats = { ok: 0, semi: 0, nc: 0 }
-                const phStats = { ok: 0, nc: 0 }
-                
-                pr.forEach(r => {
-                    // Solids
-                    if (r.analysis.solidsStatus === 'conforme') solidsStats.ok++
-                    else if (r.analysis.solidsStatus === 'semi-conforme') solidsStats.semi++
-                    else if (r.analysis.solidsStatus === 'no-conforme') solidsStats.nc++
-                    // pH
-                    if (r.analysis.phStatus === 'conforme') phStats.ok++
-                    else if (r.analysis.phStatus === 'no-conforme') phStats.nc++
-                })
-
-                // Defects Pareto Processing for Image 1
-                const defects = { ph: 0, solidos: 0, apariencia: 0 }
-                pr.forEach(r => {
-                    if (!r.analysis.isConform) {
-                        r.analysis.failedParams?.forEach(p => {
-                            if (p === 'ph' || p === 'solidos' || p === 'apariencia') {
-                                defects[p as keyof typeof defects]++
-                            }
-                        })
-                    }
-                })
-
-                const sortedDefects = [
-                    { name: 'Sólidos', count: defects.solidos },
-                    { name: 'pH', count: defects.ph },
-                    { name: 'Apariencia', count: defects.apariencia }
-                ].sort((a, b) => b.count - a.count)
-
-                const totalDefects = sortedDefects.reduce((s, d) => s + d.count, 0)
-                let cumulativeCount = 0
-                const paretoData = sortedDefects.map(d => {
-                    cumulativeCount += d.count
-                    return {
-                        ...d,
-                        percent: totalDefects > 0 ? Math.round((cumulativeCount / totalDefects) * 100) : 0
-                    }
-                })
-
-                // Sucursal Conformity Processing for Image 2
-                const grouped: Record<string, { conformes: number, semi: number, noConf: number, total: number }> = {}
-                pr.forEach(r => {
-                    const s = r.sucursal || 'Sin Sucursal'
-                    if (!grouped[s]) grouped[s] = { conformes: 0, semi: 0, noConf: 0, total: 0 }
-                    grouped[s].total += (r.tamano_lote || 0)
-                    if (r.analysis.overallStatus === 'conforme') grouped[s].conformes++
-                    else if (r.analysis.overallStatus === 'semi-conforme') grouped[s].semi++
-                    else if (r.analysis.overallStatus === 'no-conforme') grouped[s].noConf++
-                })
-
-                const sucursalBarDataFTQ = Object.entries(grouped)
-                    .map(([name, v]) => ({ 
-                        name, 
-                        conformes: v.conformes, 
-                        semi: v.semi, 
-                        noConf: v.noConf,
-                        sum: v.conformes + v.semi + v.noConf
-                    }))
-                    .sort((a, b) => b.sum - a.sum)
-
-                // Product Family analysis
-                const familyAnalysis: Record<string, { total: number, nc: number, vol: number }> = {}
-                pr.forEach(r => {
-                    const f = r.familia_producto || 'Otros'
-                    if (!familyAnalysis[f]) familyAnalysis[f] = { total: 0, nc: 0, vol: 0 }
-                    familyAnalysis[f].total++
-                    familyAnalysis[f].vol += (r.tamano_lote || 0)
-                    if (!r.analysis.isConform) familyAnalysis[f].nc++
-                })
-                const familyTable = Object.entries(familyAnalysis)
-                    .map(([name, v]) => ({ name, ...v, ncRate: (v.nc / v.total * 100).toFixed(1) }))
-                    .sort((a, b) => b.vol - a.vol)
-                    .slice(0, 15)
-
-                return (
-                    <PrintReportWrapper
-                        title="Reporte First Time Quality"
-                        dateFrom={printView.dateFrom}
-                        dateTo={printView.dateTo}
-                        userName={profile?.full_name}
-                        filters={selectedSucursal !== 'all' ? `Sucursal: ${selectedSucursal}` : 'Todas las sucursales'}
-                        onClose={() => setPrintView(null)}
-                    >
-                        {/* Horizontal KPI Grid - Matching Comercial Style */}
-                        <div className="print-kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', marginTop: '20px' }}>
-                            <div className="print-kpi-card" style={{ borderTop: '5px solid #0e0c9b' }}>
-                                <p className="text-[10pt] text-slate-500 font-black uppercase mb-1">Volumen Líquidos</p>
-                                <p className="text-3xl font-black text-[#0e0c9b] tracking-tightLeading leading-none mb-1">{totalVol.toLocaleString()} L</p>
-                                <p className="text-[8pt] text-slate-400 font-bold uppercase tracking-wider">Producción acumulada</p>
-                            </div>
-                            <div className="print-kpi-card" style={{ borderTop: '5px solid #16a34a' }}>
-                                <p className="text-[10pt] text-slate-500 font-black uppercase mb-1">Eficiencia FTQ</p>
-                                <p className="text-3xl font-black text-[#16a34a] leading-none mb-1">{total > 0 ? ((conformes/total)*100).toFixed(1) : 0}%</p>
-                                <p className="text-[8pt] text-slate-400 font-bold uppercase tracking-wider">{conformes} Lotes conformes</p>
-                            </div>
-                            <div className="print-kpi-card" style={{ borderTop: '5px solid #64748b' }}>
-                                <p className="text-[10pt] text-slate-500 font-black uppercase mb-1">Total Registros</p>
-                                <p className="text-3xl font-black text-slate-900 leading-none mb-1">{total}</p>
-                                <p className="text-[8pt] text-slate-400 font-bold uppercase tracking-wider">Lotes registrados</p>
-                            </div>
-                        </div>
-
-                        {/* Image 1: Pareto Chart (Full Width) */}
-                        <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm grow" style={{ marginTop: '25px' }}>
-                            <h3 style={{ fontSize: '15pt', fontWeight: 900, color: '#0f172a', marginBottom: '4px' }}>Pareto de Defectos</h3>
-                            <p className="text-[9pt] text-slate-500 mb-8 font-medium">Frecuencia de fallos por parámetro de calidad</p>
-                            <div style={{ height: '280px', width: '100%', display: 'flex', justifyContent: 'center' }}>
-                                <ComposedChart width={750} height={280} data={paretoData} margin={{ top: 10, right: 40, left: 10, bottom: 20 }}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                    <XAxis dataKey="name" fontSize={11} fontWeight={900} tick={{ fill: '#334155' }} axisLine={false} tickLine={false} dy={12} />
-                                    <YAxis yAxisId="left" fontSize={10} axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} label={{ value: 'Frecuencia', angle: -90, position: 'insideLeft', fontSize: 9, fontWeight: 900 }} />
-                                    <YAxis yAxisId="right" orientation="right" fontSize={10} axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} unit="%" label={{ value: 'Acumulado %', angle: 90, position: 'insideRight', fontSize: 9, fontWeight: 900 }} />
-                                    <Tooltip />
-                                    <Bar yAxisId="left" dataKey="count" fill="#C1272D" radius={[6, 6, 0, 0]} barSize={50} />
-                                    <Line yAxisId="right" type="monotone" dataKey="percent" stroke="#0e0c9b" strokeWidth={4} dot={{ r: 5, fill: '#0e0c9b', strokeWidth: 2, stroke: '#fff' }} />
-                                </ComposedChart>
-                            </div>
-                        </div>
-
-                        {/* Image 2: Stacked Bars by Sucursal */}
-                        <div className="print-break print-no-break" style={{ marginTop: '30px', padding: '30px', background: 'white', borderRadius: '2rem', border: '1px solid #f1f5f9' }}>
-                            <h3 style={{ fontSize: '15pt', fontWeight: 900, color: '#0f172a', marginBottom: '4px' }}>Conformidad por Sucursal</h3>
-                            <p className="text-[9pt] text-slate-500 mb-8 font-medium">Volumen de producción conforme vs no conforme</p>
-                            <div style={{ height: '350px', width: '100%', display: 'flex', justifyContent: 'center' }}>
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={sucursalBarDataFTQ} margin={{ top: 10, right: 10, left: 0, bottom: 90 }}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                        <XAxis 
-                                            dataKey="name" 
-                                            interval={0} 
-                                            angle={-45}
-                                            textAnchor="end"
-                                            fontSize={8} 
-                                            fontWeight={800} 
-                                            tick={{ fill: '#475569' }} 
-                                            axisLine={false}
-                                            tickLine={false}
-                                            dy={10}
-                                        />
-                                        <YAxis fontSize={10} axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} label={{ value: 'Lotes', angle: -90, position: 'insideLeft', fontSize: 9, fontWeight: 900 }} />
-                                        <Tooltip />
-                                        <Bar dataKey="conformes" stackId="a" fill="#22c55e" radius={[0, 0, 0, 0]} />
-                                        <Bar dataKey="semi" stackId="a" fill="#eab308" radius={[0, 0, 0, 0]} />
-                                        <Bar dataKey="noConf" stackId="a" fill="#C1272D" radius={[4, 4, 0, 0]} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                            <div className="flex justify-center gap-8 mt-4">
-                                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-sm bg-[#22c55e]" /> <span className="text-[9pt] font-black text-slate-600 uppercase">Conformes</span></div>
-                                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-sm bg-[#eab308]" /> <span className="text-[9pt] font-black text-slate-600 uppercase">Semi-Conformes</span></div>
-                                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-sm bg-[#C1272D]" /> <span className="text-[9pt] font-black text-slate-600 uppercase">No Conformes</span></div>
-                            </div>
-                        </div>
-
-                        {/* Image 3: Solids Conformity Cards */}
-                        <div className="print-break" style={{ marginTop: '30px' }}>
-                            <h3 style={{ fontSize: '14pt', fontWeight: 900, color: '#0f172a', marginBottom: '4px' }}>Conformidad del % de sólidos</h3>
-                            <p className="text-[9pt] text-slate-500 mb-6 font-medium">Desglose de lotes según cumplimiento de especificaciones de sólidos.</p>
-                            
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
-                                <div className="bg-[#f0fdf4] p-6 rounded-3xl border border-green-100 relative overflow-hidden group">
-                                    <div className="absolute top-4 right-4 bg-white p-2 rounded-xl border border-green-200 text-green-600 shadow-sm group-hover:scale-110 transition-transform">
-                                        <TrendingUp size={20} />
-                                    </div>
-                                    <p className="text-[9pt] font-black text-green-800 uppercase tracking-tight mb-2">TOTAL CONFORMES</p>
-                                    <p className="text-5xl font-black text-slate-800 leading-tight">{solidsStats.ok}</p>
-                                    <p className="text-[8pt] font-bold text-green-700/60 uppercase mb-4">registros</p>
-                                    <p className="text-2xl font-black text-green-700 leading-none">{total > 0 ? ((solidsStats.ok / total) * 100).toFixed(1) : 0}% <span className="text-[10pt] font-bold text-green-700/40">del total</span></p>
-                                </div>
-
-                                <div className="bg-[#fffbeb] p-6 rounded-3xl border border-yellow-100 relative overflow-hidden group">
-                                    <div className="absolute top-4 right-4 bg-white p-2 rounded-xl border border-yellow-200 text-yellow-600 shadow-sm group-hover:scale-110 transition-transform">
-                                        <AlertTriangle size={20} />
-                                    </div>
-                                    <p className="text-[9pt] font-black text-yellow-800 uppercase tracking-tight mb-2">SEMI-CONFORMES</p>
-                                    <p className="text-5xl font-black text-slate-800 leading-tight">{solidsStats.semi}</p>
-                                    <p className="text-[8pt] font-bold text-yellow-700/60 uppercase mb-4">registros</p>
-                                    <p className="text-2xl font-black text-yellow-700 leading-none">{total > 0 ? ((solidsStats.semi / total) * 100).toFixed(1) : 0}% <span className="text-[10pt] font-bold text-yellow-700/40">del total</span></p>
-                                </div>
-
-                                <div className="bg-[#fef2f2] p-6 rounded-3xl border border-red-100 relative overflow-hidden group">
-                                    <div className="absolute top-4 right-4 bg-white p-2 rounded-xl border border-red-200 text-red-600 shadow-sm group-hover:scale-110 transition-transform">
-                                        <Activity size={20} />
-                                    </div>
-                                    <p className="text-[9pt] font-black text-red-800 uppercase tracking-tight mb-2">NO CONFORMES</p>
-                                    <p className="text-5xl font-black text-slate-800 leading-tight">{solidsStats.nc}</p>
-                                    <p className="text-[8pt] font-bold text-red-700/60 uppercase mb-4">registros</p>
-                                    <p className="text-2xl font-black text-red-700 leading-none">{total > 0 ? ((solidsStats.nc / total) * 100).toFixed(1) : 0}% <span className="text-[10pt] font-bold text-red-700/40">del total</span></p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Image 4: pH Conformity Cards */}
-                        <div className="print-no-break" style={{ marginTop: '30px' }}>
-                            <h3 style={{ fontSize: '14pt', fontWeight: 900, color: '#0f172a', marginBottom: '4px' }}>Conformidad de pH</h3>
-                            <p className="text-[9pt] text-slate-500 mb-6 font-medium">Desglose de lotes según cumplimiento de especificaciones de pH.</p>
-                            
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                                <div className="bg-[#f0fdf4] p-6 rounded-3xl border border-green-100 relative overflow-hidden group">
-                                    <div className="absolute top-4 right-4 bg-white p-2 rounded-xl border border-green-200 text-green-600 shadow-sm group-hover:scale-110 transition-transform">
-                                        <TrendingUp size={20} />
-                                    </div>
-                                    <p className="text-[9pt] font-black text-green-800 uppercase tracking-tight mb-2">TOTAL CONFORMES</p>
-                                    <p className="text-5xl font-black text-slate-800 leading-tight">{phStats.ok}</p>
-                                    <p className="text-[8pt] font-bold text-green-700/60 uppercase mb-4">registros</p>
-                                    <p className="text-2xl font-black text-green-700 leading-none">{total > 0 ? ((phStats.ok / total) * 100).toFixed(1) : 0}% <span className="text-[10pt] font-bold text-green-700/40">del total</span></p>
-                                </div>
-
-                                <div className="bg-[#fef2f2] p-6 rounded-3xl border border-red-100 relative overflow-hidden group">
-                                    <div className="absolute top-4 right-4 bg-white p-2 rounded-xl border border-red-200 text-red-600 shadow-sm group-hover:scale-110 transition-transform">
-                                        <Activity size={20} />
-                                    </div>
-                                    <p className="text-[9pt] font-black text-red-800 uppercase tracking-tight mb-2">NO CONFORMES</p>
-                                    <p className="text-5xl font-black text-slate-800 leading-tight">{phStats.nc}</p>
-                                    <p className="text-[8pt] font-bold text-red-700/60 uppercase mb-4">registros</p>
-                                    <p className="text-2xl font-black text-red-700 leading-none">{total > 0 ? ((phStats.nc / total) * 100).toFixed(1) : 0}% <span className="text-[10pt] font-bold text-red-700/40">del total</span></p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Top Product Families with High Impact Visuals */}
-                        <div className="print-break print-no-break" style={{ marginTop: '40px' }}>
-                            <h3 style={{ fontSize: '14pt', fontWeight: 900, color: '#0e0c9b', borderLeft: '5px solid #0e0c9b', paddingLeft: '15px', marginBottom: '20px' }}>Resumen de Calidad por Familia de Productos</h3>
-                            <table className="print-table">
-                                <thead>
-                                    <tr>
-                                        <th>Familia de Producto</th>
-                                        <th style={{ textAlign: 'center' }}>Volumen (L)</th>
-                                        <th style={{ textAlign: 'center' }}>Total Lotes</th>
-                                        <th style={{ textAlign: 'center' }}>Lotes NC</th>
-                                        <th style={{ textAlign: 'right' }}>Efectividad FTQ</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {familyTable.map(f => (
-                                        <tr key={f.name}>
-                                            <td className="font-extrabold text-[#0f172a]">{f.name}</td>
-                                            <td style={{ textAlign: 'center' }}>{f.vol.toLocaleString()}</td>
-                                            <td style={{ textAlign: 'center' }}>{f.total}</td>
-                                            <td style={{ textAlign: 'center', color: f.nc > 0 ? '#C1272D' : '#64748b', fontWeight: 'bold' }}>{f.nc}</td>
-                                            <td style={{ textAlign: 'right' }}>
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                                        <div className="h-full bg-[#16a34a]" style={{ width: `${100 - Number(f.ncRate)}%` }} />
-                                                    </div>
-                                                    <span className="font-black text-slate-800">{(100 - Number(f.ncRate)).toFixed(1)}%</span>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {/* Technical Glossary for FTQ */}
-                        <div className="print-no-break" style={{ marginTop: '40px', padding: '20px', backgroundColor: '#f8fafc', borderRadius: '1.5rem', border: '1px solid #e2e8f0' }}>
-                            <div className="flex items-center gap-2 mb-3">
-                                <Activity className="text-[#0e0c9b]" size={18} />
-                                <h3 style={{ fontSize: '11pt', fontWeight: 900, color: '#0f172a', margin: 0 }}>Metodología de Cálculo FTQ</h3>
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px' }}>
-                                <div className="space-y-3">
-                                    <div>
-                                        <p className="text-[8pt] font-black text-[#0e0c9b] uppercase mb-0.5">Eficiencia FTQ (First Time Quality)</p>
-                                        <p className="text-[7.5pt] text-slate-600 leading-tight"><strong>Lógica:</strong> (Lotes Totales - Lotes No Conformes) / Lotes Totales. Mide la capacidad de entregar producto correcto sin reprocesos en la primera inspección.</p>
-                                    </div>
-                                </div>
-                                <div className="space-y-3">
-                                    <div>
-                                        <p className="text-[8pt] font-black text-[#0e0c9b] uppercase mb-0.5">Volumen Líquidos (L)</p>
-                                        <p className="text-[7.5pt] text-slate-600 leading-tight"><strong>Definición:</strong> Suma de litros de producción acumulada para familias de producto terminado líquido.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                    </PrintReportWrapper>
-                )
-            })()}
-
             {printView && printView.tab === 'comercial' && (() => {
                 const pr = printFilteredRecords
                 if (!pr || pr.length === 0) {

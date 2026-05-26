@@ -1,17 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useAuth } from "@/components/AuthProvider"
-import { supabase } from '@/lib/supabase'
+import { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
 import {
     BarChart,
     Bar,
@@ -21,484 +12,343 @@ import {
     Tooltip,
     Legend,
     ResponsiveContainer,
-    PieChart,
-    Pie,
-    Cell,
-    ComposedChart,
+    LineChart,
     Line,
     ReferenceLine,
+    ComposedChart,
     RadarChart,
     Radar,
     PolarGrid,
     PolarAngleAxis,
-    PolarRadiusAxis
+    PolarRadiusAxis,
+    Cell
 } from 'recharts'
 import {
     Activity,
-    BarChart3,
-    Calendar,
-    Filter,
-    TrendingUp,
-    AlertTriangle,
-    CheckCircle2,
-    RefreshCcw,
-    Scale,
     Package,
+    Box,
+    TrendingUp,
+    CheckCircle2,
     Factory,
+    Scale,
+    Printer,
+    AlertCircle,
     XCircle,
-    Printer
+    Filter
 } from 'lucide-react'
-import { PrintReportWrapper } from '@/components/PrintReportWrapper'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 import { DateRangeModal } from '@/components/DateRangeModal'
-import { format, subDays, startOfDay, endOfDay } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { PrintReportWrapper } from '@/components/PrintReportWrapper'
+import { PRODUCT_STANDARDS, PH_STANDARDS, SUCURSALES } from "@/lib/production-constants"
 
-export default function SPYReportPage() {
-    const { user, profile } = useAuth()
-    const [loading, setLoading] = useState(true)
-    const [data, setData] = useState<any>(null)
+// Definir constante local para las familias que se tratan como piezas
+const PIECE_FAMILIES = ["Bases aromatizante ambiental", "Bases limpiadores liquidos multiusos", "Bases Aromatizantes"];
 
-    const isPreparador = profile?.role === 'preparador'
+interface SPYReportPageProps {
+    records: any[];
+    profile?: any;
+}
 
-    // Filters
-    const [timeRange, setTimeRange] = useState('30') // days
-    const [metricMode, setMetricMode] = useState<'LOTES' | 'LITROS'>('LITROS')
-
-    // Print state
+export default function SPYReportPage({ records = [], profile }: SPYReportPageProps) {
     const [showPrintModal, setShowPrintModal] = useState(false)
     const [printView, setPrintView] = useState<{ dateFrom: string, dateTo: string } | null>(null)
 
-    const PIECE_FAMILIES = ["Bases aromatizante ambiental", "Bases limpiadores liquidos multiusos", "Bases Aromatizantes"];
+    // ─── FILTROS INTERNOS ────────────────────────────────────────────
+    const [filterSucursal, setFilterSucursal] = useState("all")
+    const [filterProduct, setFilterProduct] = useState("all")
+    const [filterPeriod, setFilterPeriod] = useState("all")
 
-    useEffect(() => {
-        if (user && profile) {
-            fetchSPYData()
+    const role = (profile?.role || '').toLowerCase()
+    const showSucursalFilter = role === 'admin' || role === 'gerente_calidad'
+
+    const uniqueProducts = useMemo(() =>
+        (Array.from(new Set(records.map((r: any) => r.codigo_producto).filter(Boolean))) as string[]).sort()
+    , [records])
+
+    const spyRecords = useMemo(() => {
+        const now = new Date()
+        let dateThreshold: Date | null = null
+        switch (filterPeriod) {
+            case '7d':  dateThreshold = new Date(now.getTime() - 7   * 86400000); break
+            case '30d': dateThreshold = new Date(now.getTime() - 30  * 86400000); break
+            case '3m':  dateThreshold = new Date(now.getTime() - 90  * 86400000); break
+            case '6m':  dateThreshold = new Date(now.getTime() - 180 * 86400000); break
+            case '1y':  dateThreshold = new Date(now.getTime() - 365 * 86400000); break
         }
-    }, [user?.id, profile?.role, timeRange, metricMode])
+        return records.filter((r: any) => {
+            if (filterSucursal !== 'all' && r.sucursal !== filterSucursal) return false
+            if (filterProduct !== 'all' && r.codigo_producto !== filterProduct) return false
+            if (dateThreshold && r.fecha_fabricacion && new Date(r.fecha_fabricacion) < dateThreshold) return false
+            return true
+        })
+    }, [records, filterSucursal, filterProduct, filterPeriod])
 
-    async function fetchSPYData() {
-        if (!user) return
-        setLoading(true)
-        console.log("Starting SPY Data Fetch...")
+    // ─── A. CÁLCULO DE VOLÚMENES Y REGISTROS ─────────────────────────
+    const stats = useMemo(() => {
+        let totalVolumeProducts = 0
+        let totalPiecesBases = 0
+        let totalNCRs = 0
+        let ftqVolume = 0
+        let noConformeVolume = 0
+        let affectedVolume = 0
 
-        try {
-            console.log("Current User:", user.id, profile?.role)
+        let conformesPH = 0
+        let noConformesPH = 0
+        let conformesPHLiters = 0
+        let noConformesPHLiters = 0
 
-            // Date Filters
-            const endDate = endOfDay(new Date()).toISOString()
-            const startDate = startOfDay(subDays(new Date(), parseInt(timeRange))).toISOString()
-            console.log(`Date Range: ${startDate} to ${endDate}`)
+        let conformesSolids = 0
+        let warningSolids = 0
+        let noConformesSolids = 0
+        let conformesSolidsLiters = 0
+        let warningSolidsLiters = 0
+        let noConformesSolidsLiters = 0
 
-            // DEBUG: Fetch ANY data (no filter) to verify connection
-            const { data: testData, error: testError } = await supabase
-                .from('quality_ncr')
-                .select('id, created_at')
-                .limit(3)
-            if (testError) console.error("TEST QUERY CHECK FAILED:", testError)
-            else console.log("TEST QUERY SUCCESS (Sample 3):", testData)
+        spyRecords.forEach(r => {
+            const isPiece = PIECE_FAMILIES.includes(r.familia_producto || '')
+            const val = Number(r.tamano_lote) || 0
+            const vol = isPiece ? (val * 20) : val
 
-
-            // 1. Fetch Total Production (Bitacora)
-            let fetchProduction = supabase
-                .from('bitacora_produccion_calidad')
-                .select('*')
-                .gte('created_at', startDate)
-                .lte('created_at', endDate)
-
-            if (isPreparador) {
-                fetchProduction = fetchProduction.eq('user_id', user.id)
+            if (isPiece) {
+                totalPiecesBases += val
+            } else {
+                totalVolumeProducts += val
             }
 
-            // 2. Fetch NCRs (Quality NCR)
-            let fetchNCRs = supabase
-                .from('quality_ncr')
-                .select('*, quality_disposition(*)')
-                .gte('created_at', startDate)
-                .lte('created_at', endDate)
+            // --- Cálculos de conformidad y afectación para FTQ y Yield ---
+            // Lógica solicitada:
+            // - FTQ = bien bien en todos los parámetros.
+            // - Afectado = cualquier desviación de calidad (incluyendo solidos semi-conforme/ warning y no-conforme, ph no-conforme, apariencia no-conforme).
+            // - Yield = descuenta únicamente los lotes calificados analíticamente como "No Conforme" totales (excluye los semi-conformes).
 
-            if (isPreparador) {
-                fetchNCRs = fetchNCRs.eq('preparer_user_id', user.id)
+            const phStat = r.analysis?.phStatus || 'na'
+            const solidsStat = r.analysis?.solidsStatus || 'na'
+            const appStat = r.analysis?.appearanceStatus || 'na'
+
+            const solidsConforme = solidsStat === 'conforme' || solidsStat === 'na'
+            const phConforme = phStat === 'conforme' || phStat === 'na'
+            const appConforme = appStat === 'conforme' || appStat === 'na'
+
+            // FTQ: Perfecto a la primera
+            const isFTQ = solidsConforme && phConforme && appConforme
+
+            if (isFTQ) {
+                ftqVolume += vol
+            } else {
+                affectedVolume += vol
+                totalNCRs++
             }
 
-            const [prodRes, ncrRes] = await Promise.all([fetchProduction, fetchNCRs])
+            // Final Yield: Descuenta los "no-conforme" totales de cualquiera de los parámetros
+            const isSolidsNoConforme = solidsStat === 'no-conforme'
+            const isPHNoConforme = phStat === 'no-conforme'
+            const isAppearanceNoConforme = appStat === 'no-conforme'
+            const isNoConformeTotal = isSolidsNoConforme || isPHNoConforme || isAppearanceNoConforme
 
-            if (prodRes.error) console.error("Error fetching production:", prodRes.error)
-            if (ncrRes.error) console.error("Error fetching NCRs:", ncrRes.error)
-
-            const productionData = prodRes.data || []
-            let ncrData = ncrRes.data || []
-
-            // Fix: We need `familia_producto` for NCRs to properly calculate Pieces * 20 L.
-            // quality_ncr does not store `familia_producto`, so we must fetch it from `productionData` or from DB if missing.
-            const fetchedBatchCodes = new Set(productionData.map((p: any) => p.lote_producto))
-            const missingBatchCodes = Array.from(new Set(ncrData.map((n: any) => n.batch_code).filter((b: string) => b && !fetchedBatchCodes.has(b))))
-
-            let missingBatches: any[] = []
-            if (missingBatchCodes.length > 0) {
-                const { data: mData } = await supabase
-                    .from('bitacora_produccion_calidad')
-                    .select('lote_producto, familia_producto, nombre_producto')
-                    .in('lote_producto', missingBatchCodes)
-                if (mData) missingBatches = mData
+            if (isNoConformeTotal) {
+                noConformeVolume += vol
             }
 
-            const batchFamilyMap = new Map<string, string>()
-            const batchProductNameMap = new Map<string, string>()
-            
-            productionData.forEach((p: any) => {
-                batchFamilyMap.set(p.lote_producto, p.familia_producto || '')
-                batchProductNameMap.set(p.lote_producto, p.nombre_producto || '')
-            })
-            
-            missingBatches.forEach((p: any) => {
-                batchFamilyMap.set(p.lote_producto, p.familia_producto || '')
-                batchProductNameMap.set(p.lote_producto, p.nombre_producto || '')
-            })
-            
-            // Append family and product name to NCRs
-            ncrData = ncrData.map((n: any) => ({
-                ...n,
-                family: batchFamilyMap.get(n.batch_code) || '',
-                nombre_producto: batchProductNameMap.get(n.batch_code) || 'Prod. No Encontrado'
-            }))
+            // --- Estadísticas individuales para pH ---
+            if (phStat === 'conforme') {
+                conformesPH++
+                conformesPHLiters += vol
+            } else if (phStat === 'no-conforme') {
+                noConformesPH++
+                noConformesPHLiters += vol
+            }
 
-            console.log(`Fetched ${productionData.length} production records`)
-            console.log(`Fetched ${ncrData.length} NCR records`)
+            // --- Estadísticas individuales para Sólidos ---
+            if (solidsStat === 'conforme') {
+                conformesSolids++
+                conformesSolidsLiters += vol
+            } else if (solidsStat === 'semi-conforme') {
+                warningSolids++
+                warningSolidsLiters += vol
+            } else if (solidsStat === 'no-conforme') {
+                noConformesSolids++
+                noConformesSolidsLiters += vol
+            }
+        })
 
-            // A. Volume / Count Basis
+        const totalVolumeBases = totalPiecesBases * 20
+        const totalVolumeUnified = totalVolumeProducts + totalVolumeBases
 
+        const ftqPercent = totalVolumeUnified > 0 ? (ftqVolume / totalVolumeUnified) * 100 : 100
+        const finalYieldPercent = totalVolumeUnified > 0 ? ((totalVolumeUnified - noConformeVolume) / totalVolumeUnified) * 100 : 100
 
-            // Exclude piece families from the pure "Batches" (Lotes) count
-            const totalProduction = productionData.filter((p: any) => !PIECE_FAMILIES.includes(p.familia_producto || '')).length;
-
-            // Calculate Total Volume: If family is 'Pieces', multiply by 20 Liters
-            const totalVolume = productionData.reduce((sum, item) => {
-                const isPiece = PIECE_FAMILIES.includes(item.familia_producto || '');
-                const val = Number(item.tamano_lote) || 0;
-                return sum + (isPiece ? (val * 20) : val);
-            }, 0)
-
-            // Pure "Batches" NCR count (all statuses) for FTQ — FTQ mide todo lo que tuvo problema
-            const totalNCRs = ncrData.filter((n: any) => !PIECE_FAMILIES.includes(n.family || '')).length;
-            const volumeAffected = ncrData.reduce((sum, item) => {
-                const isPiece = PIECE_FAMILIES.includes(item.family || '');
-                const val = Number(item.liters_involved) || 0;
-                return sum + (isPiece ? (val * 20) : val);
-            }, 0)
-
-            // C. Disposition Breakdown
-            // Siempre tomar la disposición MÁS RECIENTE por NCR (no la primera [0])
-            const ncrWithDisposition = ncrData.map((ncr: any) => {
-                const dispositions: any[] = ncr.quality_disposition || []
-                const dispo = [...dispositions].sort((a: any, b: any) =>
-                    new Date(b.closed_at || b.created_at || 0).getTime() -
-                    new Date(a.closed_at || a.created_at || 0).getTime()
-                )[0] || null
-                return { ...ncr, disposition: dispo }
-            })
-
-            // Para SPY/Final Yield y Reproceso: SOLO NCRs con status CERRADO
-            // Un NCR abierto o en investigación aún no tiene disposición final confirmada
-            const closedNCRs = ncrWithDisposition.filter((n: any) => n.status === 'CERRADO')
-
-            console.log(`[SPY] Total NCRs: ${ncrWithDisposition.length} | Cerrados: ${closedNCRs.length}`)
-            console.log('[SPY] NCRs con SCRAP_DESTRUCCION (cerrados):', closedNCRs.filter((n: any) =>
-                n.disposition?.disposition_type?.toUpperCase().includes('SCRAP')
-            ).map((n: any) => ({
-                batch: n.batch_code,
-                dispType: n.disposition?.disposition_type,
-                dispLiters: n.disposition?.liters_involved,
-                ncrLiters: n.liters_involved
-            })))
-
-            // Segregate by Disposition Type
-            // scrapTotal y reprocessTotal: solo de NCRs CERRADOS (disposición final confirmada)
-            let scrapTotal = 0;
-            let reprocessTotal = 0;
-            const dispositionStatsMap = new Map<string, number>()
-            const dispositionBatchesMap = new Map<string, Set<string>>()
-            const dispositionColorMap = new Map<string, string>()
-
-            // El gráfico de destino de material usa TODOS los NCRs con disposición (independiente del status)
-            ncrWithDisposition.forEach((item: any) => {
-                const isPiece = PIECE_FAMILIES.includes(item.family || '');
-                if (metricMode === 'LOTES' && isPiece) return;
-
-                // Prioridad: litros de la disposición → litros del NCR → 0
-                const dispLiters = Number(item.disposition?.liters_involved)
-                const ncrLiters = Number(item.liters_involved)
-                const rawVol = (dispLiters > 0 ? dispLiters : ncrLiters) || 0
-
-                const vol = metricMode === 'LITROS' ? (isPiece ? rawVol * 20 : rawVol) : 1;
-
-                const typeRaw = item.disposition?.disposition_type
-                    ? item.disposition.disposition_type.replace(/_/g, ' ')
-                    : 'PENDIENTE / SIN DISPOSICION'
-                const typeUpper = typeRaw.toUpperCase()
-
-                // Registrar volumen
-                dispositionStatsMap.set(typeRaw, (dispositionStatsMap.get(typeRaw) || 0) + vol)
-
-                // Registrar lote único (batch_code) por disposición
-                const batchKey = item.batch_code || item.id || String(Math.random())
-                const batchSet = dispositionBatchesMap.get(typeRaw) || new Set<string>()
-                batchSet.add(batchKey)
-                dispositionBatchesMap.set(typeRaw, batchSet)
-
-                // Color map
-                if (typeUpper.includes('SCRAP') || typeUpper.includes('DESECHO') || typeUpper.includes('DESTRUCCI')) {
-                    dispositionColorMap.set(typeRaw, '#ef4444')
-                } else if (typeUpper.includes('REPROCESO') || typeUpper.includes('AJUSTE')) {
-                    dispositionColorMap.set(typeRaw, '#f97316')
-                } else if (typeUpper.includes('CONCESION') || typeUpper.includes('DOWNGRADE') || typeUpper.includes('USE AS IS')) {
-                    dispositionColorMap.set(typeRaw, '#22c55e')
-                } else if (typeUpper.includes('HOLD') || typeUpper.includes('RETENCION')) {
-                    dispositionColorMap.set(typeRaw, '#3b82f6')
-                } else if (typeUpper.includes('PENDIENTE')) {
-                    dispositionColorMap.set(typeRaw, '#eab308')
-                } else {
-                    dispositionColorMap.set(typeRaw, '#94a3b8')
-                }
-            })
-
-            // KPIs de SCRAP y REPROCESO: solo de NCRs CERRADOS
-            closedNCRs.forEach((item: any) => {
-                const isPiece = PIECE_FAMILIES.includes(item.family || '');
-                if (metricMode === 'LOTES' && isPiece) return;
-
-                const dispLiters = Number(item.disposition?.liters_involved)
-                const ncrLiters = Number(item.liters_involved)
-                const rawVol = (dispLiters > 0 ? dispLiters : ncrLiters) || 0
-                const vol = metricMode === 'LITROS' ? (isPiece ? rawVol * 20 : rawVol) : 1;
-
-                const typeUpper = (item.disposition?.disposition_type || '').toUpperCase()
-
-                if (typeUpper.includes('SCRAP') || typeUpper.includes('DESECHO') || typeUpper.includes('DESTRUCCI')) {
-                    scrapTotal += vol
-                } else if (typeUpper.includes('REPROCESO') || typeUpper.includes('AJUSTE')) {
-                    reprocessTotal += vol
-                }
-            })
-
-            console.log('[SPY] scrapTotal:', scrapTotal, '| reprocessTotal:', reprocessTotal, '| baseTotal:', metricMode === 'LITROS' ? totalVolume : totalProduction)
-
-            // Format disposition data for chart
-            const fullDispositionData = Array.from(dispositionStatsMap.entries())
-                .map(([name, value]) => ({
-                    name,
-                    value,
-                    // Número de lotes únicos (batch_code) que tuvieron esta disposición
-                    count: dispositionBatchesMap.get(name)?.size || 0,
-                    color: dispositionColorMap.get(name) || '#94a3b8'
-                }))
-                .sort((a, b) => b.value - a.value)
-                .filter(d => d.value > 0)
-
-
-            // Cálculo correcto de KPIs:
-            // FTQ = (Total - Todos los NCRs con defecto) / Total  → mide «primera vez bien»
-            // SPY = (Total - Scrap CERRADO confirmado) / Total    → mide rendimiento final real
-            // Rework Rate = Reprocesos CERRADOS / Total
-
-            const baseTotal = metricMode === 'LITROS' ? totalVolume : totalProduction
-            const badFirstTime = metricMode === 'LITROS' ? volumeAffected : totalNCRs
-
-            const calcPercent = (val: number, total: number) => total > 0 ? (val / total) * 100 : 0
-
-            const ftq = baseTotal > 0 ? ((baseTotal - badFirstTime) / baseTotal) * 100 : 100
-            const spy = baseTotal > 0 ? ((baseTotal - scrapTotal) / baseTotal) * 100 : 100
-            const reworkRate = calcPercent(reprocessTotal, baseTotal)
-            const scrapRate = calcPercent(scrapTotal, baseTotal)
-
-            console.log('[SPY] Métricas finales:', { baseTotal, badFirstTime, scrapTotal, reprocessTotal, ftq, spy, reworkRate })
-
-            // Pareto Data (Defects)
-            const defectsMap = new Map<string, number>()
-            ncrWithDisposition.forEach((item: any) => {
-                const defect = item.defect_parameter || 'No Especificado'
-                const val = metricMode === 'LITROS' ? (Number(item.liters_involved) || 0) : 1
-                defectsMap.set(defect, (defectsMap.get(defect) || 0) + val)
-            })
-
-            // Pareto base: ordenar por volumen desc
-            const paretoData = Array.from(defectsMap.entries())
-                .map(([name, value]) => ({ name, value }))
-                .sort((a, b) => b.value - a.value)
-
-            // Pareto con % acumulado (para línea 80/20)
-            let cumulative = 0
-            const totalDefects = paretoData.reduce((s, d) => s + d.value, 0)
-            const paretoWithCumulative = paretoData.map(d => {
-                cumulative += d.value
-                return {
-                    ...d,
-                    cumPercent: totalDefects > 0 ? Math.round((cumulative / totalDefects) * 100) : 0
-                }
-            })
-
-
-            // Parámetros críticos: usar ncrData directamente (defect_parameter no depende de disposición)
-            const radarMap = new Map<string, number>()
-            ncrData.forEach((item: any) => {
-                const param = item.defect_parameter || 'Sin parametro'
-                radarMap.set(param, (radarMap.get(param) || 0) + 1)
-            })
-            const radarData = Array.from(radarMap.entries()).map(([param, count]) => ({ param, count }))
-            console.log('[SPY] radarData:', radarData, '| ncrData sample defect_parameter:', ncrData.slice(0, 3).map((n: any) => n.defect_parameter))
-            // Reprocess Breakdown — solo NCRs CERRADOS con disposición REPROCESO o AJUSTE
-            const reprocessItems = closedNCRs.filter((item: any) => {
-                const type = item.disposition?.disposition_type?.toUpperCase() || ''
-                return type.includes('REPROCESO') || type.includes('AJUSTE')
-            })
-
-            // ─── Diagnóstico detallado ────────────────────────────────────────────────
-            console.log(`[SPY] closedNCRs total: ${closedNCRs.length}`)
-            console.log('[SPY] closedNCRs por disposición:',
-                closedNCRs.map((n: any) => ({
-                    id: n.id,
-                    status: n.status,
-                    dispType: n.disposition?.disposition_type,
-                    defectParam: n.defect_parameter,
-                    liters: n.liters_involved,
-                    dispLiters: n.disposition?.liters_involved
-                }))
-            )
-            console.log(`[SPY] reprocessItems (filtrados REPROCESO/AJUSTE): ${reprocessItems.length}`)
-            console.log('[SPY] reprocessItems detalle:',
-                reprocessItems.map((n: any) => ({
-                    id: n.id,
-                    dispType: n.disposition?.disposition_type,
-                    defectParam: n.defect_parameter,
-                    liters: n.liters_involved,
-                    dispLiters: n.disposition?.liters_involved,
-                    family: n.family
-                }))
-            )
-            // ─────────────────────────────────────────────────────────────────────────
-
-            const reprocessMap = new Map<string, { vol: number; count: number }>()
-            reprocessItems.forEach((item: any) => {
-                const defect = item.defect_parameter || 'No Especificado'
-                const isPiece = PIECE_FAMILIES.includes(item.family || '')
-                const dispLiters = Number(item.disposition?.liters_involved)
-                const ncrLiters = Number(item.liters_involved)
-                const rawVol = (dispLiters > 0 ? dispLiters : ncrLiters) || 0
-                const vol = metricMode === 'LITROS' ? (isPiece ? rawVol * 20 : rawVol) : 1
-                const prev = reprocessMap.get(defect) || { vol: 0, count: 0 }
-                reprocessMap.set(defect, { vol: prev.vol + vol, count: prev.count + 1 })
-            })
-            const reprocessPareto = Array.from(reprocessMap.entries())
-                .map(([name, { vol, count }]) => ({ name, value: vol, count }))
-                .sort((a, b) => b.value - a.value)
-
-
-            setData({
-                summary: {
-                    total_input: baseTotal,
-                    first_pass_yield: ftq,
-                    final_yield: spy,
-                    rework_rate: reworkRate,
-                    scrap_rate: scrapRate
-                },
-                pareto_data: paretoWithCumulative,
-                disposition_data: fullDispositionData,
-                reprocess_data: reprocessPareto,
-                radar_data: radarData,
-                raw_ncrs: ncrWithDisposition
-            })
-
-        } catch (error) {
-            console.error('Error fetching SPY data:', error)
-        } finally {
-            setLoading(false)
+        return {
+            totalVolumeProducts,
+            totalPiecesBases,
+            totalVolumeBases,
+            totalVolumeUnified,
+            ftqVolume,
+            noConformeVolume,
+            affectedVolume,
+            totalNCRs,
+            ftqPercent,
+            finalYieldPercent,
+            conformesPH,
+            noConformesPH,
+            conformesPHLiters,
+            noConformesPHLiters,
+            conformesSolids,
+            warningSolids,
+            noConformesSolids,
+            conformesSolidsLiters,
+            warningSolidsLiters,
+            noConformesSolidsLiters
         }
-    }
+    }, [spyRecords])
 
-    // ─── Paleta corporativa: #0e0c9b (azul) → #c41f1a (rojo) ───────────────────
-    // Interpolación: Azul → Índigo → Violeta → Magenta/Ciruela → Rojo
-    const CORP_BLUE = '#0e0c9b'
-    const CORP_INDIGO = '#3b3ab5'
-    const CORP_VIOLET = '#6b3ab0'
-    const CORP_PLUM = '#9c2c7a'
-    const CORP_RED = '#c41f1a'
-    const CORP_AMBER = '#a8470e'   // acento cálido intermedio para "hold/pendiente"
+    // ─── B. DEDUCCIÓN AUTOMÁTICA DE PRODUCTO Y ESTÁNDARES ──────────
+    const { selectedProductCode, currentStandards, canvasSolids, canvasPH, controlChartData } = useMemo(() => {
+        const uniqueFilteredProducts = Array.from(new Set(spyRecords.map(r => r.codigo_producto).filter(Boolean)))
+        const productCode = uniqueFilteredProducts.length === 1 ? uniqueFilteredProducts[0] : "all"
 
-    // Colores para gráficos en arco de 5 pasos
-    const COLORS = [CORP_BLUE, CORP_INDIGO, CORP_VIOLET, CORP_PLUM, CORP_RED, CORP_AMBER, '#1e3a8a', '#7c3aed']
+        const standards = productCode !== "all" ? {
+            ph: PH_STANDARDS[productCode],
+            solids: PRODUCT_STANDARDS[productCode]
+        } : null
 
-    const DISPOSITION_COLORS: Record<string, string> = {
-        'REPROCESO': CORP_PLUM,     // magenta/ciruela
-        'AJUSTE FORMULA': CORP_VIOLET,   // violeta
-        'SCRAP DESTRUCCION': CORP_RED,      // rojo corporativo
-        'DESECHO': CORP_RED,
-        'DOWNGRADE': CORP_INDIGO,   // índigo
-        'HOLD INVESTIGACION': CORP_BLUE,     // azul corporativo
-        'CONCESION': '#1e3a8a',     // azul marino
-        'DEVOLUCION': CORP_AMBER,    // acento cálido
-        'PENDIENTE': '#6b7280',     // gris neutro
-    }
+        const chartData = spyRecords.map((r, i) => ({
+            index: i + 1,
+            lote: r.lote_producto,
+            ph: r.ph,
+            solidos: r.solidos_promedio,
+        }))
 
-    if (loading && !data) return (
-        <div className="h-[50vh] flex flex-col items-center justify-center space-y-4">
-            <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-slate-500">Analizando datos de calidad...</p>
-        </div>
-    )
+        // Cálculo de canvasSolids dinámico
+        let solidsDomain: [string | number, string | number] = ['auto', 'auto']
+        if (standards?.solids) {
+            const dataValues = chartData.map(d => d.solidos).filter(v => v !== null && v !== undefined) as number[]
+            const limits = [
+                (standards.solids.min || 0) * 0.95,
+                (standards.solids.max || 100) * 1.05,
+                (standards.solids.min || 0),
+                (standards.solids.max || 100)
+            ]
+            const allValues = [...dataValues, ...limits]
+            if (allValues.length > 0) {
+                const min = Math.min(...allValues)
+                const max = Math.max(...allValues)
+                const padding = (max - min) * 0.05
+                solidsDomain = [parseFloat((min - padding).toFixed(2)), parseFloat((max + padding).toFixed(2))]
+            }
+        }
 
-    // Derived Metric Unit
-    const UNIT = metricMode === 'LITROS' ? 'L' : 'Lotes'
+        // Cálculo de canvasPH dinámico
+        let phDomain: [string | number, string | number] = ['auto', 'auto']
+        if (standards?.ph) {
+            const dataValues = chartData.map(d => d.ph).filter(v => v !== null && v !== undefined) as number[]
+            const limits = [standards.ph.min, standards.ph.max]
+            const allValues = [...dataValues, ...limits]
+            if (allValues.length > 0) {
+                const min = Math.min(...allValues)
+                const max = Math.max(...allValues)
+                phDomain = [parseFloat((min - 0.5).toFixed(1)), parseFloat((max + 0.5).toFixed(1))]
+            }
+        }
 
-    // Safe destructuring
-    const summary = data?.summary || { total_input: 0, first_pass_yield: 0, final_yield: 0, rework_rate: 0, scrap_rate: 0 }
-    const pareto = data?.pareto_data || []
-    const dispositionData = data?.disposition_data || []
-    const reprocessData = data?.reprocess_data || []
-    const radarData = data?.radar_data || []
+        return {
+            selectedProductCode: productCode,
+            currentStandards: standards,
+            canvasSolids: solidsDomain,
+            canvasPH: phDomain,
+            controlChartData: chartData
+        }
+    }, [spyRecords])
+
+    // ─── C. DATOS PARA GRÁFICOS (PARETO, RADIAL, SUCURSAL) ───────────
+    const chartsData = useMemo(() => {
+        const defects = { ph: 0, solidos: 0, apariencia: 0 }
+
+        spyRecords.forEach(r => {
+            const isPiece = PIECE_FAMILIES.includes(r.familia_producto || '')
+            const val = Number(r.tamano_lote) || 0
+            const vol = isPiece ? (val * 20) : val
+            const weight = vol
+
+            if (r.analysis?.phStatus === 'no-conforme') {
+                defects.ph += weight
+            }
+            if (r.analysis?.solidsStatus === 'semi-conforme' || r.analysis?.solidsStatus === 'no-conforme') {
+                defects.solidos += weight
+            }
+            if (r.analysis?.appearanceStatus === 'no-conforme') {
+                defects.apariencia += weight
+            }
+        })
+
+        const paretoRaw = [
+            { name: "Sólidos", count: defects.solidos },
+            { name: "pH", count: defects.ph },
+            { name: "Apariencia", count: defects.apariencia },
+        ].sort((a, b) => b.count - a.count)
+
+        let accum = 0
+        const totalDef = paretoRaw.reduce((sum, item) => sum + item.count, 0)
+        const paretoData = paretoRaw.map(item => {
+            accum += item.count
+            return {
+                ...item,
+                accumulatedPercent: totalDef > 0 ? Math.round((accum / totalDef) * 100) : 0
+            }
+        })
+
+        // Radar chart
+        const radarData = [
+            { param: "pH", count: spyRecords.filter(r => r.analysis?.phStatus === 'no-conforme').length },
+            { param: "Sólidos", count: spyRecords.filter(r => r.analysis?.solidsStatus === 'semi-conforme' || r.analysis?.solidsStatus === 'no-conforme').length },
+            { param: "Apariencia", count: spyRecords.filter(r => r.analysis?.appearanceStatus === 'no-conforme').length },
+        ]
+
+        // Sucursal breakdown
+        const groupedSucursal: Record<string, { name: string, conformes: number, semiConformes: number, noConformes: number }> = {}
+        spyRecords.forEach(r => {
+            const suc = r.sucursal || "Sin Sucursal"
+            if (!groupedSucursal[suc]) {
+                groupedSucursal[suc] = { name: suc, conformes: 0, semiConformes: 0, noConformes: 0 }
+            }
+
+            const overall = r.analysis?.overallStatus || 'na'
+            if (overall === 'conforme') {
+                groupedSucursal[suc].conformes++
+            } else if (overall === 'semi-conforme') {
+                groupedSucursal[suc].semiConformes++
+            } else if (overall === 'no-conforme') {
+                groupedSucursal[suc].noConformes++
+            }
+        })
+
+        const sucursalData = Object.values(groupedSucursal).sort((a, b) => 
+            (b.conformes + b.semiConformes + b.noConformes) - (a.conformes + a.semiConformes + a.noConformes)
+        )
+
+        return {
+            paretoData,
+            radarData,
+            sucursalData
+        }
+    }, [spyRecords])
 
     return (
-        <>
-        <div className="space-y-6 pb-12">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-                        Análisis de Rendimiento (SPY / Yield)
-                    </h1>
-                    <p className="text-slate-500 dark:text-slate-400">
-                        Indicadores de calidad a la primera y recuperación.
-                    </p>
+        <div className="space-y-6">
+            
+            {/* Cabecera interna de controles rápidos */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50 dark:bg-slate-900 p-4 rounded-[1.5rem] border border-slate-200/60 dark:border-slate-800">
+                <div className="flex items-center gap-2">
+                    <Activity className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200">Visualización Unificada</span>
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <Select value={timeRange} onValueChange={setTimeRange}>
-                        <SelectTrigger className="w-[180px]">
-                            <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
-                            <SelectValue placeholder="Periodo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="7">Últimos 7 días</SelectItem>
-                            <SelectItem value="30">Últimos 30 días</SelectItem>
-                            <SelectItem value="90">Últimos 90 días</SelectItem>
-                            <SelectItem value="365">Último Año</SelectItem>
-                        </SelectContent>
-                    </Select>
-
-                    <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
-                        <button
-                            onClick={() => setMetricMode('LOTES')}
-                            className={`px-3 py-1.5 text-xs font-bold uppercase rounded-md transition-colors flex items-center gap-2 ${metricMode === 'LOTES' ? 'bg-white shadow-sm text-blue-900' : 'text-slate-500'}`}
-                        >
-                            <Package className="h-3 w-3" />
-                            Por Lotes
-                        </button>
-                        <button
-                            onClick={() => setMetricMode('LITROS')}
-                            className={`px-3 py-1.5 text-xs font-bold uppercase rounded-md transition-colors flex items-center gap-2 ${metricMode === 'LITROS' ? 'bg-white shadow-sm text-blue-900' : 'text-slate-500'}`}
-                        >
-                            <Scale className="h-3 w-3" />
-                            Por Litros
-                        </button>
-                    </div>
-
                     <Button
                         variant="outline"
                         size="sm"
@@ -506,178 +356,189 @@ export default function SPYReportPage() {
                         onClick={() => setShowPrintModal(true)}
                     >
                         <Printer className="h-4 w-4" />
-                        Generar Reporte
+                        Imprimir Calidad
                     </Button>
                 </div>
             </div>
 
-            {/* KPIs */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* ─── FILA 1: CARDS DE KPIS PREMIUM ────────────────────────────── */}
+            <div className="space-y-4">
+                
+                {/* 1. Card Volumen Total - Horizontal, Ancho Completo */}
+                <Card className="border shadow-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-[2rem] overflow-hidden">
+                    <CardContent className="p-6">
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
 
-                {/* KPI 1: Volumen Total */}
-                <Card className="border-none shadow-md bg-gradient-to-br from-blue-900 to-blue-950 text-white dark:from-blue-950 dark:to-slate-900 rounded-[2rem]">
-                    <CardContent className="p-8 relative overflow-hidden">
-                        <div className="relative z-10">
-                            <div className="mb-4">
-                                <p className="text-blue-200 font-semibold mb-3 flex items-center gap-2 text-base">
-                                    <Activity className="h-6 w-6" />
-                                    VOLUMEN TOTAL
+                            {/* Panel Principal */}
+                            <div className="flex items-center gap-4 lg:pr-8 lg:border-r border-slate-200 dark:border-slate-700">
+                                <div className="p-4 bg-indigo-50 dark:bg-indigo-900/30 rounded-[1.2rem] text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800/50">
+                                    <Factory className="h-8 w-8" />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
+                                        Volumen Total Producido
+                                    </p>
+                                    <div className="text-4xl font-black mt-1 tracking-tight text-slate-900 dark:text-white flex items-baseline">
+                                        {stats.totalVolumeUnified.toLocaleString()}
+                                        <span className="text-lg font-bold text-indigo-500 dark:text-indigo-400 ml-1.5">L</span>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 mt-0.5">
+                                        Consolidado PT + Bases unificadas (×20)
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Desglose Segmento 1: Productos Terminados */}
+                            <div className="flex-1 flex items-center gap-3">
+                                <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                    <Package className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Productos Terminados</p>
+                                    <p className="text-xl font-black text-slate-800 dark:text-slate-200 mt-0.5 tracking-tight">
+                                        {stats.totalVolumeProducts.toLocaleString()} <span className="text-xs font-semibold text-slate-400">L</span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Desglose Segmento 2: Bases en Piezas */}
+                            <div className="flex-1 flex items-center gap-3">
+                                <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                    <Box className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Bases Fabricadas</p>
+                                    <p className="text-xl font-black text-slate-800 dark:text-slate-200 mt-0.5 tracking-tight">
+                                        {stats.totalPiecesBases.toLocaleString()} <span className="text-xs font-semibold text-slate-400">pzs</span>
+                                        <span className="text-xs text-indigo-400 ml-2 font-normal">({stats.totalVolumeBases.toLocaleString()} L eq)</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* 2. Cards de Calidad y Yield (FTQ / SPY) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    
+                    {/* Card FTQ: Calidad a la primera */}
+                    <Card className="border shadow-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-[1.8rem] overflow-visible relative transition-all duration-300 hover:shadow-md">
+                        <CardContent className="p-6">
+                            <div className="pr-10">
+                                <p className="text-[10px] font-bold text-green-600 dark:text-green-400 uppercase tracking-widest">
+                                    First Time Quality (FTQ)
                                 </p>
-                                <div className="text-5xl font-extrabold tracking-tight leading-none">
-                                    {summary.total_input?.toLocaleString()}
-                                    <span className="text-xl font-semibold opacity-80 ml-2">{UNIT}</span>
+                                <div className="text-5xl font-black text-slate-900 dark:text-white mt-3 tracking-tight">
+                                    {stats.ftqPercent.toFixed(1)}%
                                 </div>
-                                <p className="text-base text-blue-200 mt-3 opacity-80 font-medium">
-                                    Producido en el periodo
+                                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">del total producido</p>
+                                <p className="text-xs font-bold text-green-600 dark:text-green-400 mt-2.5 flex items-center gap-1">
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                    {stats.ftqVolume.toLocaleString()} L bien a la primera
                                 </p>
                             </div>
-                        </div>
-                        <Activity className="absolute -right-8 -bottom-8 h-48 w-48 text-white opacity-10 rotate-12" />
-                    </CardContent>
-                </Card>
-
-                {/* KPI 2: First Time Quality (FTQ) */}
-                <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-slate-900 dark:to-slate-800 relative overflow-visible rounded-[2rem]">
-                    <CardContent className="p-6 h-full flex flex-col justify-between">
-                        <div>
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="flex-1 pr-12">
-                                    <h3 className="text-base font-extrabold text-green-700 dark:text-green-400 tracking-wide mb-2 uppercase">FIRST TIME QUALITY</h3>
-                                    <div className="text-5xl font-extrabold text-slate-900 dark:text-white mt-1 leading-none">
-                                        {summary.first_pass_yield?.toFixed(1)}%
-                                    </div>
-                                    <p className="text-sm text-green-700 dark:text-green-400 font-medium mt-2">Aprobado sin incidentes</p>
-                                </div>
-                                <div className="absolute -top-3 -right-3 p-4 bg-green-100 dark:bg-green-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
-                                    <CheckCircle2 className="h-10 w-10 text-green-700 dark:text-green-400" />
-                                </div>
+                            <div className="absolute -top-3 -right-3 p-4 bg-green-100 dark:bg-green-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
+                                <TrendingUp className="h-10 w-10 text-green-700 dark:text-green-400" />
                             </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
 
-                {/* KPI 3: Final Yield (SPY) */}
-                <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 relative overflow-visible rounded-[2rem]">
-                    <CardContent className="p-6 h-full flex flex-col justify-between">
-                        <div>
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="flex-1 pr-12">
-                                    <h3 className="text-base font-extrabold text-indigo-700 dark:text-indigo-400 tracking-wide mb-2 uppercase">FINAL YIELD (SPY)</h3>
-                                    <div className="text-5xl font-extrabold text-slate-900 dark:text-white mt-1 leading-none">
-                                        {summary.final_yield?.toFixed(2)}%
-                                    </div>
-                                    <p className="text-sm text-indigo-700 dark:text-indigo-400 font-medium mt-2">Incluyendo recuperaciones</p>
+                    {/* Card SPY: Final Yield */}
+                    <Card className="border shadow-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-[1.8rem] overflow-visible relative transition-all duration-300 hover:shadow-md">
+                        <CardContent className="p-6">
+                            <div className="pr-10">
+                                <p className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
+                                    Final Yield (Rendimiento)
+                                </p>
+                                <div className="text-5xl font-black text-slate-900 dark:text-white mt-3 tracking-tight">
+                                    {stats.finalYieldPercent.toFixed(2)}%
                                 </div>
-                                <div className="absolute -top-3 -right-3 p-4 bg-indigo-100 dark:bg-indigo-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
-                                    <TrendingUp className="h-10 w-10 text-indigo-700 dark:text-indigo-400" />
-                                </div>
+                                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">del total producido</p>
+                                <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 mt-2.5 flex items-center gap-1">
+                                    <AlertCircle className="h-3.5 w-3.5" />
+                                    {stats.affectedVolume.toLocaleString()} L intervenidos / no conformes
+                                </p>
                             </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* KPI 4: Tasa de Reproceso */}
-                <Card className="border-none shadow-lg dark:bg-slate-900 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-slate-900 dark:to-slate-800 relative overflow-visible rounded-[2rem]">
-                    <CardContent className="p-6 h-full flex flex-col justify-between">
-                        <div>
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="flex-1 pr-12">
-                                    <h3 className="text-base font-extrabold text-orange-700 dark:text-orange-400 tracking-wide mb-2 uppercase">TASA DE REPROCESO</h3>
-                                    <div className="text-5xl font-extrabold text-slate-900 dark:text-white mt-1 leading-none">
-                                        {summary.rework_rate?.toFixed(1)}%
-                                    </div>
-                                    <p className="text-sm text-orange-700 dark:text-orange-400 font-medium mt-2">Intervenidos</p>
-                                </div>
-                                <div className="absolute -top-3 -right-3 p-4 bg-orange-100 dark:bg-orange-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
-                                    <RefreshCcw className="h-10 w-10 text-orange-700 dark:text-orange-400" />
-                                </div>
+                            <div className="absolute -top-3 -right-3 p-4 bg-indigo-100 dark:bg-indigo-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
+                                <Activity className="h-10 w-10 text-indigo-700 dark:text-indigo-400" />
                             </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
-
-                {/* 1. Pareto real con barras verticales y línea acumulada */}
-                <Card className="col-span-1 border-none shadow-sm rounded-[2rem] bg-white dark:bg-slate-900">
-                    <CardHeader>
-                        <CardTitle className="text-slate-700 dark:text-slate-200">Pareto de Defectos</CardTitle>
-                        <CardDescription>Causas de No Conformidad — barras de mayor a menor, línea naranja = % acumulado</CardDescription>
+            {/* ─── FILA 2: PARETO Y RADIAL LADO A LADO ───────────────────────── */}
+            <div className="grid gap-6 grid-cols-1 lg:grid-cols-5">
+                
+                {/* 1. Pareto de Defectos (60%) */}
+                <Card className="border-none shadow-sm rounded-[2rem] bg-white dark:bg-slate-900 lg:col-span-3 border border-slate-100 dark:border-slate-800">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-slate-700 dark:text-slate-200 text-lg font-bold">Pareto de Defectos</CardTitle>
+                        <CardDescription className="text-xs">
+                            Causas de No Conformidad en el período (Fila del 80% en ciruela)
+                        </CardDescription>
                     </CardHeader>
                     <CardContent className="pb-6 pr-4">
-                        <div style={{ width: '100%', height: 340 }}>
-                            {pareto.length > 0 ? (
+                        <div style={{ width: '100%', height: 320 }}>
+                            {chartsData.paretoData.length > 0 && spyRecords.length > 0 ? (
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <ComposedChart data={pareto} margin={{ top: 20, right: 60, left: 10, bottom: 60 }}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.3} />
-                                        {/* Eje X: nombres de los defectos (bottom) */}
+                                    <ComposedChart data={chartsData.paretoData} margin={{ top: 20, right: 40, left: 10, bottom: 20 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.2} />
                                         <XAxis
                                             dataKey="name"
-                                            tick={{ fontSize: 11, fill: '#64748b' }}
+                                            tick={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }}
                                             axisLine={false}
                                             tickLine={false}
-                                            angle={-35}
-                                            textAnchor="end"
-                                            interval={0}
-                                            height={60}
                                         />
-                                        {/* Eje Y izquierdo: volumen de defectos */}
                                         <YAxis
                                             yAxisId="vol"
-                                            tick={{ fill: '#94a3b8', fontSize: 11 }}
+                                            tick={{ fill: '#64748b', fontSize: 11 }}
                                             axisLine={false}
                                             tickLine={false}
                                             tickFormatter={(v) => Number(v).toLocaleString()}
-                                            width={55}
+                                            width={45}
                                         />
-                                        {/* Eje Y derecho: porcentaje acumulado 0-100 */}
                                         <YAxis
                                             yAxisId="pct"
                                             orientation="right"
                                             domain={[0, 100]}
                                             tickFormatter={(v) => `${v}%`}
-                                            tick={{ fill: CORP_PLUM, fontSize: 11 }}
+                                            tick={{ fill: '#9c2c7a', fontSize: 11 }}
                                             axisLine={false}
                                             tickLine={false}
                                             ticks={[0, 20, 40, 60, 80, 100]}
-                                            width={42}
+                                            width={38}
                                         />
                                         <Tooltip
-                                            cursor={{ fill: 'rgba(14,12,155,0.04)' }}
-                                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                            cursor={{ fill: 'rgba(99, 102, 241, 0.04)' }}
+                                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
                                             formatter={((value: any, name: string) => {
-                                                if (name === 'cumPercent') return [`${value}%`, '% Acumulado']
-                                                return [`${Number(value).toLocaleString()} ${UNIT}`, 'Cantidad']
+                                                if (name === 'accumulatedPercent') return [`${value}%`, '% Acumulado']
+                                                return [`${Number(value).toLocaleString()} L`, 'Cantidad']
                                             }) as any}
                                         />
-                                        {/* Barras verticales de volumen — azul corporativo */}
-                                        <Bar yAxisId="vol" dataKey="value" fill={CORP_BLUE} radius={[6, 6, 0, 0]} maxBarSize={60} />
-                                        {/* Línea de % acumulado — rojo corporativo */}
+                                        <Bar yAxisId="vol" dataKey="count" fill="#0e0c9b" radius={[6, 6, 0, 0]} maxBarSize={50} />
                                         <Line
                                             yAxisId="pct"
-                                            dataKey="cumPercent"
+                                            dataKey="accumulatedPercent"
                                             type="monotone"
-                                            stroke={CORP_RED}
+                                            stroke="#c41f1a"
                                             strokeWidth={2.5}
-                                            dot={{ r: 4, fill: CORP_RED, stroke: '#fff', strokeWidth: 2 }}
-                                            activeDot={{ r: 6 }}
+                                            dot={{ r: 4, fill: '#c41f1a', stroke: '#fff', strokeWidth: 2 }}
                                         />
-                                        {/* Umbral 80% — ciruela corporativo */}
                                         <ReferenceLine
                                             yAxisId="pct"
                                             y={80}
-                                            stroke={CORP_PLUM}
+                                            stroke="#9c2c7a"
                                             strokeWidth={1.5}
                                             strokeDasharray="6 4"
                                             label={{
                                                 value: '— 80%',
                                                 position: 'insideTopLeft',
-                                                fill: CORP_PLUM,
+                                                fill: '#9c2c7a',
                                                 fontSize: 10,
                                                 fontWeight: 700,
-                                                dy: -8,
-                                                dx: 4
+                                                dy: -8
                                             }}
                                         />
                                     </ComposedChart>
@@ -685,402 +546,512 @@ export default function SPYReportPage() {
                             ) : (
                                 <div className="h-full flex items-center justify-center text-muted-foreground text-sm flex-col gap-2">
                                     <CheckCircle2 className="h-8 w-8 text-green-400 opacity-50" />
-                                    <p>No hay defectos en este periodo</p>
+                                    <p>Todos los lotes se produjeron perfectamente</p>
                                 </div>
                             )}
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* 2. Parámetros críticos — RadarChart */}
-                <Card className="col-span-1 border-none shadow-sm rounded-[2rem] bg-white dark:bg-slate-900">
-                    <CardHeader>
-                        <CardTitle className="text-slate-700 dark:text-slate-200">Parámetros Críticos</CardTitle>
-                        <CardDescription>Frecuencia de incidencias por parámetro (# NCRs)</CardDescription>
+                {/* 2. Parámetros Críticos Radial Chart (40%) */}
+                <Card className="border-none shadow-sm rounded-[2rem] bg-white dark:bg-slate-900 lg:col-span-2 border border-slate-100 dark:border-slate-800">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-slate-700 dark:text-slate-200 text-lg font-bold">Parámetros Críticos</CardTitle>
+                        <CardDescription className="text-xs">Frecuencia de fallos analíticos (# NCRs)</CardDescription>
                     </CardHeader>
-                    <CardContent className="pb-6 pr-6">
-                        <div style={{ width: '100%', height: 320 }}>
-                            {radarData.length > 0 ? (
+                    <CardContent className="pb-6 flex justify-center items-center">
+                        <div style={{ width: '100%', height: 320 }} className="flex justify-center items-center">
+                            {spyRecords.length > 0 && stats.totalNCRs > 0 ? (
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <RadarChart data={radarData} margin={{ top: 20, right: 40, bottom: 20, left: 40 }}>
+                                    <RadarChart data={chartsData.radarData} margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
                                         <PolarGrid stroke="#e2e8f0" />
-                                        <PolarAngleAxis dataKey="param" tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }} />
+                                        <PolarAngleAxis dataKey="param" tick={{ fill: '#64748b', fontSize: 11, fontWeight: 700 }} />
                                         <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={{ fill: '#94a3b8', fontSize: 9 }} tickCount={4} />
-                                        <Radar name="NCRs" dataKey="count" stroke={CORP_BLUE} fill={CORP_VIOLET} fillOpacity={0.2} strokeWidth={2} />
+                                        <Radar name="Fallos" dataKey="count" stroke="#0e0c9b" fill="#6b3ba0" fillOpacity={0.15} strokeWidth={2} />
                                         <Tooltip
-                                            formatter={(value: any) => [`${value} NCRs`, 'Incidencias']}
-                                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                            formatter={(value: any) => [`${value} lotes`, 'Incidencias']}
+                                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
                                         />
                                     </RadarChart>
                                 </ResponsiveContainer>
                             ) : (
                                 <div className="h-full flex items-center justify-center text-muted-foreground text-sm flex-col gap-2">
-                                    <Activity className="h-8 w-8 text-slate-300" />
-                                    <p>Sin datos de parámetros</p>
+                                    <CheckCircle2 className="h-8 w-8 text-green-400 opacity-40" />
+                                    <p className="text-center px-4">Sin incidencias ni desviaciones de calidad registradas</p>
                                 </div>
                             )}
                         </div>
                     </CardContent>
                 </Card>
-
-                {/* 3. Destino de Material — barras horizontales individuales por disposición */}
-                <Card className="col-span-1 md:col-span-2 border-none shadow-sm rounded-[2rem] bg-white dark:bg-slate-900">
-                    <CardHeader>
-                        <CardTitle className="text-slate-700 dark:text-slate-200">Destino de Material No Conforme</CardTitle>
-                        <CardDescription>Volumen ({UNIT}) por tipo de disposición — ordenado de mayor a menor impacto</CardDescription>
-                    </CardHeader>
-                    <CardContent className="pb-6 pr-6">
-                        <div style={{ width: '100%', height: Math.max(220, dispositionData.length * 52) }}>
-                            {dispositionData.length > 0 ? (() => {
-                                const sorted = [...dispositionData].sort((a: any, b: any) => b.value - a.value)
-                                const maxVal = sorted[0]?.value || 1
-                                return (
-                                    <div className="flex flex-col gap-3 pt-2">
-                                        {sorted.map((entry: any) => (
-                                            <div key={entry.name} className="flex items-center gap-3 group relative">
-                                                {/* Etiqueta */}
-                                                <span className="w-36 text-xs font-semibold text-slate-600 dark:text-slate-400 text-right shrink-0 truncate" title={entry.name}>
-                                                    {entry.name}
-                                                </span>
-                                                {/* Barra con tooltip */}
-                                                <div className="flex-1 relative h-8 rounded-full overflow-visible bg-slate-100 dark:bg-slate-800">
-                                                    <div
-                                                        className="h-full rounded-full transition-all duration-500 ease-out cursor-pointer"
-                                                        style={{
-                                                            width: `${(entry.value / maxVal) * 100}%`,
-                                                            backgroundColor: entry.color,
-                                                            opacity: 0.85
-                                                        }}
-                                                    />
-                                                    {/* Tooltip flotante */}
-                                                    <div className="
-                                                        absolute bottom-full left-1/4 mb-2 z-50
-                                                        opacity-0 group-hover:opacity-100
-                                                        transition-opacity duration-200 pointer-events-none
-                                                    ">
-                                                        <div className="bg-slate-900 text-white text-xs rounded-xl px-3 py-2 shadow-lg whitespace-nowrap">
-                                                            <p className="font-bold" style={{ color: entry.color }}>{entry.name}</p>
-                                                            <p className="mt-0.5">{Number(entry.value).toLocaleString()} {UNIT}</p>
-                                                            <p className="text-slate-400">{entry.count || 0} lote{entry.count !== 1 ? 's' : ''} comprometido{entry.count !== 1 ? 's' : ''}</p>
-                                                        </div>
-                                                        {/* Triángulo */}
-                                                        <div className="w-2 h-2 bg-slate-900 rotate-45 mx-auto -mt-1" />
-                                                    </div>
-                                                </div>
-                                                {/* Valor */}
-                                                <span className="w-24 text-xs font-bold shrink-0" style={{ color: entry.color }}>
-                                                    {Number(entry.value).toLocaleString()} {UNIT}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )
-                            })() : (
-                                <div className="h-full flex items-center justify-center text-muted-foreground text-sm flex-col gap-2">
-                                    <Activity className="h-8 w-8 text-slate-300" />
-                                    <p>No hay datos de disposición en este periodo</p>
-                                </div>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
-
-
-                {/* 5. Causas de Reproceso */}
-                <Card className="col-span-1 md:col-span-2 border-none shadow-sm rounded-[2rem] bg-white dark:bg-slate-900">
-                    <CardHeader>
-                        <CardTitle className="text-slate-700 dark:text-slate-200">Causas de Reproceso</CardTitle>
-                        <CardDescription>
-                            Parámetros que derivaron en reproceso o ajuste en NCRs cerrados
-                            {reprocessData.length > 0 && (
-                                <span className="ml-2 text-orange-600 font-semibold">
-                                    ({reprocessData.reduce((s: number, d: any) => s + d.count, 0)} NCRs • {reprocessData.reduce((s: number, d: any) => s + d.value, 0).toLocaleString()} {UNIT} totales)
-                                </span>
-                            )}
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="pb-6 pr-6">
-                        <div style={{ width: '100%', height: Math.max(200, reprocessData.length * 58) }}>
-                            {reprocessData.length > 0 ? (() => {
-                                const maxVal = reprocessData[0]?.value || 1
-                                const totalVol = reprocessData.reduce((s: number, d: any) => s + d.value, 0)
-                                return (
-                                    <div className="flex flex-col gap-4 pt-2">
-                                        {reprocessData.map((entry: any, idx: number) => {
-                                            const palette = [CORP_BLUE, CORP_INDIGO, CORP_VIOLET, CORP_PLUM, CORP_RED]
-                                            const c1 = palette[Math.min(idx, palette.length - 1)]
-                                            const c2 = palette[Math.min(idx + 1, palette.length - 1)]
-                                            return (
-                                                <div key={entry.name} className="flex items-center gap-3">
-                                                    {/* Etiqueta + conteo */}
-                                                    <div className="w-36 shrink-0 text-right">
-                                                        <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 truncate" title={entry.name}>{entry.name}</p>
-                                                        <p className="text-[10px] font-medium" style={{ color: CORP_BLUE }}>{entry.count} NCR{entry.count !== 1 ? 's' : ''}</p>
-                                                    </div>
-                                                    {/* Barra */}
-                                                    <div className="flex-1 relative h-8 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-                                                        <div
-                                                            className="h-full rounded-full transition-all duration-500 ease-out"
-                                                            style={{
-                                                                width: `${(entry.value / maxVal) * 100}%`,
-                                                                background: `linear-gradient(90deg, ${c1}, ${c2})`,
-                                                            }}
-                                                        />
-                                                    </div>
-                                                    {/* Valor + % */}
-                                                    <div className="w-28 shrink-0">
-                                                        <p className="text-xs font-bold" style={{ color: c1 }}>{Number(entry.value).toLocaleString()} {UNIT}</p>
-                                                        <p className="text-[10px] text-slate-400">{totalVol > 0 ? Math.round((entry.value / totalVol) * 100) : 0}% del reproceso</p>
-                                                    </div>
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
-                                )
-                            })() : (
-                                <div className="h-full flex items-center justify-center text-muted-foreground text-sm flex-col gap-2">
-                                    <CheckCircle2 className="h-8 w-8 text-green-400 opacity-50" />
-                                    <p>No hay reprocesos cerrados en este periodo</p>
-                                </div>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
-
             </div>
-        </div >
 
-        {/* Print Modal */}
-        <DateRangeModal
-            open={showPrintModal}
-            onClose={() => setShowPrintModal(false)}
-            onConfirm={(dateFrom, dateTo) => {
-                setShowPrintModal(false)
-                setPrintView({ dateFrom, dateTo })
-            }}
-            title="Reporte SPY (Yield)"
-        />
+            {/* ─── FILA 3: CONFORMIDAD POR SUCURSAL ─────────────────────────── */}
+            <Card className="border-none shadow-sm rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                <CardHeader>
+                    <CardTitle className="text-slate-700 dark:text-slate-200 text-lg font-bold">Conformidad por Sucursal</CardTitle>
+                    <CardDescription className="text-xs">Rendimiento y distribución de lotes conformes, semi-conformes y no-conformes por sucursal</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {chartsData.sucursalData.length > 0 ? (
+                        <div className="h-[300px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={chartsData.sucursalData} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.2} />
+                                    <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} tick={{ fill: '#64748b', fontWeight: 600 }} />
+                                    <YAxis fontSize={11} tickLine={false} axisLine={false} tick={{ fill: '#64748b' }} />
+                                    <Tooltip
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+                                    />
+                                    <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                                    <Bar dataKey="conformes" name="Conformes" stackId="a" fill="#22c55e" radius={[0, 0, 0, 0]} />
+                                    <Bar dataKey="semiConformes" name="Semi-Conformes" stackId="a" fill="#eab308" radius={[0, 0, 0, 0]} />
+                                    <Bar dataKey="noConformes" name="No Conformes" stackId="a" fill="#c41f1a" radius={[6, 6, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    ) : (
+                        <div className="h-48 flex items-center justify-center text-slate-400 text-sm">
+                            No hay información de sucursales para mostrar.
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
 
-        {/* Print View */}
-        {printView && data && (() => {
-            const s = data.summary || {}
-            const paretoItems = data.pareto_data || []
-            const dispItems = data.disposition_data || []
-            const reprocessItems = data.reprocess_data || []
-            const unit = metricMode === 'LITROS' ? 'L' : 'Lotes'
+            {/* ─── FILTROS RÁPIDOS ──────────────────────────────────────────────── */}
+            <Card className="border-none shadow-sm rounded-[1.5rem] bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800">
+                <CardContent className="p-4">
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 shrink-0">
+                            <Filter className="h-4 w-4" />
+                            <span className="text-xs font-bold uppercase tracking-wider">Filtros Rápidos:</span>
+                        </div>
 
-            const yieldPieData = [
-                { name: 'First Pass (FTQ)', value: s.first_pass_yield || 0, color: '#16a34a' },
-                { name: 'Final Yield (SPY)', value: (s.final_yield || 0) - (s.first_pass_yield || 0), color: '#0e0c9b' },
-                { name: 'Scrap / Perdida', value: 100 - (s.final_yield || 0), color: '#dc2626' }
-            ].filter(d => d.value > 0)
+                        {showSucursalFilter && (
+                            <Select value={filterSucursal} onValueChange={setFilterSucursal}>
+                                <SelectTrigger className="h-8 w-[175px] text-xs rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                                    <SelectValue placeholder="Ubicación" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Todas las sucursales</SelectItem>
+                                    {SUCURSALES.map(s => (
+                                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        )}
 
-            const paretoChartData = paretoItems.slice(0, 8).map((d: any) => ({
-                name: d.name,
-                value: d.value
-            }))
+                        <Select value={filterProduct} onValueChange={setFilterProduct}>
+                            <SelectTrigger className="h-8 w-[175px] text-xs rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                                <SelectValue placeholder="Código" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Todos los códigos</SelectItem>
+                                {uniqueProducts.map(p => (
+                                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
 
-            const recoveryOpportunity = 100 - (s.first_pass_yield || 0)
-            const recoveredCount = (s.final_yield || 0) - (s.first_pass_yield || 0)
-            const efficiency = recoveryOpportunity > 0 ? (recoveredCount / recoveryOpportunity * 100).toFixed(1) : '0'
+                        <Select value={filterPeriod} onValueChange={setFilterPeriod}>
+                            <SelectTrigger className="h-8 w-[145px] text-xs rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                                <SelectValue placeholder="Período" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Todo el período</SelectItem>
+                                <SelectItem value="7d">Últimos 7 días</SelectItem>
+                                <SelectItem value="30d">Últimos 30 días</SelectItem>
+                                <SelectItem value="3m">Últimos 3 meses</SelectItem>
+                                <SelectItem value="6m">Últimos 6 meses</SelectItem>
+                                <SelectItem value="1y">Último año</SelectItem>
+                            </SelectContent>
+                        </Select>
 
-            // Top 5 Products with Inconsistencies (Sense-making data)
-            const productNCRs: Record<string, number> = {}
-            if (data.raw_ncrs) {
-                data.raw_ncrs.forEach((n: any) => {
-                    const p = n.nombre_producto || 'No Identificado'
-                    const isPiece = PIECE_FAMILIES.includes(n.family || '')
-                    const dispLiters = Number(n.disposition?.liters_involved)
-                    const ncrLiters = Number(n.liters_involved)
-                    const rawVol = (dispLiters > 0 ? dispLiters : ncrLiters) || 0
-                    const vol = metricMode === 'LITROS' ? (isPiece ? rawVol * 20 : rawVol) : 1
-                    productNCRs[p] = (productNCRs[p] || 0) + vol
-                })
-            }
-            const topProducts = Object.entries(productNCRs)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 5)
-                .map(([name, value]) => ({ name, value }))
+                        <span className="ml-auto text-xs text-slate-400 dark:text-slate-500 font-medium shrink-0">
+                            {spyRecords.length} registro{spyRecords.length !== 1 ? 's' : ''}
+                        </span>
+                    </div>
+                </CardContent>
+            </Card>
 
-            return (
+            {/* ─── FILA 4: GRÁFICOS DE CONTROL Y CONFORMIDAD DE SÓLIDOS ────────── */}
+            <div className="space-y-6">
+                
+                <div className="border-t border-slate-200/60 dark:border-slate-800 pt-6">
+                    <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                        <Scale className="h-5 w-5 text-yellow-500" />
+                        Control del Porcentaje (%) de Sólidos
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                        Historial analítico del control de sólidos en tiempo real en base a los estándares del catálogo.
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Conformes Sólidos */}
+                    <Card className="border-none shadow-md bg-green-50 dark:bg-slate-900 rounded-[1.5rem] overflow-visible relative">
+                        <CardContent className="p-5">
+                            <div className="pr-10">
+                                <p className="text-[10px] font-bold text-green-700 dark:text-green-400 uppercase tracking-widest">Total Conformes</p>
+                                <div className="text-5xl font-black text-slate-900 dark:text-white mt-2 tracking-tight">{stats.conformesSolids}</div>
+                                <p className="text-xs font-semibold text-green-600 dark:text-green-400 mt-1">registros</p>
+                                <p className="text-base font-bold text-green-600 dark:text-green-400 mt-2">
+                                    {spyRecords.length > 0 ? ((stats.conformesSolids / spyRecords.length) * 100).toFixed(1) : 0}%{' '}
+                                    <span className="text-xs font-normal">del total</span>
+                                </p>
+                                <p className="text-[10px] text-green-600/60 dark:text-green-500/60 mt-0.5">{stats.conformesSolidsLiters.toLocaleString()} L</p>
+                            </div>
+                            <div className="absolute -top-3 -right-3 p-4 bg-green-100 dark:bg-green-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
+                                <TrendingUp className="h-10 w-10 text-green-700 dark:text-green-400" />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Semi-Conformes Sólidos */}
+                    <Card className="border-none shadow-md bg-yellow-50 dark:bg-slate-900 rounded-[1.5rem] overflow-visible relative">
+                        <CardContent className="p-5">
+                            <div className="pr-10">
+                                <p className="text-[10px] font-bold text-yellow-700 dark:text-yellow-400 uppercase tracking-widest">Semi-Conformes</p>
+                                <div className="text-5xl font-black text-slate-900 dark:text-white mt-2 tracking-tight">{stats.warningSolids}</div>
+                                <p className="text-xs font-semibold text-yellow-600 dark:text-yellow-400 mt-1">registros</p>
+                                <p className="text-base font-bold text-yellow-600 dark:text-yellow-400 mt-2">
+                                    {spyRecords.length > 0 ? ((stats.warningSolids / spyRecords.length) * 100).toFixed(1) : 0}%{' '}
+                                    <span className="text-xs font-normal">del total</span>
+                                </p>
+                                <p className="text-[10px] text-yellow-600/60 dark:text-yellow-500/60 mt-0.5">{stats.warningSolidsLiters.toLocaleString()} L</p>
+                            </div>
+                            <div className="absolute -top-3 -right-3 p-4 bg-yellow-100 dark:bg-yellow-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
+                                <AlertCircle className="h-10 w-10 text-yellow-700 dark:text-yellow-400" />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* No Conformes Sólidos */}
+                    <Card className="border-none shadow-md bg-red-50 dark:bg-slate-900 rounded-[1.5rem] overflow-visible relative">
+                        <CardContent className="p-5">
+                            <div className="pr-10">
+                                <p className="text-[10px] font-bold text-red-700 dark:text-red-400 uppercase tracking-widest">No Conformes</p>
+                                <div className="text-5xl font-black text-slate-900 dark:text-white mt-2 tracking-tight">{stats.noConformesSolids}</div>
+                                <p className="text-xs font-semibold text-red-600 dark:text-red-400 mt-1">registros</p>
+                                <p className="text-base font-bold text-red-600 dark:text-red-400 mt-2">
+                                    {spyRecords.length > 0 ? ((stats.noConformesSolids / spyRecords.length) * 100).toFixed(1) : 0}%{' '}
+                                    <span className="text-xs font-normal">del total</span>
+                                </p>
+                                <p className="text-[10px] text-red-600/60 dark:text-red-500/60 mt-0.5">{stats.noConformesSolidsLiters.toLocaleString()} L</p>
+                            </div>
+                            <div className="absolute -top-3 -right-3 p-4 bg-red-100 dark:bg-red-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
+                                <Activity className="h-10 w-10 text-red-700 dark:text-red-400" />
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Gráfico de Control: % Sólidos */}
+                <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800">
+                    <CardHeader className="pb-2">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <CardTitle className="text-base font-bold text-slate-700 dark:text-slate-200">Gráfico de Control: % Sólidos</CardTitle>
+                                <CardDescription className="text-xs">Historial y límites de tolerancia (+-5%) y estándar del producto</CardDescription>
+                            </div>
+                            {selectedProductCode !== "all" && currentStandards?.solids && (
+                                <div className="text-xs text-slate-500 font-semibold font-mono">
+                                    Estándar: {currentStandards.solids.min}% - {currentStandards.solids.max}%
+                                </div>
+                            )}
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-[300px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={controlChartData} margin={{ top: 20, right: 35, left: 10, bottom: 20 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.2} />
+                                    <XAxis dataKey="lote" fontSize={9} angle={-45} textAnchor="end" height={60} interval={0} tick={{ fill: '#64748b' }} />
+                                    <YAxis domain={canvasSolids as any} fontSize={11} tickLine={false} axisLine={false} unit="%" tick={{ fill: '#64748b' }} />
+                                    <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} />
+                                    <Legend verticalAlign="top" height={36} />
+                                    <Line type="monotone" dataKey="solidos" name="% Sólidos" stroke="#eab308" strokeWidth={2.5} dot={{ r: 3, fill: '#eab308', stroke: '#fff', strokeWidth: 1.5 }} />
+
+                                    {selectedProductCode !== "all" && currentStandards?.solids && (
+                                        <>
+                                            {/* Límites de advertencia - AMARILLO */}
+                                            <ReferenceLine y={(currentStandards.solids.max || 0) * 1.05} label={{ value: 'TLS (+5%)', position: 'insideTopRight', fill: '#eab308', fontSize: 10 }} stroke="#eab308" strokeDasharray="5 5" strokeWidth={1.5} />
+                                            <ReferenceLine y={(currentStandards.solids.min || 0) * 0.95} label={{ value: 'TLI (-5%)', position: 'insideBottomRight', fill: '#eab308', fontSize: 10 }} stroke="#eab308" strokeDasharray="5 5" strokeWidth={1.5} />
+
+                                            {/* Límites estándar - ROJO */}
+                                            <ReferenceLine y={(currentStandards.solids.max || 0)} label={{ value: 'LCS', position: 'insideTopRight', fill: '#c41f1a', fontSize: 10, dy: 10 }} stroke="#c41f1a" strokeWidth={2} />
+                                            <ReferenceLine y={(currentStandards.solids.min || 0)} label={{ value: 'LCI', position: 'insideBottomRight', fill: '#c41f1a', fontSize: 10, dy: -10 }} stroke="#c41f1a" strokeWidth={2} />
+                                        </>
+                                    )}
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* ─── FILA 5: GRÁFICOS DE CONTROL Y CONFORMIDAD DE pH ─────────────── */}
+            <div className="space-y-6 pt-4">
+                
+                <div className="border-t border-slate-200/60 dark:border-slate-800 pt-6">
+                    <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                        <Activity className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        Control del Potencial de Hidrógeno (pH)
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                        Historial analítico del control de pH y conformidad con las especificaciones estándar.
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* pH Conformes */}
+                    <Card className="border-none shadow-md bg-green-50 dark:bg-slate-900 rounded-[1.5rem] overflow-visible relative">
+                        <CardContent className="p-5">
+                            <div className="pr-10">
+                                <p className="text-[10px] font-bold text-green-700 dark:text-green-400 uppercase tracking-widest">Total Conformes</p>
+                                <div className="text-5xl font-black text-slate-900 dark:text-white mt-2 tracking-tight">{stats.conformesPH}</div>
+                                <p className="text-xs font-semibold text-green-600 dark:text-green-400 mt-1">registros</p>
+                                <p className="text-base font-bold text-green-600 dark:text-green-400 mt-2">
+                                    {spyRecords.length > 0 ? ((stats.conformesPH / spyRecords.length) * 100).toFixed(1) : 0}%{' '}
+                                    <span className="text-xs font-normal">del total</span>
+                                </p>
+                                <p className="text-[10px] text-green-600/60 dark:text-green-500/60 mt-0.5">{stats.conformesPHLiters.toLocaleString()} L</p>
+                            </div>
+                            <div className="absolute -top-3 -right-3 p-4 bg-green-100 dark:bg-green-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
+                                <TrendingUp className="h-10 w-10 text-green-700 dark:text-green-400" />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* pH No Conformes */}
+                    <Card className="border-none shadow-md bg-red-50 dark:bg-slate-900 rounded-[1.5rem] overflow-visible relative">
+                        <CardContent className="p-5">
+                            <div className="pr-10">
+                                <p className="text-[10px] font-bold text-red-700 dark:text-red-400 uppercase tracking-widest">No Conformes</p>
+                                <div className="text-5xl font-black text-slate-900 dark:text-white mt-2 tracking-tight">{stats.noConformesPH}</div>
+                                <p className="text-xs font-semibold text-red-600 dark:text-red-400 mt-1">registros</p>
+                                <p className="text-base font-bold text-red-600 dark:text-red-400 mt-2">
+                                    {spyRecords.length > 0 ? ((stats.noConformesPH / spyRecords.length) * 100).toFixed(1) : 0}%{' '}
+                                    <span className="text-xs font-normal">del total</span>
+                                </p>
+                                <p className="text-[10px] text-red-600/60 dark:text-red-500/60 mt-0.5">{stats.noConformesPHLiters.toLocaleString()} L</p>
+                            </div>
+                            <div className="absolute -top-3 -right-3 p-4 bg-red-100 dark:bg-red-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
+                                <Activity className="h-10 w-10 text-red-700 dark:text-red-400" />
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Gráfico de Control: pH */}
+                <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800">
+                    <CardHeader className="pb-2">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <CardTitle className="text-base font-bold text-slate-700 dark:text-slate-200">Gráfico de Control: pH</CardTitle>
+                                <CardDescription className="text-xs">Historial y límites específicos de tolerancia estándar de pH</CardDescription>
+                            </div>
+                            {selectedProductCode !== "all" && currentStandards?.ph && (
+                                <div className="text-xs text-slate-500 font-semibold font-mono">
+                                    Rango Estándar: {currentStandards.ph.min} - {currentStandards.ph.max}
+                                </div>
+                            )}
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-[300px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={controlChartData} margin={{ top: 20, right: 35, left: 10, bottom: 20 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.2} />
+                                    <XAxis dataKey="lote" fontSize={9} angle={-45} textAnchor="end" height={60} interval={0} tick={{ fill: '#64748b' }} />
+                                    <YAxis domain={canvasPH as [number, number]} fontSize={11} tickLine={false} axisLine={false} tick={{ fill: '#64748b' }} />
+                                    <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} />
+                                    <Legend verticalAlign="top" height={36} />
+                                    <Line type="monotone" dataKey="ph" name="Valor pH" stroke="#0000A0" strokeWidth={2.5} dot={{ r: 3, fill: '#0000A0', stroke: '#fff', strokeWidth: 1.5 }} />
+
+                                    {selectedProductCode !== "all" && currentStandards?.ph && (
+                                        <>
+                                            <ReferenceLine y={currentStandards.ph.max} label={{ value: 'LCS', position: 'insideTopRight', fill: '#c41f1a', fontSize: 10 }} stroke="#c41f1a" strokeWidth={2} />
+                                            <ReferenceLine y={currentStandards.ph.min} label={{ value: 'LCI', position: 'insideBottomRight', fill: '#c41f1a', fontSize: 10 }} stroke="#c41f1a" strokeWidth={2} />
+                                        </>
+                                    )}
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Print View y Modal */}
+            <DateRangeModal
+                open={showPrintModal}
+                onClose={() => setShowPrintModal(false)}
+                onConfirm={(dateFrom, dateTo) => {
+                    setShowPrintModal(false)
+                    setPrintView({ dateFrom, dateTo })
+                }}
+                title="Reporte de Calidad y Rendimiento"
+            />
+
+            {printView && (
                 <PrintReportWrapper
-                    title="Reporte SPY (Second Pass Yield)"
+                    title="Reporte Unificado de Calidad y Rendimiento (FTQ / SPY)"
                     dateFrom={printView.dateFrom}
                     dateTo={printView.dateTo}
                     userName={profile?.full_name}
                     onClose={() => setPrintView(null)}
                 >
-                    {/* Horizontal KPI Grid - Standardized Style */}
-                    <div className="print-kpi-grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', marginTop: '20px' }}>
-                        <div className="print-kpi-card" style={{ borderTop: '5px solid #64748b' }}>
-                            <p className="text-[9pt] text-slate-500 font-black uppercase mb-1">Volumen Total</p>
-                            <p className="text-2xl font-black text-slate-900 leading-none mb-1">{s.total_input?.toLocaleString()} <span className="text-xs opacity-40">{unit}</span></p>
-                            <p className="text-[7pt] text-slate-400 font-bold uppercase tracking-wider">Insumo total</p>
-                        </div>
-                        <div className="print-kpi-card" style={{ borderTop: '5px solid #16a34a' }}>
-                            <p className="text-[9pt] text-slate-500 font-black uppercase mb-1">Yield (FTQ)</p>
-                            <p className="text-2xl font-black text-[#16a34a] leading-none mb-1">{s.first_pass_yield?.toFixed(1)}%</p>
-                            <p className="text-[7pt] text-slate-400 font-bold uppercase tracking-wider">Eficiencia 1er paso</p>
-                        </div>
-                        <div className="print-kpi-card" style={{ borderTop: '5px solid #0e0c9b' }}>
-                            <p className="text-[9pt] text-slate-500 font-black uppercase mb-1">Yield (SPY)</p>
-                            <p className="text-2xl font-black text-[#0e0c9b] leading-none mb-1">{s.final_yield?.toFixed(1)}%</p>
-                            <p className="text-[7pt] text-slate-400 font-bold uppercase tracking-wider">Eficiencia Final</p>
-                        </div>
-                        <div className="print-kpi-card" style={{ borderTop: '5px solid #9c2c7a' }}>
-                            <p className="text-[9pt] text-slate-500 font-black uppercase mb-1">Reproceso</p>
-                            <p className="text-2xl font-black text-[#9c2c7a] leading-none mb-1">{s.rework_rate?.toFixed(1)}%</p>
-                            <p className="text-[7pt] text-slate-400 font-bold uppercase tracking-wider">Tasa de Reproceso</p>
-                        </div>
-                        <div className="print-kpi-card" style={{ borderTop: '5px solid #f59e0b' }}>
-                            <p className="text-[9pt] text-slate-500 font-black uppercase mb-1">Recuperación</p>
-                            <p className="text-2xl font-black text-[#f59e0b] leading-none mb-1">{efficiency}%</p>
-                            <p className="text-[7pt] text-slate-400 font-bold uppercase tracking-wider">Tasa éxito rec.</p>
-                        </div>
-                    </div>
+                    <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
 
-                    {/* Pareto Section - Full Width */}
-                    <div className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm print-no-break" style={{ marginTop: '20px' }}>
-                        <h3 style={{ fontSize: '13pt', fontWeight: 900, color: '#0f172a', marginBottom: '2px' }}>Pareto de Defectos</h3>
-                        <p className="text-[8pt] text-slate-500 mb-6 font-medium uppercase tracking-tight">Análisis de Causas de No Conformidad - Frecuencia Acumulada</p>
-                        <div style={{ height: '300px', width: '100%' }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                                <ComposedChart data={data.pareto_data} margin={{ top: 5, right: 30, left: 0, bottom: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                    <XAxis dataKey="name" fontSize={9} fontWeight={900} tick={{ fill: '#475569' }} axisLine={false} tickLine={false} />
-                                    <YAxis yAxisId="left" fontSize={9} axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
-                                    <YAxis yAxisId="right" orientation="right" fontSize={9} axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
-                                    <Bar yAxisId="left" dataKey="value" fill="#0e0c9b" radius={[4, 4, 0, 0]} barSize={40} />
-                                    <Line yAxisId="right" type="monotone" dataKey="cumPercent" stroke="#c41f1a" strokeWidth={3} dot={{ r: 4, fill: '#c41f1a', strokeWidth: 1.5, stroke: '#fff' }} />
-                                    <ReferenceLine yAxisId="right" y={80} stroke="#9c2c7a" strokeDasharray="5 5" strokeWidth={1.5} />
-                                </ComposedChart>
-                            </ResponsiveContainer>
+                        {/* ── 1. RESUMEN EJECUTIVO ── */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                            <div style={{ border: '1px solid #e2e8f0', padding: '14px', borderRadius: '12px', background: '#f8fafc' }}>
+                                <p style={{ fontSize: '8pt', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Volumen Total Producido</p>
+                                <p style={{ fontSize: '22pt', fontWeight: 900, color: '#0f172a', margin: '4px 0 2px' }}>{stats.totalVolumeUnified.toLocaleString()} <span style={{ fontSize: '10pt', fontWeight: 600 }}>L</span></p>
+                                <p style={{ fontSize: '7pt', color: '#94a3b8', margin: 0 }}>PT: {stats.totalVolumeProducts.toLocaleString()} L &nbsp;|&nbsp; Bases: {stats.totalPiecesBases.toLocaleString()} pzs ({stats.totalVolumeBases.toLocaleString()} L eq)</p>
+                            </div>
+                            <div style={{ border: '1px solid #bbf7d0', padding: '14px', borderRadius: '12px', background: '#f0fdf4' }}>
+                                <p style={{ fontSize: '8pt', fontWeight: 900, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>First Time Quality (FTQ)</p>
+                                <p style={{ fontSize: '22pt', fontWeight: 900, color: '#15803d', margin: '4px 0 2px' }}>{stats.ftqPercent.toFixed(1)}%</p>
+                                <p style={{ fontSize: '7pt', color: '#166534', margin: 0 }}>{stats.ftqVolume.toLocaleString()} L producidos bien a la primera</p>
+                            </div>
+                            <div style={{ border: '1px solid #c7d2fe', padding: '14px', borderRadius: '12px', background: '#eef2ff' }}>
+                                <p style={{ fontSize: '8pt', fontWeight: 900, color: '#3730a3', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Final Yield (Rendimiento)</p>
+                                <p style={{ fontSize: '22pt', fontWeight: 900, color: '#4338ca', margin: '4px 0 2px' }}>{stats.finalYieldPercent.toFixed(2)}%</p>
+                                <p style={{ fontSize: '7pt', color: '#3730a3', margin: 0 }}>{stats.affectedVolume.toLocaleString()} L intervenidos o no conformes</p>
+                            </div>
                         </div>
-                    </div>
 
-                    {/* Radar Section - Full Width */}
-                    <div className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm print-no-break" style={{ marginTop: '20px' }}>
-                        <h3 style={{ fontSize: '13pt', fontWeight: 900, color: '#0f172a', marginBottom: '2px' }}>Parámetros Críticos</h3>
-                        <p className="text-[8pt] text-slate-500 mb-6 font-medium uppercase tracking-tight">Frecuencia de incidencias por parámetro (# NCRs)</p>
-                        <div style={{ height: '320px', width: '100%', display: 'flex', justifyContent: 'center' }}>
-                            <RadarChart data={data.radar_data} cx="50%" cy="50%" outerRadius="80%" width={500} height={320}>
-                                <PolarGrid stroke="#e2e8f0" />
-                                <PolarAngleAxis dataKey="param" tick={{ fill: '#64748b', fontSize: 10, fontWeight: 900 }} />
-                                <Radar name="NCRs" dataKey="count" stroke="#0e0c9b" fill="#6b3ba0" fillOpacity={0.1} strokeWidth={2} />
-                            </RadarChart>
+                        {/* ── 2. CONFORMIDAD DE SÓLIDOS ── */}
+                        <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px' }}>
+                            <h4 style={{ fontSize: '10pt', fontWeight: 800, margin: '0 0 10px 0', color: '#0f172a' }}>Conformidad del % de Sólidos</h4>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9pt' }}>
+                                <thead>
+                                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                                        <th style={{ textAlign: 'left', padding: '7px 10px' }}>Estado</th>
+                                        <th style={{ textAlign: 'right', padding: '7px 10px' }}>Lotes</th>
+                                        <th style={{ textAlign: 'right', padding: '7px 10px' }}>Volumen (L)</th>
+                                        <th style={{ textAlign: 'right', padding: '7px 10px' }}>% del total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style={{ borderBottom: '1px solid #f1f5f9', background: '#f0fdf4' }}>
+                                        <td style={{ padding: '7px 10px', fontWeight: 700, color: '#15803d' }}>Conforme</td>
+                                        <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 800 }}>{stats.conformesSolids}</td>
+                                        <td style={{ textAlign: 'right', padding: '7px 10px' }}>{stats.conformesSolidsLiters.toLocaleString()}</td>
+                                        <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 700, color: '#15803d' }}>{spyRecords.length > 0 ? ((stats.conformesSolids / spyRecords.length) * 100).toFixed(1) : 0}%</td>
+                                    </tr>
+                                    <tr style={{ borderBottom: '1px solid #f1f5f9', background: '#fefce8' }}>
+                                        <td style={{ padding: '7px 10px', fontWeight: 700, color: '#a16207' }}>Semi-Conforme (tolerancia ±5%)</td>
+                                        <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 800 }}>{stats.warningSolids}</td>
+                                        <td style={{ textAlign: 'right', padding: '7px 10px' }}>{stats.warningSolidsLiters.toLocaleString()}</td>
+                                        <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 700, color: '#a16207' }}>{spyRecords.length > 0 ? ((stats.warningSolids / spyRecords.length) * 100).toFixed(1) : 0}%</td>
+                                    </tr>
+                                    <tr style={{ background: '#fff1f2' }}>
+                                        <td style={{ padding: '7px 10px', fontWeight: 700, color: '#be123c' }}>No Conforme</td>
+                                        <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 800 }}>{stats.noConformesSolids}</td>
+                                        <td style={{ textAlign: 'right', padding: '7px 10px' }}>{stats.noConformesSolidsLiters.toLocaleString()}</td>
+                                        <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 700, color: '#be123c' }}>{spyRecords.length > 0 ? ((stats.noConformesSolids / spyRecords.length) * 100).toFixed(1) : 0}%</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
 
-                    {/* Destination & Reprocess Section - Full Widths */}
-                    <div className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm print-no-break" style={{ marginTop: '20px' }}>
-                        <h3 style={{ fontSize: '13pt', fontWeight: 900, color: '#0f172a', marginBottom: '2px' }}>Destino de Material No Conforme</h3>
-                        <p className="text-[8pt] text-slate-500 mb-6 font-medium uppercase tracking-tight">Distribución por volumen y tipo de disposición ({unit})</p>
-                        <div className="space-y-4">
-                            {data.disposition_data.map((d: any) => (
-                                <div key={d.name} className="flex items-center gap-3">
-                                    <span className="w-40 text-[9pt] font-black text-slate-600 text-right shrink-0 truncate uppercase">{d.name}</span>
-                                    <div className="flex-1 h-6 bg-slate-50 rounded-full overflow-hidden">
-                                        <div 
-                                            className="h-full rounded-full opacity-80" 
-                                            style={{ 
-                                                width: `${Math.max(2, (d.value / (data.disposition_data[0]?.value || 1)) * 100)}%`,
-                                                backgroundColor: DISPOSITION_COLORS[d.name.toUpperCase()] || d.color 
-                                            }} 
-                                        />
-                                    </div>
-                                    <span className="w-24 text-[9pt] font-black text-slate-900 shrink-0">{d.value.toLocaleString()} {unit}</span>
-                                </div>
-                            ))}
+                        {/* ── 3. CONFORMIDAD DE pH ── */}
+                        <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px' }}>
+                            <h4 style={{ fontSize: '10pt', fontWeight: 800, margin: '0 0 10px 0', color: '#0f172a' }}>Conformidad de pH</h4>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9pt' }}>
+                                <thead>
+                                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                                        <th style={{ textAlign: 'left', padding: '7px 10px' }}>Estado</th>
+                                        <th style={{ textAlign: 'right', padding: '7px 10px' }}>Lotes</th>
+                                        <th style={{ textAlign: 'right', padding: '7px 10px' }}>Volumen (L)</th>
+                                        <th style={{ textAlign: 'right', padding: '7px 10px' }}>% del total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style={{ borderBottom: '1px solid #f1f5f9', background: '#f0fdf4' }}>
+                                        <td style={{ padding: '7px 10px', fontWeight: 700, color: '#15803d' }}>Conforme</td>
+                                        <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 800 }}>{stats.conformesPH}</td>
+                                        <td style={{ textAlign: 'right', padding: '7px 10px' }}>{stats.conformesPHLiters.toLocaleString()}</td>
+                                        <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 700, color: '#15803d' }}>{spyRecords.length > 0 ? ((stats.conformesPH / spyRecords.length) * 100).toFixed(1) : 0}%</td>
+                                    </tr>
+                                    <tr style={{ background: '#fff1f2' }}>
+                                        <td style={{ padding: '7px 10px', fontWeight: 700, color: '#be123c' }}>No Conforme</td>
+                                        <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 800 }}>{stats.noConformesPH}</td>
+                                        <td style={{ textAlign: 'right', padding: '7px 10px' }}>{stats.noConformesPHLiters.toLocaleString()}</td>
+                                        <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 700, color: '#be123c' }}>{spyRecords.length > 0 ? ((stats.noConformesPH / spyRecords.length) * 100).toFixed(1) : 0}%</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
 
-                    <div className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm print-no-break" style={{ marginTop: '20px' }}>
-                        <h3 style={{ fontSize: '13pt', fontWeight: 900, color: '#0f172a', marginBottom: '2px' }}>Causas Detalladas de Reproceso</h3>
-                        <p className="text-[8pt] text-slate-500 mb-6 font-medium uppercase tracking-tight">Parámetros Críticos en NCRs con Reproceso/Ajuste</p>
-                        <div className="space-y-5">
-                            {data.reprocess_data.map((d: any, idx: number) => {
-                                const palette = [CORP_BLUE, CORP_INDIGO, CORP_VIOLET, CORP_PLUM, CORP_RED]
-                                const c = palette[idx % palette.length]
-                                return (
-                                    <div key={d.name}>
-                                        <div className="flex justify-between items-end mb-1.5">
-                                            <span className="text-[10pt] font-black text-slate-700 uppercase tracking-tight">{d.name}</span>
-                                            <div className="flex items-baseline gap-2">
-                                                <span className="text-[8pt] text-slate-400 font-bold uppercase">Impacto:</span>
-                                                <span className="text-[11pt] font-black" style={{ color: c }}>{d.value.toLocaleString()} {unit}</span>
-                                            </div>
-                                        </div>
-                                        <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                                            <div className="h-full rounded-full shadow-inner" style={{ width: `${(d.value / (data.reprocess_data[0]?.value || 1)) * 100}%`, backgroundColor: c }} />
-                                        </div>
-                                    </div>
-                                )
-                            })}
-                        </div>
-                    </div>
-
-                    {/* Final Detail Table (Full Pareto Detail) */}
-                    <div className="print-no-break" style={{ marginTop: '30px' }}>
-                        <h3 style={{ fontSize: '14pt', fontWeight: 900, color: '#0e0c9b', borderLeft: '4px solid #0e0c9b', paddingLeft: '12px', marginBottom: '15px' }}>Detalle Analítico de Defectos por Parámetro</h3>
-                        <table className="print-table">
-                            <thead>
-                                <tr style={{ background: '#f8fafc' }}>
-                                    <th style={{ textAlign: 'left', padding: '12px' }}>Defecto / Parámetro</th>
-                                    <th style={{ textAlign: 'right', padding: '12px' }}>Volumen ({unit})</th>
-                                    <th style={{ textAlign: 'right', padding: '12px' }}>% Contribución</th>
-                                    <th style={{ textAlign: 'right', padding: '12px' }}>% Acumulado</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {data.pareto_data.map((d: any, i: number) => {
-                                    const prevPct = i > 0 ? Number(data.pareto_data[i-1].cumPercent) : 0
-                                    const contrib = (Number(d.cumPercent) - prevPct).toFixed(1)
-                                    return (
-                                        <tr key={d.name} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                            <td className="font-bold text-slate-700" style={{ padding: '10px 12px' }}>{d.name}</td>
-                                            <td style={{ textAlign: 'right', padding: '10px 12px', color: '#0e0c9b', fontWeight: 800 }}>{d.value?.toLocaleString()}</td>
-                                            <td style={{ textAlign: 'right', padding: '10px 12px', color: '#64748b' }}>{contrib}%</td>
-                                            <td style={{ textAlign: 'right', padding: '10px 12px', fontWeight: 900, color: Number(d.cumPercent) > 80 ? '#c41f1a' : '#0f172a' }}>{d.cumPercent}%</td>
+                        {/* ── 4. PARETO DE DEFECTOS ── */}
+                        <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px' }}>
+                            <h4 style={{ fontSize: '10pt', fontWeight: 800, margin: '0 0 10px 0', color: '#0f172a' }}>Análisis Pareto — Principales Causas de No Conformidad</h4>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9pt' }}>
+                                <thead>
+                                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                                        <th style={{ textAlign: 'left', padding: '7px 10px' }}>Parámetro</th>
+                                        <th style={{ textAlign: 'right', padding: '7px 10px' }}>Volumen afectado (L)</th>
+                                        <th style={{ textAlign: 'right', padding: '7px 10px' }}>% Acumulado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {chartsData.paretoData.map((d, i) => (
+                                        <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                                            <td style={{ padding: '7px 10px', fontWeight: 600 }}>{d.name}</td>
+                                            <td style={{ textAlign: 'right', padding: '7px 10px', color: '#0e0c9b', fontWeight: 800 }}>{d.count.toLocaleString()}</td>
+                                            <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 700, color: d.accumulatedPercent >= 80 ? '#9c2c7a' : '#64748b' }}>{d.accumulatedPercent}%</td>
                                         </tr>
-                                    )
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
 
-                    {/* Technical Glossary Section */}
-                    <div className="print-no-break" style={{ marginTop: '40px', padding: '20px', backgroundColor: '#f8fafc', borderRadius: '1.5rem', border: '1px solid #e2e8f0' }}>
-                        <div className="flex items-center gap-2 mb-3">
-                            <Activity className="text-[#0e0c9b]" size={18} />
-                            <h3 style={{ fontSize: '11pt', fontWeight: 900, color: '#0f172a', margin: 0 }}>Glosario Técnico y Lógica de Cálculo</h3>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px' }}>
-                            <div className="space-y-3">
-                                <div>
-                                    <p className="text-[8pt] font-black text-[#0e0c9b] uppercase mb-0.5">Yield (FTQ) - Primera Vez Bien</p>
-                                    <p className="text-[7.5pt] text-slate-600 leading-tight"><strong>Fórmula:</strong> (Total - Volumen con Defecto) / Total. Mide el producto que cumple especificaciones desde el primer paso sin intervenciones.</p>
-                                </div>
-                                <div>
-                                    <p className="text-[8pt] font-black text-[#0e0c9b] uppercase mb-0.5">Yield (SPY) - Rendimiento Final</p>
-                                    <p className="text-[7.5pt] text-slate-600 leading-tight"><strong>Fórmula:</strong> (Total - Volumen Scrap) / Total. Representa la eficiencia real tras procesos de recuperación y filtrado de mermas.</p>
-                                </div>
+                        {/* ── 5. CONFORMIDAD POR SUCURSAL ── */}
+                        {chartsData.sucursalData.length > 0 && (
+                            <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px' }}>
+                                <h4 style={{ fontSize: '10pt', fontWeight: 800, margin: '0 0 10px 0', color: '#0f172a' }}>Conformidad por Sucursal</h4>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9pt' }}>
+                                    <thead>
+                                        <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                                            <th style={{ textAlign: 'left', padding: '7px 10px' }}>Sucursal</th>
+                                            <th style={{ textAlign: 'right', padding: '7px 10px', color: '#15803d' }}>Conformes</th>
+                                            <th style={{ textAlign: 'right', padding: '7px 10px', color: '#a16207' }}>Semi-Conf.</th>
+                                            <th style={{ textAlign: 'right', padding: '7px 10px', color: '#be123c' }}>No Conf.</th>
+                                            <th style={{ textAlign: 'right', padding: '7px 10px' }}>Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {chartsData.sucursalData.map((s, i) => {
+                                            const total = s.conformes + s.semiConformes + s.noConformes
+                                            return (
+                                                <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                                                    <td style={{ padding: '7px 10px', fontWeight: 600 }}>{s.name}</td>
+                                                    <td style={{ textAlign: 'right', padding: '7px 10px', color: '#15803d', fontWeight: 700 }}>{s.conformes}</td>
+                                                    <td style={{ textAlign: 'right', padding: '7px 10px', color: '#a16207', fontWeight: 700 }}>{s.semiConformes}</td>
+                                                    <td style={{ textAlign: 'right', padding: '7px 10px', color: '#be123c', fontWeight: 700 }}>{s.noConformes}</td>
+                                                    <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 800 }}>{total}</td>
+                                                </tr>
+                                            )
+                                        })}
+                                    </tbody>
+                                </table>
                             </div>
-                            <div className="space-y-3">
-                                <div>
-                                    <p className="text-[8pt] font-black text-[#0e0c9b] uppercase mb-0.5">Tasa de Reproceso</p>
-                                    <p className="text-[7.5pt] text-slate-600 leading-tight"><strong>Fórmula:</strong> Volumen con disposición &apos;Reproceso&apos; o &apos;Ajuste&apos; / Total. Refleja el porcentaje de la producción que requirió retrabajo.</p>
-                                </div>
-                                <div>
-                                    <p className="text-[8pt] font-black text-[#0e0c9b] uppercase mb-0.5">Eficiencia de Recuperación</p>
-                                    <p className="text-[7.5pt] text-slate-600 leading-tight"><strong>Fórmula:</strong> Volumen Rescatado / Oportunidad de Mejora (Total NCRs). Evalúa la efectividad operativa para evitar el desperdicio.</p>
-                                </div>
-                            </div>
+                        )}
+
+                        {/* ── 6. GLOSARIO ── */}
+                        <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '8pt', color: '#64748b' }}>
+                            <h5 style={{ fontWeight: 900, color: '#0f172a', margin: '0 0 6px 0', fontSize: '9pt' }}>Glosario y Criterios de Evaluación</h5>
+                            <p style={{ margin: '3px 0' }}><strong>First Time Quality (FTQ):</strong> Litros producidos que cumplen pH, sólidos y apariencia a la primera, sin ninguna desviación.</p>
+                            <p style={{ margin: '3px 0' }}><strong>Final Yield (Rendimiento):</strong> Litros aptos para liberación; se descuentan únicamente los lotes con No Conformidad total en cualquier parámetro.</p>
+                            <p style={{ margin: '3px 0' }}><strong>Semi-Conforme:</strong> Lote dentro de la tolerancia relativa ±5% del estándar; se considera afectado en FTQ pero no se descuenta del Yield.</p>
+                            <p style={{ margin: '3px 0' }}><strong>No Conforme:</strong> Lote fuera de tolerancia; genera NCR automática y se descuenta del Final Yield.</p>
+                            <p style={{ margin: '3px 0' }}><strong>Bases:</strong> Familias de bases se miden en piezas (pzs); se convierten a litros equivalentes con factor ×20 para los cálculos de volumen.</p>
                         </div>
-                        <p className="text-[6pt] text-slate-400 mt-4 uppercase font-bold text-center border-t border-slate-200 pt-3 italic">** Nota: Los cálculos en Litros consideran la conversión de Piezas x 20L para bases de aromatizante.</p>
                     </div>
                 </PrintReportWrapper>
-            )
-        })()}
-    </>
+            )}
+        </div>
     )
 }

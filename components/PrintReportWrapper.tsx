@@ -1,13 +1,13 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { getBasePath } from "@/lib/utils"
 
 import { Button } from "@/components/ui/button"
-import { Printer, X } from "lucide-react"
+import { Printer, FileDown, X } from "lucide-react"
 
 interface PrintReportWrapperProps {
     title: string
@@ -44,6 +44,13 @@ export function PrintReportWrapper({
         }
     }, [mounted])
 
+    const handleExportPDF = () => {
+        const original = document.title
+        document.title = `${title.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-')}_${format(new Date(), 'yyyy-MM-dd')}`
+        window.print()
+        setTimeout(() => { document.title = original }, 2000)
+    }
+
     const formatDate = (d: string) => {
         try {
             return format(new Date(d + 'T12:00:00'), "dd 'de' MMMM yyyy", { locale: es })
@@ -75,7 +82,16 @@ export function PrintReportWrapper({
                         onClick={() => window.print()}
                     >
                         <Printer className="h-4 w-4" />
-                        Imprimir Ahora
+                        Imprimir
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-2 border-[#0e0c9b]/30 text-[#0e0c9b] hover:bg-[#0e0c9b]/5 px-4"
+                        onClick={handleExportPDF}
+                    >
+                        <FileDown className="h-4 w-4" />
+                        Exportar PDF
                     </Button>
                     <div className="w-[1px] h-6 bg-slate-200 mx-1" />
                     <Button
