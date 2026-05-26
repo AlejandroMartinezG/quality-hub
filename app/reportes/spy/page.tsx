@@ -338,6 +338,76 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
         }
     }, [spyRecords])
 
+    const printInsights = useMemo(() => {
+        type InsightLevel = 'ok' | 'warn' | 'critical'
+        const insights: { level: InsightLevel; text: string }[] = []
+        if (spyRecords.length === 0) return insights
+
+        const ftq = stats.ftqPercent
+        const yld = stats.finalYieldPercent
+        const totalAnalyzedSolids = stats.conformesSolids + stats.warningSolids + stats.noConformesSolids
+        const totalAnalyzedPH = stats.conformesPH + stats.noConformesPH
+
+        // 1. FTQ global
+        if (ftq >= 95) {
+            insights.push({ level: 'ok', text: `El índice FTQ de ${ftq.toFixed(1)}% es excelente — prácticamente toda la producción del período cumplió los parámetros de calidad a la primera.` })
+        } else if (ftq >= 85) {
+            insights.push({ level: 'warn', text: `El índice FTQ de ${ftq.toFixed(1)}% es aceptable pero tiene margen de mejora. Aproximadamente 1 de cada ${Math.round(100 / Math.max(100 - ftq, 1))} lotes presentó alguna desviación.` })
+        } else if (ftq >= 70) {
+            insights.push({ level: 'warn', text: `El índice FTQ de ${ftq.toFixed(1)}% está por debajo del objetivo recomendado (≥ 85%). Se recomienda revisar los procesos de formulación y control del período analizado.` })
+        } else {
+            insights.push({ level: 'critical', text: `El índice FTQ de ${ftq.toFixed(1)}% es crítico. Más del 30% de los lotes presentaron desviaciones. Se requiere análisis de causas raíz y acciones correctivas inmediatas.` })
+        }
+
+        // 2. Brecha FTQ vs Yield
+        const gap = yld - ftq
+        if (gap > 10) {
+            insights.push({ level: 'warn', text: `Existe una brecha de ${gap.toFixed(1)} pp entre FTQ y Yield (${ftq.toFixed(1)}% vs ${yld.toFixed(1)}%). Indica un volumen considerable de lotes semi-conformes liberables que operan cerca del límite de especificación.` })
+        }
+
+        // 3. Parámetro dominante (Pareto)
+        const topDefect = chartsData.paretoData.find(d => d.count > 0)
+        if (topDefect) {
+            const totalDef = chartsData.paretoData.reduce((s, d) => s + d.count, 0)
+            const pct = totalDef > 0 ? Math.round((topDefect.count / totalDef) * 100) : 0
+            insights.push({ level: pct >= 70 ? 'warn' : 'ok', text: `El parámetro con mayor impacto en las desviaciones es ${topDefect.name} (${pct}% del volumen afectado). Concentrar los esfuerzos de mejora en este parámetro ofrece el mayor retorno.` })
+        }
+
+        // 4. Riesgo por semi-conformes en Sólidos
+        const semiPct = totalAnalyzedSolids > 0 ? (stats.warningSolids / totalAnalyzedSolids) * 100 : 0
+        if (semiPct > 20) {
+            insights.push({ level: 'warn', text: `${semiPct.toFixed(1)}% de los lotes analizados en Sólidos se encuentra en zona semi-conforme (±5% de tolerancia). Cualquier variación adicional podría generar no conformidades.` })
+        }
+
+        // 5. pH vs Sólidos
+        const phFailPct = totalAnalyzedPH > 0 ? (stats.noConformesPH / totalAnalyzedPH) * 100 : 0
+        const solidsFailPct = totalAnalyzedSolids > 0 ? ((stats.warningSolids + stats.noConformesSolids) / totalAnalyzedSolids) * 100 : 0
+        if (phFailPct > solidsFailPct && phFailPct > 5) {
+            insights.push({ level: 'warn', text: `El pH presenta mayor tasa de desviación (${phFailPct.toFixed(1)}%) que los Sólidos (${solidsFailPct.toFixed(1)}%). Se recomienda revisar condiciones de proceso y el balance ácido-base de las formulaciones.` })
+        } else if (solidsFailPct > phFailPct && solidsFailPct > 5) {
+            insights.push({ level: 'warn', text: `Los Sólidos presentan mayor tasa de desviación (${solidsFailPct.toFixed(1)}%) que el pH (${phFailPct.toFixed(1)}%). Verificar la precisión en el pesaje de materias primas y los tiempos de mezcla.` })
+        }
+
+        // 6. Sucursal con mayor incidencia
+        const worstSuc = [...chartsData.sucursalData]
+            .filter(s => s.noConformes > 0)
+            .sort((a, b) => b.noConformes - a.noConformes)[0]
+        if (worstSuc) {
+            const tot = worstSuc.conformes + worstSuc.semiConformes + worstSuc.noConformes
+            const failPct = tot > 0 ? Math.round((worstSuc.noConformes / tot) * 100) : 0
+            insights.push({ level: failPct > 20 ? 'critical' : 'warn', text: `La sucursal con mayor incidencia de No Conformidades es ${worstSuc.name} (${worstSuc.noConformes} lote${worstSuc.noConformes !== 1 ? 's' : ''} no conforme${worstSuc.noConformes !== 1 ? 's' : ''}, ${failPct}% de sus registros en el período).` })
+        }
+
+        // 7. NCRs totales
+        if (stats.totalNCRs > 0) {
+            insights.push({ level: stats.totalNCRs > 10 ? 'warn' : 'ok', text: `Se registraron ${stats.totalNCRs} lote${stats.totalNCRs !== 1 ? 's' : ''} con alguna desviación de calidad en el período, representando ${stats.totalVolumeUnified > 0 ? ((stats.affectedVolume / stats.totalVolumeUnified) * 100).toFixed(1) : '0'}% del volumen total producido.` })
+        } else {
+            insights.push({ level: 'ok', text: `No se registraron desviaciones de calidad en el período analizado. Todos los lotes evaluados cumplieron los parámetros de calidad a la primera.` })
+        }
+
+        return insights
+    }, [stats, chartsData, spyRecords])
+
     return (
         <div className="space-y-6">
             
@@ -1040,7 +1110,33 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                             </div>
                         )}
 
-                        {/* ── 6. GLOSARIO ── */}
+                        {/* ── 6. ANÁLISIS AUTOMÁTICO ── */}
+                        {printInsights.length > 0 && (
+                            <div style={{ marginTop: '20px', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
+                                <div style={{ background: 'linear-gradient(to right, #0e0c9b, #2a28b5)', padding: '10px 16px' }}>
+                                    <h4 style={{ margin: 0, fontSize: '10pt', fontWeight: 900, color: 'white', letterSpacing: '0.02em' }}>Análisis Automático del Período</h4>
+                                    <p style={{ margin: '2px 0 0 0', fontSize: '7pt', color: 'rgba(255,255,255,0.65)' }}>Generado a partir de los datos del reporte — no sustituye el criterio técnico del equipo de calidad</p>
+                                </div>
+                                <div style={{ padding: '12px 16px', background: 'white' }}>
+                                    {printInsights.map((ins, i) => (
+                                        <div key={i} style={{
+                                            display: 'flex', gap: '10px', alignItems: 'flex-start',
+                                            padding: '7px 10px', marginBottom: i < printInsights.length - 1 ? '6px' : 0,
+                                            borderRadius: '8px',
+                                            background: ins.level === 'ok' ? '#f0fdf4' : ins.level === 'critical' ? '#fff1f2' : '#fffbeb',
+                                            borderLeft: `3px solid ${ins.level === 'ok' ? '#16a34a' : ins.level === 'critical' ? '#e2211c' : '#d97706'}`
+                                        }}>
+                                            <span style={{ fontSize: '9pt', lineHeight: 1, marginTop: '1px', flexShrink: 0 }}>
+                                                {ins.level === 'ok' ? '✓' : ins.level === 'critical' ? '✕' : '⚠'}
+                                            </span>
+                                            <p style={{ margin: 0, fontSize: '8pt', color: '#1e293b', lineHeight: '1.5' }}>{ins.text}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ── 7. GLOSARIO ── */}
                         <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '8pt', color: '#64748b' }}>
                             <h5 style={{ fontWeight: 900, color: '#0f172a', margin: '0 0 6px 0', fontSize: '9pt' }}>Glosario y Criterios de Evaluación</h5>
                             <p style={{ margin: '3px 0' }}><strong>First Time Quality (FTQ):</strong> Litros producidos que cumplen pH, sólidos y apariencia a la primera, sin ninguna desviación.</p>
@@ -1048,6 +1144,17 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                             <p style={{ margin: '3px 0' }}><strong>Semi-Conforme:</strong> Lote dentro de la tolerancia relativa ±5% del estándar; se considera afectado en FTQ pero no se descuenta del Yield.</p>
                             <p style={{ margin: '3px 0' }}><strong>No Conforme:</strong> Lote fuera de tolerancia; genera NCR automática y se descuenta del Final Yield.</p>
                             <p style={{ margin: '3px 0' }}><strong>Bases:</strong> Familias de bases se miden en piezas (pzs); se convierten a litros equivalentes con factor ×20 para los cálculos de volumen.</p>
+                        </div>
+
+                        {/* ── NOTA METODOLÓGICA ── */}
+                        <div style={{ marginTop: '12px', padding: '12px 14px', background: '#fffbeb', borderRadius: '10px', border: '1px solid #fde68a', fontSize: '7.5pt', color: '#78350f' }}>
+                            <p style={{ fontWeight: 900, color: '#92400e', margin: '0 0 5px 0', fontSize: '8.5pt' }}>⚠ Nota metodológica — Alcance de los conteos de conformidad</p>
+                            <p style={{ margin: '3px 0' }}>
+                                Los conteos de este reporte (FTQ, Yield, Conformes, Semi-Conformes, No Conformes) <strong>excluyen</strong> los registros cuyo código de producto no cuenta con un estándar técnico definido en el catálogo (estado interno: <em>N/A</em>). Dichos lotes no se clasifican en ninguna categoría de conformidad y no afectan los índices calculados.
+                            </p>
+                            <p style={{ margin: '6px 0 3px 0' }}>
+                                El módulo <strong>Control de Calidad</strong> presenta los mismos registros pero, por diseño operativo, los lotes sin estándar se muestran como "Conformes" en sus tarjetas de resumen. Esto puede generar diferencias en los totales por categoría entre ambos módulos para el mismo período. Los índices FTQ / Yield de este reporte son los valores analíticamente válidos.
+                            </p>
                         </div>
                     </div>
                 </PrintReportWrapper>

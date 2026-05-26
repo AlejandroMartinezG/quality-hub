@@ -95,6 +95,9 @@ export default function CalidadPage() {
     const [exportDateTo, setExportDateTo] = useState('')
     const [exporting, setExporting] = useState(false)
 
+    const PAGE_SIZE = 100
+    const [currentPage, setCurrentPage] = useState(0)
+
     useEffect(() => {
         if (!authLoading && profile) {
             const role = profile.role?.toLowerCase() || ''
@@ -121,7 +124,7 @@ export default function CalidadPage() {
             } else if ((role === 'gerente_sucursal' || role === 'gerente') && profile?.sucursal) {
                 query = query.eq('sucursal', profile.sucursal)
             }
-            const { data, error } = await query.order('created_at', { ascending: false }).limit(100)
+            const { data, error } = await query.order('created_at', { ascending: false })
             if (error) throw error
             const loaded = data || []
             setRecords(loaded)
@@ -301,6 +304,8 @@ export default function CalidadPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [records])
 
+    useEffect(() => { setCurrentPage(0) }, [searchTerm, sucursalFilter, statusFilter, timeRangeFilter, categoriaFilter, productoFilter])
+
     const getStatusInfo = (record: BitacoraRecord): 'success' | 'warning' | 'error' => {
         const std = PRODUCT_STANDARDS[record.codigo_producto]
         if (std && record.solidos_medicion_1 !== null && record.solidos_medicion_2 !== null) {
@@ -337,13 +342,16 @@ export default function CalidadPage() {
         const matchesProducto = productoFilter === "all" || r.codigo_producto === productoFilter
         let matchesTime = true
         if (timeRangeFilter !== "all") {
-            const d = new Date(r.fecha_fabricacion || r.created_at)
+            const d = new Date(r.fecha_fabricacion)
             const cutoff = new Date(Date.now() - parseInt(timeRangeFilter) * 86400000)
             cutoff.setHours(0, 0, 0, 0)
             matchesTime = d >= cutoff
         }
         return matchesSearch && matchesSucursal && matchesStatus && matchesTime && matchesCategoria && matchesProducto
     })
+
+    const totalPages = Math.ceil(filteredRecords.length / PAGE_SIZE)
+    const paginatedRecords = filteredRecords.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE)
 
     const phRecords = filteredRecords.filter(r => getPhStatus(r) !== 'none')
     const pzsAromatizantes = filteredRecords
@@ -722,7 +730,9 @@ export default function CalidadPage() {
                                 <SelectItem value="all">Todo el historial</SelectItem>
                                 <SelectItem value="7">Últimos 7 días</SelectItem>
                                 <SelectItem value="30">Últimos 30 días</SelectItem>
-                                <SelectItem value="90">Últimos 90 días</SelectItem>
+                                <SelectItem value="90">Últimos 3 meses</SelectItem>
+                                <SelectItem value="180">Últimos 6 meses</SelectItem>
+                                <SelectItem value="365">Último año</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -794,7 +804,7 @@ export default function CalidadPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {filteredRecords.length > 0 ? filteredRecords.map(record => {
+                                        {filteredRecords.length > 0 ? paginatedRecords.map(record => {
                                             const status = getStatusInfo(record)
                                             const phStatus = getPhStatus(record)
                                             const avgSolids = record.solidos_medicion_1 !== null && record.solidos_medicion_2 !== null
@@ -926,9 +936,39 @@ export default function CalidadPage() {
                                 </Table>
                             </div>
 
+                            {/* Pagination */}
+                            {totalPages > 1 && (
+                                <div className="flex items-center justify-between mt-4 px-1">
+                                    <p className="text-xs text-slate-500">
+                                        Mostrando {currentPage * PAGE_SIZE + 1}–{Math.min((currentPage + 1) * PAGE_SIZE, filteredRecords.length)} de {filteredRecords.length} registros
+                                    </p>
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            variant="outline" size="sm"
+                                            onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                                            disabled={currentPage === 0}
+                                            className="h-8 px-3 text-xs"
+                                        >
+                                            ← Anterior
+                                        </Button>
+                                        <span className="text-xs font-semibold text-slate-600 min-w-[80px] text-center">
+                                            Página {currentPage + 1} / {totalPages}
+                                        </span>
+                                        <Button
+                                            variant="outline" size="sm"
+                                            onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+                                            disabled={currentPage === totalPages - 1}
+                                            className="h-8 px-3 text-xs"
+                                        >
+                                            Siguiente →
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Mobile */}
                             <div className="md:hidden space-y-4">
-                                {filteredRecords.length > 0 ? filteredRecords.map(record => {
+                                {filteredRecords.length > 0 ? paginatedRecords.map(record => {
                                     const status = getStatusInfo(record)
                                     const avgSolids = record.solidos_medicion_1 !== null && record.solidos_medicion_2 !== null
                                         ? (record.solidos_medicion_1 + record.solidos_medicion_2) / 2 : null

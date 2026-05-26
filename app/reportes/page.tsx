@@ -2028,6 +2028,64 @@ export default function ReportesPage() {
                     .sort((a, b) => b.total - a.total)
                     .slice(0, 15)
 
+                // ── CONCLUSIONES AUTOMÁTICAS ────────────────────────────────
+                type OpInsight = { level: 'ok' | 'warn' | 'info'; text: string }
+                const opInsights: OpInsight[] = []
+                const totalLitros = totalVol + totalPcs * 20
+                const basesPct = totalLitros > 0 ? (totalPcs * 20 / totalLitros) * 100 : 0
+
+                // 1. Composición Productos vs Bases
+                if (basesPct > 40) {
+                    opInsights.push({ level: 'info', text: `Las bases representan el ${basesPct.toFixed(1)}% del volumen unificado del período. La operación tiene una carga significativa de fabricación de bases; considerar si la capacidad de conversión a producto terminado está alineada con esta demanda.` })
+                } else if (basesPct < 5 && totalPcs > 0) {
+                    opInsights.push({ level: 'info', text: `La producción de bases es marginal (${basesPct.toFixed(1)}% del total). La operación del período está enfocada principalmente en producto terminado.` })
+                }
+
+                // 2. Tendencia mensual
+                if (printMonthlyData.length >= 3) {
+                    const first = printMonthlyData[0]
+                    const last = printMonthlyData[printMonthlyData.length - 1]
+                    const trendPct = first.total > 0 ? ((last.total - first.total) / first.total) * 100 : 0
+                    const peakMonth = printMonthlyData.reduce((mx, m) => m.total > mx.total ? m : mx, printMonthlyData[0])
+                    if (trendPct > 15) {
+                        opInsights.push({ level: 'ok', text: `La producción muestra una tendencia de crecimiento positiva del ${trendPct.toFixed(1)}% entre el primer y último mes del período. El mes de mayor volumen fue ${peakMonth.label} con ${peakMonth.total.toLocaleString()} L.` })
+                    } else if (trendPct < -15) {
+                        opInsights.push({ level: 'warn', text: `La producción presenta una caída del ${Math.abs(trendPct).toFixed(1)}% entre el inicio y fin del período. Se recomienda revisar los factores que incidieron en la desaceleración. El mes de mayor volumen fue ${peakMonth.label}.` })
+                    } else {
+                        opInsights.push({ level: 'ok', text: `La producción se mantuvo estable en el período (variación de ${trendPct > 0 ? '+' : ''}${trendPct.toFixed(1)}%). El mes de mayor volumen fue ${peakMonth.label} con ${peakMonth.total.toLocaleString()} L equiv.` })
+                    }
+                }
+
+                // 3. Concentración geográfica
+                if (sucursalBarData.length > 0) {
+                    const top1Pct = totalVol > 0 ? (sucursalBarData[0].value / totalVol) * 100 : 0
+                    const top3Vol = sucursalBarData.slice(0, 3).reduce((s, d) => s + d.value, 0)
+                    const top3Pct = totalVol > 0 ? (top3Vol / totalVol) * 100 : 0
+                    if (top1Pct > 40) {
+                        opInsights.push({ level: 'warn', text: `La sucursal ${sucursalBarData[0].name} concentra el ${top1Pct.toFixed(1)}% del volumen de productos terminados. Existe alta dependencia de un solo punto de producción; evaluar distribución de carga entre sucursales.` })
+                    } else {
+                        opInsights.push({ level: 'ok', text: `El volumen está relativamente distribuido entre sucursales. ${sucursalBarData[0].name} es la líder con ${top1Pct.toFixed(1)}%, y las 3 principales concentran el ${top3Pct.toFixed(1)}% del total de ${sucursalBarData.length} sucursales activas.` })
+                    }
+                }
+
+                // 4. Familia dominante
+                if (printFamilyRows.length > 0) {
+                    const topFam = printFamilyRows[0]
+                    const famPct = totalLitros > 0 ? (topFam.total / totalLitros) * 100 : 0
+                    opInsights.push({ level: famPct > 50 ? 'info' : 'ok', text: `La familia de productos con mayor volumen es "${topFam.name}" con ${topFam.total.toLocaleString()} L equiv. (${famPct.toFixed(1)}% del total). ${famPct > 50 ? 'Esta concentración sugiere especialización operativa en esta línea.' : `Le siguen ${printFamilyRows[1] ? `"${printFamilyRows[1].name}"` : '—'} y ${printFamilyRows[2] ? `"${printFamilyRows[2].name}"` : '—'}.`}` })
+                }
+
+                // 5. Concentración de SKUs
+                if (topProds.length >= 3) {
+                    const top3SkuVol = topProds.slice(0, 3).reduce((s, [, v]) => s + v, 0)
+                    const top3SkuPct = totalVol > 0 ? (top3SkuVol / totalVol) * 100 : 0
+                    if (top3SkuPct > 70) {
+                        opInsights.push({ level: 'info', text: `Los 3 SKUs de mayor volumen (${topProds.slice(0, 3).map(([c]) => c).join(', ')}) representan el ${top3SkuPct.toFixed(1)}% de la producción de productos terminados. El portafolio activo está altamente concentrado en pocos códigos.` })
+                    } else {
+                        opInsights.push({ level: 'ok', text: `El portafolio muestra una distribución saludable: los 3 SKUs líderes representan el ${top3SkuPct.toFixed(1)}% del volumen entre ${topProds.length} referencias activas en el período.` })
+                    }
+                }
+
                 return (
                     <PrintReportWrapper
                         title="Reporte Análisis de Operación"
@@ -2503,6 +2561,32 @@ export default function ReportesPage() {
                                     </ul>
                                 </div>
                             </div>
+
+                            {/* ── CONCLUSIONES AUTOMÁTICAS ── */}
+                            {opInsights.length > 0 && (
+                                <div style={{ marginTop: '30px', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
+                                    <div style={{ background: 'linear-gradient(to right, #0e0c9b, #2a28b5)', padding: '10px 16px' }}>
+                                        <h4 style={{ margin: 0, fontSize: '10pt', fontWeight: 900, color: 'white', letterSpacing: '0.02em' }}>Conclusiones Automáticas del Período</h4>
+                                        <p style={{ margin: '2px 0 0 0', fontSize: '7pt', color: 'rgba(255,255,255,0.65)' }}>Generado a partir de los datos del reporte — complementa pero no sustituye el análisis operativo del equipo</p>
+                                    </div>
+                                    <div style={{ padding: '12px 16px', background: 'white' }}>
+                                        {opInsights.map((ins, i) => (
+                                            <div key={i} style={{
+                                                display: 'flex', gap: '10px', alignItems: 'flex-start',
+                                                padding: '7px 10px', marginBottom: i < opInsights.length - 1 ? '6px' : 0,
+                                                borderRadius: '8px',
+                                                background: ins.level === 'ok' ? '#f0fdf4' : ins.level === 'warn' ? '#fffbeb' : '#eff6ff',
+                                                borderLeft: `3px solid ${ins.level === 'ok' ? '#16a34a' : ins.level === 'warn' ? '#d97706' : '#2563eb'}`
+                                            }}>
+                                                <span style={{ fontSize: '9pt', lineHeight: 1, marginTop: '1px', flexShrink: 0 }}>
+                                                    {ins.level === 'ok' ? '✓' : ins.level === 'warn' ? '⚠' : 'ℹ'}
+                                                </span>
+                                                <p style={{ margin: 0, fontSize: '8pt', color: '#1e293b', lineHeight: '1.5' }}>{ins.text}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                     </PrintReportWrapper>
