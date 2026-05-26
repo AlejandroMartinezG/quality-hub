@@ -41,7 +41,7 @@ import {
 } from "recharts"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SUCURSALES, PRODUCT_STANDARDS, PH_STANDARDS, CATEGORY_PRODUCTS, PRODUCT_GROUPS, PRODUCT_CATEGORIES } from "@/lib/production-constants"
-import SPYReportPage from "./spy/page"
+import SPYReportPage from "./spy/SPYReportPage"
 
 // --- Helper functions ---
 
