@@ -89,12 +89,12 @@ export const CATEGORY_PRODUCTS: Record<string, string[]> = {
     "Jabón liquido para manos": ["JABCER", "JABCOC", "JABDUR", "JABHIE", "JABNEU", "JABPM", "JABPRI", "JABUVA"],
     "Línea automotriz": ["ALTBRI", "BRIGEL", "BRILIQ", "CERLIQ", "CREMEC", "DESIND", "DESMOT", "GINESP", "GINLIQ", "SHACER", "SHACLA"],
     "Limpiador liquido multiusos": ["LIMALA", "LIMBOS", "LIMBRI", "LIMCAN", "LIMCAS", "LIMCHI", "LIMFRU", "LIMLAV", "LIMLIM", "LIMLIS", "LIMMANC", "LIMMAND", "LIMMAR", "LIMMEN", "LIMPERM", "LIMPOET", "LIMPRI", "LIMSTE", "LIMVIO", "PINBLA", "PINO", "PINVER"],
-    "Producto intermedio": ["DETALC", "EMU", "FFLO", "BSUA"],
+    "Producto intermedio": ["DETALC", "EMU", "FFLO", "BSUA", "RAOI"],
     "Reforzador de aromas(REFARO)": ["REFARO-SUE", "REFARO-LIB", "REFARO-MAG", "REFARO-INT", "REFARO-NAT", "REFARO-LUN", "REFARO-BLUE", "REFARO-EDE", "REFARO-PAS", "REFARO-SEN", "REFARO-PRI", "REFARO-BAB", "REFARO-DEL"],
     "Shampoo capilar": ["SHAPAN", "SHAHEA", "SHADUR", "SHAPLU", "SHAHIE"],
     "Suavizante de telas": ["SUASUE", "SUALIB", "SUAMAG", "SUAINT", "SUANAT", "SUALUN", "SUABLU", "SUAPAS", "SUASEN", "SUAPRI", "SUABAB", "SUADEL", "SUANEU"],
     "Producto especial": [],
-    "Disoluciones intermedias": ["CITGIN", "NAOH10", "ESPSNT25"]
+    "Disoluciones intermedias": ["CITGIN", "SOSA10", "ESP25"]
 };
 
 export const PRODUCT_STANDARDS: Record<string, { min?: number, max?: number }> = {
@@ -195,8 +195,8 @@ export const PRODUCT_STANDARDS: Record<string, { min?: number, max?: number }> =
     "CREDEL": { min: 18.0, max: 22.0 },
     "DETALC": { min: 15.5, max: 17.5 },
     "CITGIN": { min: 20.0, max: 25.0 },
-    "NAOH10": { min: 8.0, max: 12.0 },
-    "ESPSNT25": { min: 25.0, max: 30.0 },
+    "SOSA10": { min: 8.0, max: 12.0 },
+    "ESP25": { min: 25.0, max: 30.0 },
     // Detergentes de trastes
     "TRABLU": { min: 16.5, max: 17.5 },
     // Suavizantes
@@ -474,12 +474,13 @@ export const APPEARANCE_STANDARDS: Record<string, string> = {
     "EMU": "CRISTALINO",
     "FFLO": "CRISTALINO",
     "BSUA": "OPACO",
+    "RAOI": "CRISTALINO",
 
 
     // === DISOLUCIONES INTERMEDIOS ===
     "CITGIN": "CRISTALINO",
-    "NAOH10": "CRISTALINO",
-    "ESPSNT25": "CRISTALINO"
+    "SOSA10": "CRISTALINO",
+    "ESP25": "CRISTALINO"
 };
 
 export const PARAMETER_APPLICABILITY: Record<string, { solidos: boolean, ph: boolean }> = {
@@ -498,8 +499,8 @@ export const PARAMETER_APPLICABILITY: Record<string, { solidos: boolean, ph: boo
     "ENJROS": { solidos: true, ph: false }, "ENJDUR": { solidos: true, ph: false }, "ENJHIE": { solidos: true, ph: false },
     "CREDEL": { solidos: true, ph: true }, "CREBAB": { solidos: true, ph: true }, "CRELIM": { solidos: true, ph: true }, "CREMIE": { solidos: true, ph: true }, "CREROS": { solidos: true, ph: true }, "CRESAB": { solidos: true, ph: true }, "CREWHI": { solidos: true, ph: true },
     "REFARO-SUE": { solidos: false, ph: false }, "REFARO-LIB": { solidos: false, ph: false }, "REFARO-MAG": { solidos: false, ph: false }, "REFARO-INT": { solidos: false, ph: false }, "REFARO-NAT": { solidos: false, ph: false }, "REFARO-LUN": { solidos: false, ph: false }, "REFARO-BLUE": { solidos: false, ph: false }, "REFARO-EDE": { solidos: false, ph: false }, "REFARO-PAS": { solidos: false, ph: false }, "REFARO-SEN": { solidos: false, ph: false }, "REFARO-PRI": { solidos: false, ph: false }, "REFARO-BAB": { solidos: false, ph: false }, "REFARO-DEL": { solidos: false, ph: false },
-    "DETALC": { solidos: true, ph: true }, "EMU": { solidos: false, ph: false }, "FFLO": { solidos: false, ph: false }, "BSUA": { solidos: false, ph: false },
-    "CITGIN": { solidos: true, ph: false }, "NAOH10": { solidos: true, ph: false }, "ESPSNT25": { solidos: true, ph: false }
+    "DETALC": { solidos: true, ph: true }, "EMU": { solidos: false, ph: false }, "FFLO": { solidos: false, ph: false }, "BSUA": { solidos: false, ph: false }, "RAOI": { solidos: false, ph: false },
+    "CITGIN": { solidos: true, ph: false }, "SOSA10": { solidos: true, ph: false }, "ESP25": { solidos: true, ph: false }
 };
 
 export const PRODUCT_GROUPS = [

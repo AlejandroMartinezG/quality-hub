@@ -537,7 +537,7 @@ export default function BitacoraPage() {
                                             Tamaño de Lote ({isPieceFamily ? "Piezas" : "Litros"})
                                         </Label>
                                         <Select
-                                            value={isFlexibleBatch ? "Flexible" : (["20", "50", "100", "200", "1000"].includes(formData.tamano_lote) ? formData.tamano_lote : (formData.tamano_lote ? "Flexible" : ""))}
+                                            value={isFlexibleBatch ? "Flexible" : (["2", "5", "10", "15", "20", "50", "100", "200", "1000"].includes(formData.tamano_lote) ? formData.tamano_lote : (formData.tamano_lote ? "Flexible" : ""))}
                                             onValueChange={(val) => {
                                                 if (val === "Flexible") {
                                                     setIsFlexibleBatch(true)
@@ -553,6 +553,14 @@ export default function BitacoraPage() {
                                                 <SelectValue placeholder="Selecciona tamaño" />
                                             </SelectTrigger>
                                             <SelectContent>
+                                                {selectedCategory?.toLowerCase().includes("bases") && (
+                                                    <>
+                                                        <SelectItem value="2">2</SelectItem>
+                                                        <SelectItem value="5">5</SelectItem>
+                                                        <SelectItem value="10">10</SelectItem>
+                                                        <SelectItem value="15">15</SelectItem>
+                                                    </>
+                                                )}
                                                 <SelectItem value="20">20</SelectItem>
                                                 <SelectItem value="50">50</SelectItem>
                                                 <SelectItem value="100">100</SelectItem>
