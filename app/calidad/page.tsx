@@ -687,6 +687,14 @@ export default function CalidadPage() {
                 </div>
             </div>
 
+            {/* ── Nota metodológica ── */}
+            <div className="flex items-start gap-3 px-4 py-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800">
+                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0 text-amber-500" />
+                <p className="text-xs leading-relaxed">
+                    <span className="font-bold">Nota:</span> En este módulo, los lotes cuyo código de producto no tiene un estándar técnico registrado se contabilizan como <span className="font-semibold">Conformes</span> en las tarjetas de resumen. El módulo de <span className="font-semibold">Reportes (FTQ / SPY)</span> los excluye de todos los conteos de conformidad (estado <em>N/A</em>), por lo que los totales por categoría pueden diferir entre ambos módulos para el mismo período.
+                </p>
+            </div>
+
             {/* ── Filtros ── */}
             <Card className="border-primary/5 bg-muted/20 rounded-[2rem]">
                 <CardContent className="p-4 flex flex-col md:flex-row gap-4 flex-wrap">
