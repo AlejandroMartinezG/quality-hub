@@ -74,9 +74,10 @@ export function NotificationBell() {
             setUnreadCount(updated.filter(n => !n.read).length)
             return updated
         })
-        const query = supabase.from('notifications').delete().eq('id', id)
-        const { error } = userId ? await query.eq('user_id', userId) : await query
-        if (error) {
+        let q = supabase.from('notifications').delete().eq('id', id)
+        if (userId) q = q.eq('user_id', userId) as typeof q
+        const { data: deleted, error } = await q.select()
+        if (error || !deleted || deleted.length === 0) {
             setNotifications(snapshot)
             setUnreadCount(snapshot.filter(n => !n.read).length)
         }
@@ -88,9 +89,10 @@ export function NotificationBell() {
         const snapshot = notifications
         setNotifications([])
         setUnreadCount(0)
-        const query = supabase.from('notifications').delete().in('id', ids)
-        const { error } = userId ? await query.eq('user_id', userId) : await query
-        if (error) {
+        let q = supabase.from('notifications').delete().in('id', ids)
+        if (userId) q = q.eq('user_id', userId) as typeof q
+        const { data: deleted, error } = await q.select()
+        if (error || !deleted || deleted.length === 0) {
             setNotifications(snapshot)
             setUnreadCount(snapshot.filter(n => !n.read).length)
         }
