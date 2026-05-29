@@ -24,6 +24,7 @@ export function NotificationBell() {
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [unreadCount, setUnreadCount] = useState(0)
     const [open, setOpen] = useState(false)
+    const [userId, setUserId] = useState<string | null>(null)
     const router = useRouter()
 
     useEffect(() => {
@@ -35,6 +36,7 @@ export function NotificationBell() {
     async function loadNotifications() {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
+        setUserId(user.id)
 
         const { data } = await supabase
             .from('notifications')
@@ -66,20 +68,32 @@ export function NotificationBell() {
 
     async function deleteNotification(e: React.MouseEvent, id: string) {
         e.stopPropagation()
+        const snapshot = notifications
         setNotifications(prev => {
             const updated = prev.filter(n => n.id !== id)
             setUnreadCount(updated.filter(n => !n.read).length)
             return updated
         })
-        await supabase.from('notifications').delete().eq('id', id)
+        const query = supabase.from('notifications').delete().eq('id', id)
+        const { error } = userId ? await query.eq('user_id', userId) : await query
+        if (error) {
+            setNotifications(snapshot)
+            setUnreadCount(snapshot.filter(n => !n.read).length)
+        }
     }
 
     async function deleteAll() {
         const ids = notifications.map(n => n.id)
         if (ids.length === 0) return
+        const snapshot = notifications
         setNotifications([])
         setUnreadCount(0)
-        await supabase.from('notifications').delete().in('id', ids)
+        const query = supabase.from('notifications').delete().in('id', ids)
+        const { error } = userId ? await query.eq('user_id', userId) : await query
+        if (error) {
+            setNotifications(snapshot)
+            setUnreadCount(snapshot.filter(n => !n.read).length)
+        }
     }
 
     const handleNotificationClick = (notif: Notification) => {
