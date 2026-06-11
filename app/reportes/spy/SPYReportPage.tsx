@@ -539,6 +539,51 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                 </div>
             </div>
 
+            {/* ─── FILA 1B: AFECTADOS + DESCUENTO ────────────────────────────── */}
+            <div className="grid grid-cols-2 gap-4">
+                {/* Litros Afectados (semi + no conformes) */}
+                <Card className="border shadow-sm bg-white dark:bg-slate-900 border-amber-200 dark:border-amber-800/40 rounded-[1.4rem] overflow-visible relative">
+                    <CardContent className="p-4">
+                        <div className="pr-8">
+                            <p className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">Volumen Afectado</p>
+                            <p className="text-[9px] text-amber-500/70 dark:text-amber-500/50 leading-tight mb-1">Lotes fuera de FTQ (semi + no conformes)</p>
+                            <div className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                                {stats.affectedVolume.toLocaleString()}
+                                <span className="text-base font-bold text-slate-400 dark:text-slate-500 ml-1">L</span>
+                            </div>
+                            <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-1">
+                                {stats.totalVolumeUnified > 0 ? (100 - stats.ftqPercent).toFixed(1) : '0.0'}% del total
+                                <span className="font-normal text-slate-400 dark:text-slate-500 ml-1">(= 100 − FTQ%)</span>
+                            </p>
+                        </div>
+                        <div className="absolute -top-2.5 -right-2.5 p-3 bg-amber-100 dark:bg-amber-900/40 rounded-xl shadow-md border-4 border-white dark:border-slate-900">
+                            <AlertCircle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Volumen Descontado del Yield (solo no conformes totales) */}
+                <Card className="border shadow-sm bg-white dark:bg-slate-900 border-rose-200 dark:border-rose-800/40 rounded-[1.4rem] overflow-visible relative">
+                    <CardContent className="p-4">
+                        <div className="pr-8">
+                            <p className="text-[9px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-widest">Descuento del Yield</p>
+                            <p className="text-[9px] text-rose-500/70 dark:text-rose-500/50 leading-tight mb-1">Lotes No Conformes totales (no liberables)</p>
+                            <div className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                                {stats.noConformeVolume.toLocaleString()}
+                                <span className="text-base font-bold text-slate-400 dark:text-slate-500 ml-1">L</span>
+                            </div>
+                            <p className="text-xs font-bold text-rose-600 dark:text-rose-400 mt-1">
+                                {stats.totalVolumeUnified > 0 ? (100 - stats.finalYieldPercent).toFixed(1) : '0.0'}% del total
+                                <span className="font-normal text-slate-400 dark:text-slate-500 ml-1">(= 100 − Yield%)</span>
+                            </p>
+                        </div>
+                        <div className="absolute -top-2.5 -right-2.5 p-3 bg-rose-100 dark:bg-rose-900/40 rounded-xl shadow-md border-4 border-white dark:border-slate-900">
+                            <XCircle className="h-6 w-6 text-rose-600 dark:text-rose-400" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
             {/* ─── NOTA METODOLÓGICA FTQ / YIELD ─────────────────────────────── */}
             <Card className="border-none shadow-sm rounded-[1.5rem] bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700">
                 <CardContent className="p-4">
