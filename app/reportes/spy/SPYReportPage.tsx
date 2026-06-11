@@ -34,7 +34,8 @@ import {
     Printer,
     AlertCircle,
     XCircle,
-    Filter
+    Filter,
+    Info
 } from 'lucide-react'
 import {
     Select,
@@ -527,7 +528,7 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                                 <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">del total producido</p>
                                 <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 mt-2.5 flex items-center gap-1">
                                     <AlertCircle className="h-3.5 w-3.5" />
-                                    {stats.affectedVolume.toLocaleString()} L intervenidos / no conformes
+                                    {stats.noConformeVolume.toLocaleString()} L descontados del Yield
                                 </p>
                             </div>
                             <div className="absolute -top-3 -right-3 p-4 bg-indigo-100 dark:bg-indigo-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
@@ -537,6 +538,34 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                     </Card>
                 </div>
             </div>
+
+            {/* ─── NOTA METODOLÓGICA FTQ / YIELD ─────────────────────────────── */}
+            <Card className="border-none shadow-sm rounded-[1.5rem] bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700">
+                <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                        <div className="shrink-0 mt-0.5 h-7 w-7 rounded-xl bg-[#0b109f]/10 dark:bg-[#0b109f]/20 flex items-center justify-center">
+                            <Info className="h-4 w-4 text-[#0b109f] dark:text-indigo-400" />
+                        </div>
+                        <div className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
+                            <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">¿Cómo se calculan estos porcentajes?</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1.5">
+                                <div>
+                                    <span className="font-semibold text-green-700 dark:text-green-400">FTQ (First Time Quality): </span>
+                                    Litros que cumplieron <em>todos</em> los parámetros (sólidos, pH y apariencia) a la primera medición, sin ninguna desviación. Se divide entre el volumen total producido.
+                                </div>
+                                <div>
+                                    <span className="font-semibold text-indigo-700 dark:text-indigo-400">Final Yield (Rendimiento): </span>
+                                    Litros aptos para liberación. Solo se descuentan los lotes con <em>No Conformidad total</em> en algún parámetro. Los lotes <em>semi-conformes</em> (tolerancia ±5%) son liberables y no se restan al Yield.
+                                </div>
+                                <div className="md:col-span-2 pt-1 border-t border-slate-200 dark:border-slate-700 mt-0.5">
+                                    <span className="font-semibold text-amber-700 dark:text-amber-400">Diferencia entre FTQ y Yield: </span>
+                                    Un lote semi-conforme <em>sí</em> afecta al FTQ (no fue perfecto a la primera) pero <em>no</em> reduce el Yield (se puede liberar dentro de tolerancia). Por eso el Yield siempre es ≥ FTQ.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* ─── FILA 2: PARETO Y RADIAL LADO A LADO ───────────────────────── */}
             <div className="grid gap-6 grid-cols-1 lg:grid-cols-5">
