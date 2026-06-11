@@ -491,7 +491,7 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                 </Card>
 
                 {/* 2. Cards de Calidad y Yield (FTQ / SPY) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     
                     {/* Card FTQ: Calidad a la primera */}
                     <Card className="border shadow-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-[1.8rem] overflow-visible relative transition-all duration-300 hover:shadow-md">
@@ -533,6 +533,28 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                             </div>
                             <div className="absolute -top-3 -right-3 p-4 bg-indigo-100 dark:bg-indigo-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
                                 <Activity className="h-10 w-10 text-indigo-700 dark:text-indigo-400" />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Card No Conforme (100 - FY%) */}
+                    <Card className="border shadow-sm bg-white dark:bg-slate-900 border-rose-200 dark:border-rose-800/40 rounded-[1.8rem] overflow-visible relative transition-all duration-300 hover:shadow-md">
+                        <CardContent className="p-6">
+                            <div className="pr-10">
+                                <p className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-widest">
+                                    No Conforme Final
+                                </p>
+                                <div className="text-5xl font-black text-slate-900 dark:text-white mt-3 tracking-tight">
+                                    {(100 - stats.finalYieldPercent).toFixed(2)}%
+                                </div>
+                                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">del total producido</p>
+                                <p className="text-xs font-bold text-rose-600 dark:text-rose-400 mt-2.5 flex items-center gap-1">
+                                    <XCircle className="h-3.5 w-3.5" />
+                                    {stats.noConformeVolume.toLocaleString()} L no liberables
+                                </p>
+                            </div>
+                            <div className="absolute -top-3 -right-3 p-4 bg-rose-100 dark:bg-rose-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
+                                <XCircle className="h-10 w-10 text-rose-700 dark:text-rose-400" />
                             </div>
                         </CardContent>
                     </Card>
