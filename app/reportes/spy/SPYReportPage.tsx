@@ -546,21 +546,39 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                         <div className="shrink-0 mt-0.5 h-7 w-7 rounded-xl bg-[#0b109f]/10 dark:bg-[#0b109f]/20 flex items-center justify-center">
                             <Info className="h-4 w-4 text-[#0b109f] dark:text-indigo-400" />
                         </div>
-                        <div className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
+                        <div className="w-full space-y-3 text-xs text-slate-600 dark:text-slate-400">
                             <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">¿Cómo se calculan estos porcentajes?</p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1.5">
-                                <div>
-                                    <span className="font-semibold text-green-700 dark:text-green-400">FTQ (First Time Quality): </span>
-                                    Litros que cumplieron <em>todos</em> los parámetros (sólidos, pH y apariencia) a la primera medición, sin ninguna desviación. Se divide entre el volumen total producido.
+
+                            {/* FTQ */}
+                            <div className="space-y-1">
+                                <p className="font-semibold text-green-700 dark:text-green-400">① FTQ — First Time Quality</p>
+                                <p>Suma el volumen de los lotes donde <em>todos</em> los parámetros son conformes o sin estándar. Los lotes con cualquier desviación (semi-conforme o no conforme) quedan fuera.</p>
+                                <div className="mt-1 font-mono text-[11px] bg-white dark:bg-slate-900 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700 space-y-0.5">
+                                    <p><span className="text-green-700 dark:text-green-400">FTQ%</span> = Vol. OK ÷ Total = <span className="font-bold">{stats.ftqVolume.toLocaleString()} ÷ {stats.totalVolumeUnified.toLocaleString()} = {stats.ftqPercent.toFixed(1)}%</span></p>
+                                    <p><span className="text-amber-600 dark:text-amber-400">Afectados</span> = Total − Vol. OK = <span className="font-bold">{stats.totalVolumeUnified.toLocaleString()} − {stats.ftqVolume.toLocaleString()} = {stats.affectedVolume.toLocaleString()} L</span></p>
                                 </div>
-                                <div>
-                                    <span className="font-semibold text-indigo-700 dark:text-indigo-400">Final Yield (Rendimiento): </span>
-                                    Litros aptos para liberación. Solo se descuentan los lotes con <em>No Conformidad total</em> en algún parámetro. Los lotes <em>semi-conformes</em> (tolerancia ±5%) son liberables y no se restan al Yield.
+                            </div>
+
+                            <div className="border-t border-slate-200 dark:border-slate-700" />
+
+                            {/* Final Yield */}
+                            <div className="space-y-1">
+                                <p className="font-semibold text-indigo-700 dark:text-indigo-400">② Final Yield — Rendimiento</p>
+                                <p>Solo se descuentan los lotes con <em>No Conforme total</em> en algún parámetro (fuera de tolerancia ±5%). Los lotes semi-conformes son liberables y <em>no</em> se restan.</p>
+                                <div className="mt-1 font-mono text-[11px] bg-white dark:bg-slate-900 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700 space-y-0.5">
+                                    <p className="text-slate-500">Fórmula: Yield% = (Total − Descuento) ÷ Total</p>
+                                    <p className="text-slate-500">Despejando: Descuento = Total × (1 − Yield%)</p>
+                                    <p><span className="text-indigo-700 dark:text-indigo-400">Descuento</span> = {stats.totalVolumeUnified.toLocaleString()} × (1 − {(stats.finalYieldPercent / 100).toFixed(4)}) = <span className="font-bold">{stats.noConformeVolume.toLocaleString()} L</span></p>
+                                    <p><span className="text-indigo-700 dark:text-indigo-400">Yield%</span> = ({stats.totalVolumeUnified.toLocaleString()} − {stats.noConformeVolume.toLocaleString()}) ÷ {stats.totalVolumeUnified.toLocaleString()} = <span className="font-bold">{stats.finalYieldPercent.toFixed(2)}%</span></p>
                                 </div>
-                                <div className="md:col-span-2 pt-1 border-t border-slate-200 dark:border-slate-700 mt-0.5">
-                                    <span className="font-semibold text-amber-700 dark:text-amber-400">Diferencia entre FTQ y Yield: </span>
-                                    Un lote semi-conforme <em>sí</em> afecta al FTQ (no fue perfecto a la primera) pero <em>no</em> reduce el Yield (se puede liberar dentro de tolerancia). Por eso el Yield siempre es ≥ FTQ.
-                                </div>
+                            </div>
+
+                            <div className="border-t border-slate-200 dark:border-slate-700" />
+
+                            {/* Diferencia */}
+                            <div className="space-y-0.5">
+                                <p className="font-semibold text-amber-700 dark:text-amber-400">③ Afectados vs. Descuento</p>
+                                <p>Los <span className="font-semibold">{stats.affectedVolume.toLocaleString()} L afectados</span> = semi-conformes + no conformes (todo lo que no fue FTQ). El <span className="font-semibold">descuento del Yield son {stats.noConformeVolume.toLocaleString()} L</span> — solo los estrictamente no conformes. La diferencia (<span className="font-semibold">{(stats.affectedVolume - stats.noConformeVolume).toLocaleString()} L</span>) son los semi-conformes: salieron del FTQ pero se liberan.</p>
                             </div>
                         </div>
                     </div>
