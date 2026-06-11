@@ -564,12 +564,12 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                             {/* Final Yield */}
                             <div className="space-y-1">
                                 <p className="font-semibold text-indigo-700 dark:text-indigo-400">② Final Yield — Rendimiento</p>
-                                <p>Solo se descuentan los lotes con <em>No Conforme total</em> en algún parámetro (fuera de tolerancia ±5%). Los lotes semi-conformes son liberables y <em>no</em> se restan.</p>
+                                <p>Se recorre cada lote: si <em>cualquier</em> parámetro es No Conforme (fuera de tolerancia ±5%), su volumen se acumula como descuento. Los semi-conformes no entran. Al final se divide lo que queda entre el total.</p>
                                 <div className="mt-1 font-mono text-[11px] bg-white dark:bg-slate-900 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700 space-y-0.5">
-                                    <p className="text-slate-500">Fórmula: Yield% = (Total − Descuento) ÷ Total</p>
-                                    <p className="text-slate-500">Despejando: Descuento = Total × (1 − Yield%)</p>
-                                    <p><span className="text-indigo-700 dark:text-indigo-400">Descuento</span> = {stats.totalVolumeUnified.toLocaleString()} × (1 − {(stats.finalYieldPercent / 100).toFixed(4)}) = <span className="font-bold">{stats.noConformeVolume.toLocaleString()} L</span></p>
-                                    <p><span className="text-indigo-700 dark:text-indigo-400">Yield%</span> = ({stats.totalVolumeUnified.toLocaleString()} − {stats.noConformeVolume.toLocaleString()}) ÷ {stats.totalVolumeUnified.toLocaleString()} = <span className="font-bold">{stats.finalYieldPercent.toFixed(2)}%</span></p>
+                                    <p className="text-slate-500 font-sans">Paso 1 — sumar volumen de lotes con ≥1 parámetro No Conforme:</p>
+                                    <p><span className="text-rose-600 dark:text-rose-400">Descuento</span> = {stats.noConformeVolume.toLocaleString()} L <span className="text-slate-400">(acumulado lote a lote)</span></p>
+                                    <p className="text-slate-500 font-sans pt-0.5">Paso 2 — calcular el porcentaje apto:</p>
+                                    <p><span className="text-indigo-700 dark:text-indigo-400">Yield%</span> = (Total − Descuento) ÷ Total = ({stats.totalVolumeUnified.toLocaleString()} − {stats.noConformeVolume.toLocaleString()}) ÷ {stats.totalVolumeUnified.toLocaleString()} = <span className="font-bold">{stats.finalYieldPercent.toFixed(2)}%</span></p>
                                 </div>
                             </div>
 

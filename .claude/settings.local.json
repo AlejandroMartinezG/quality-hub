@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "mcp__claude_ai_Supabase__execute_sql"
+      "mcp__claude_ai_Supabase__execute_sql",
+      "Bash(npm run *)",
+      "Bash(node -e ' *)"
     ]
   }
 }
