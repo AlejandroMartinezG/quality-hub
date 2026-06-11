@@ -400,7 +400,8 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
 
         // 7. NCRs totales
         if (stats.totalNCRs > 0) {
-            insights.push({ level: stats.totalNCRs > 10 ? 'warn' : 'ok', text: `Se registraron ${stats.totalNCRs} lote${stats.totalNCRs !== 1 ? 's' : ''} con alguna desviación de calidad en el período, representando ${stats.totalVolumeUnified > 0 ? ((stats.affectedVolume / stats.totalVolumeUnified) * 100).toFixed(1) : '0'}% del volumen total producido.` })
+            const affectedPct = stats.totalVolumeUnified > 0 ? (stats.affectedVolume / stats.totalVolumeUnified) * 100 : 0
+            insights.push({ level: affectedPct > 20 ? 'critical' : 'warn', text: `Se registraron ${stats.totalNCRs} lote${stats.totalNCRs !== 1 ? 's' : ''} con alguna desviación de calidad en el período, representando ${affectedPct.toFixed(1)}% del volumen total producido.` })
         } else {
             insights.push({ level: 'ok', text: `No se registraron desviaciones de calidad en el período analizado. Todos los lotes evaluados cumplieron los parámetros de calidad a la primera.` })
         }
@@ -765,7 +766,7 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                                 <div className="text-5xl font-black text-slate-900 dark:text-white mt-2 tracking-tight">{stats.conformesSolids}</div>
                                 <p className="text-xs font-semibold text-green-600 dark:text-green-400 mt-1">registros</p>
                                 <p className="text-base font-bold text-green-600 dark:text-green-400 mt-2">
-                                    {spyRecords.length > 0 ? ((stats.conformesSolids / spyRecords.length) * 100).toFixed(1) : 0}%{' '}
+                                    {(stats.conformesSolids + stats.warningSolids + stats.noConformesSolids) > 0 ? ((stats.conformesSolids / (stats.conformesSolids + stats.warningSolids + stats.noConformesSolids)) * 100).toFixed(1) : 0}%{' '}
                                     <span className="text-xs font-normal">del total</span>
                                 </p>
                                 <p className="text-[10px] text-green-600/60 dark:text-green-500/60 mt-0.5">{stats.conformesSolidsLiters.toLocaleString()} L</p>
@@ -784,7 +785,7 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                                 <div className="text-5xl font-black text-slate-900 dark:text-white mt-2 tracking-tight">{stats.warningSolids}</div>
                                 <p className="text-xs font-semibold text-yellow-600 dark:text-yellow-400 mt-1">registros</p>
                                 <p className="text-base font-bold text-yellow-600 dark:text-yellow-400 mt-2">
-                                    {spyRecords.length > 0 ? ((stats.warningSolids / spyRecords.length) * 100).toFixed(1) : 0}%{' '}
+                                    {(stats.conformesSolids + stats.warningSolids + stats.noConformesSolids) > 0 ? ((stats.warningSolids / (stats.conformesSolids + stats.warningSolids + stats.noConformesSolids)) * 100).toFixed(1) : 0}%{' '}
                                     <span className="text-xs font-normal">del total</span>
                                 </p>
                                 <p className="text-[10px] text-yellow-600/60 dark:text-yellow-500/60 mt-0.5">{stats.warningSolidsLiters.toLocaleString()} L</p>
@@ -803,7 +804,7 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                                 <div className="text-5xl font-black text-slate-900 dark:text-white mt-2 tracking-tight">{stats.noConformesSolids}</div>
                                 <p className="text-xs font-semibold text-red-600 dark:text-red-400 mt-1">registros</p>
                                 <p className="text-base font-bold text-red-600 dark:text-red-400 mt-2">
-                                    {spyRecords.length > 0 ? ((stats.noConformesSolids / spyRecords.length) * 100).toFixed(1) : 0}%{' '}
+                                    {(stats.conformesSolids + stats.warningSolids + stats.noConformesSolids) > 0 ? ((stats.noConformesSolids / (stats.conformesSolids + stats.warningSolids + stats.noConformesSolids)) * 100).toFixed(1) : 0}%{' '}
                                     <span className="text-xs font-normal">del total</span>
                                 </p>
                                 <p className="text-[10px] text-red-600/60 dark:text-red-500/60 mt-0.5">{stats.noConformesSolidsLiters.toLocaleString()} L</p>
@@ -881,8 +882,8 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                                 <div className="text-5xl font-black text-slate-900 dark:text-white mt-2 tracking-tight">{stats.conformesPH}</div>
                                 <p className="text-xs font-semibold text-green-600 dark:text-green-400 mt-1">registros</p>
                                 <p className="text-base font-bold text-green-600 dark:text-green-400 mt-2">
-                                    {spyRecords.length > 0 ? ((stats.conformesPH / spyRecords.length) * 100).toFixed(1) : 0}%{' '}
-                                    <span className="text-xs font-normal">del total</span>
+                                    {(stats.conformesPH + stats.noConformesPH) > 0 ? ((stats.conformesPH / (stats.conformesPH + stats.noConformesPH)) * 100).toFixed(1) : 0}%{' '}
+                                    <span className="text-xs font-normal">con estándar pH</span>
                                 </p>
                                 <p className="text-[10px] text-green-600/60 dark:text-green-500/60 mt-0.5">{stats.conformesPHLiters.toLocaleString()} L</p>
                             </div>
@@ -900,8 +901,8 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                                 <div className="text-5xl font-black text-slate-900 dark:text-white mt-2 tracking-tight">{stats.noConformesPH}</div>
                                 <p className="text-xs font-semibold text-red-600 dark:text-red-400 mt-1">registros</p>
                                 <p className="text-base font-bold text-red-600 dark:text-red-400 mt-2">
-                                    {spyRecords.length > 0 ? ((stats.noConformesPH / spyRecords.length) * 100).toFixed(1) : 0}%{' '}
-                                    <span className="text-xs font-normal">del total</span>
+                                    {(stats.conformesPH + stats.noConformesPH) > 0 ? ((stats.noConformesPH / (stats.conformesPH + stats.noConformesPH)) * 100).toFixed(1) : 0}%{' '}
+                                    <span className="text-xs font-normal">con estándar pH</span>
                                 </p>
                                 <p className="text-[10px] text-red-600/60 dark:text-red-500/60 mt-0.5">{stats.noConformesPHLiters.toLocaleString()} L</p>
                             </div>
@@ -1008,19 +1009,19 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                                         <td style={{ padding: '7px 10px', fontWeight: 700, color: '#15803d' }}>Conforme</td>
                                         <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 800 }}>{stats.conformesSolids}</td>
                                         <td style={{ textAlign: 'right', padding: '7px 10px' }}>{stats.conformesSolidsLiters.toLocaleString()}</td>
-                                        <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 700, color: '#15803d' }}>{spyRecords.length > 0 ? ((stats.conformesSolids / spyRecords.length) * 100).toFixed(1) : 0}%</td>
+                                        <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 700, color: '#15803d' }}>{(stats.conformesSolids + stats.warningSolids + stats.noConformesSolids) > 0 ? ((stats.conformesSolids / (stats.conformesSolids + stats.warningSolids + stats.noConformesSolids)) * 100).toFixed(1) : 0}%</td>
                                     </tr>
                                     <tr style={{ borderBottom: '1px solid #f1f5f9', background: '#fefce8' }}>
                                         <td style={{ padding: '7px 10px', fontWeight: 700, color: '#a16207' }}>Semi-Conforme (tolerancia ±5%)</td>
                                         <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 800 }}>{stats.warningSolids}</td>
                                         <td style={{ textAlign: 'right', padding: '7px 10px' }}>{stats.warningSolidsLiters.toLocaleString()}</td>
-                                        <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 700, color: '#a16207' }}>{spyRecords.length > 0 ? ((stats.warningSolids / spyRecords.length) * 100).toFixed(1) : 0}%</td>
+                                        <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 700, color: '#a16207' }}>{(() => { const t = stats.conformesSolids + stats.warningSolids + stats.noConformesSolids; if (t === 0) return '0.0'; const a = parseFloat((stats.conformesSolids / t * 100).toFixed(1)); const b = parseFloat((stats.noConformesSolids / t * 100).toFixed(1)); return (100 - a - b).toFixed(1) })()}%</td>
                                     </tr>
                                     <tr style={{ background: '#fff1f2' }}>
                                         <td style={{ padding: '7px 10px', fontWeight: 700, color: '#be123c' }}>No Conforme</td>
                                         <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 800 }}>{stats.noConformesSolids}</td>
                                         <td style={{ textAlign: 'right', padding: '7px 10px' }}>{stats.noConformesSolidsLiters.toLocaleString()}</td>
-                                        <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 700, color: '#be123c' }}>{spyRecords.length > 0 ? ((stats.noConformesSolids / spyRecords.length) * 100).toFixed(1) : 0}%</td>
+                                        <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 700, color: '#be123c' }}>{(stats.conformesSolids + stats.warningSolids + stats.noConformesSolids) > 0 ? ((stats.noConformesSolids / (stats.conformesSolids + stats.warningSolids + stats.noConformesSolids)) * 100).toFixed(1) : 0}%</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -1043,13 +1044,13 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                                         <td style={{ padding: '7px 10px', fontWeight: 700, color: '#15803d' }}>Conforme</td>
                                         <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 800 }}>{stats.conformesPH}</td>
                                         <td style={{ textAlign: 'right', padding: '7px 10px' }}>{stats.conformesPHLiters.toLocaleString()}</td>
-                                        <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 700, color: '#15803d' }}>{spyRecords.length > 0 ? ((stats.conformesPH / spyRecords.length) * 100).toFixed(1) : 0}%</td>
+                                        <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 700, color: '#15803d' }}>{(stats.conformesPH + stats.noConformesPH) > 0 ? ((stats.conformesPH / (stats.conformesPH + stats.noConformesPH)) * 100).toFixed(1) : 0}%</td>
                                     </tr>
                                     <tr style={{ background: '#fff1f2' }}>
                                         <td style={{ padding: '7px 10px', fontWeight: 700, color: '#be123c' }}>No Conforme</td>
                                         <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 800 }}>{stats.noConformesPH}</td>
                                         <td style={{ textAlign: 'right', padding: '7px 10px' }}>{stats.noConformesPHLiters.toLocaleString()}</td>
-                                        <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 700, color: '#be123c' }}>{spyRecords.length > 0 ? ((stats.noConformesPH / spyRecords.length) * 100).toFixed(1) : 0}%</td>
+                                        <td style={{ textAlign: 'right', padding: '7px 10px', fontWeight: 700, color: '#be123c' }}>{(stats.conformesPH + stats.noConformesPH) > 0 ? ((stats.noConformesPH / (stats.conformesPH + stats.noConformesPH)) * 100).toFixed(1) : 0}%</td>
                                     </tr>
                                 </tbody>
                             </table>
