@@ -1103,7 +1103,7 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                             <div style={{ border: '1px solid #c7d2fe', padding: '12px', borderRadius: '12px', background: '#eef2ff' }}>
                                 <p style={{ fontSize: '7pt', fontWeight: 900, color: '#3730a3', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Final Yield (Rendimiento)</p>
                                 <p style={{ fontSize: '18pt', fontWeight: 900, color: '#4338ca', margin: '4px 0 2px' }}>{stats.finalYieldPercent.toFixed(2)}%</p>
-                                <p style={{ fontSize: '6.5pt', color: '#3730a3', margin: 0 }}>{stats.noConformeVolume.toLocaleString()} L descontados del Yield</p>
+                                <p style={{ fontSize: '6.5pt', color: '#3730a3', margin: 0, fontFamily: 'monospace' }}>(Total − Descuento) ÷ Total</p>
                             </div>
                             <div style={{ border: '1px solid #fecdd3', padding: '12px', borderRadius: '12px', background: '#fff1f2' }}>
                                 <p style={{ fontSize: '7pt', fontWeight: 900, color: '#9f1239', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>No Conforme Final</p>
