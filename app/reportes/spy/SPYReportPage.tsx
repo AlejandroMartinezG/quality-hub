@@ -1088,21 +1088,46 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                     <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
 
                         {/* ── 1. RESUMEN EJECUTIVO ── */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-                            <div style={{ border: '1px solid #e2e8f0', padding: '14px', borderRadius: '12px', background: '#f8fafc' }}>
-                                <p style={{ fontSize: '8pt', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Volumen Total Producido</p>
-                                <p style={{ fontSize: '22pt', fontWeight: 900, color: '#0f172a', margin: '4px 0 2px' }}>{stats.totalVolumeUnified.toLocaleString()} <span style={{ fontSize: '10pt', fontWeight: 600 }}>L</span></p>
-                                <p style={{ fontSize: '7pt', color: '#94a3b8', margin: 0 }}>PT: {stats.totalVolumeProducts.toLocaleString()} L &nbsp;|&nbsp; Bases: {stats.totalPiecesBases.toLocaleString()} pzs ({stats.totalVolumeBases.toLocaleString()} L eq)</p>
+                        {/* Fila A: Volumen Total · FTQ · Final Yield · No Conforme */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                            <div style={{ border: '1px solid #e2e8f0', padding: '12px', borderRadius: '12px', background: '#f8fafc' }}>
+                                <p style={{ fontSize: '7pt', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Volumen Total</p>
+                                <p style={{ fontSize: '18pt', fontWeight: 900, color: '#0f172a', margin: '4px 0 2px' }}>{stats.totalVolumeUnified.toLocaleString()} <span style={{ fontSize: '9pt', fontWeight: 600 }}>L</span></p>
+                                <p style={{ fontSize: '6.5pt', color: '#94a3b8', margin: 0 }}>PT: {stats.totalVolumeProducts.toLocaleString()} L | Bases: {stats.totalPiecesBases.toLocaleString()} pzs</p>
                             </div>
-                            <div style={{ border: '1px solid #bbf7d0', padding: '14px', borderRadius: '12px', background: '#f0fdf4' }}>
-                                <p style={{ fontSize: '8pt', fontWeight: 900, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>First Time Quality (FTQ)</p>
-                                <p style={{ fontSize: '22pt', fontWeight: 900, color: '#15803d', margin: '4px 0 2px' }}>{stats.ftqPercent.toFixed(1)}%</p>
-                                <p style={{ fontSize: '7pt', color: '#166534', margin: 0 }}>{stats.ftqVolume.toLocaleString()} L producidos bien a la primera</p>
+                            <div style={{ border: '1px solid #bbf7d0', padding: '12px', borderRadius: '12px', background: '#f0fdf4' }}>
+                                <p style={{ fontSize: '7pt', fontWeight: 900, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>First Time Quality (FTQ)</p>
+                                <p style={{ fontSize: '18pt', fontWeight: 900, color: '#15803d', margin: '4px 0 2px' }}>{stats.ftqPercent.toFixed(1)}%</p>
+                                <p style={{ fontSize: '6.5pt', color: '#166534', margin: 0 }}>{stats.ftqVolume.toLocaleString()} L bien a la primera</p>
                             </div>
-                            <div style={{ border: '1px solid #c7d2fe', padding: '14px', borderRadius: '12px', background: '#eef2ff' }}>
-                                <p style={{ fontSize: '8pt', fontWeight: 900, color: '#3730a3', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Final Yield (Rendimiento)</p>
-                                <p style={{ fontSize: '22pt', fontWeight: 900, color: '#4338ca', margin: '4px 0 2px' }}>{stats.finalYieldPercent.toFixed(2)}%</p>
-                                <p style={{ fontSize: '7pt', color: '#3730a3', margin: 0 }}>{stats.affectedVolume.toLocaleString()} L intervenidos o no conformes</p>
+                            <div style={{ border: '1px solid #c7d2fe', padding: '12px', borderRadius: '12px', background: '#eef2ff' }}>
+                                <p style={{ fontSize: '7pt', fontWeight: 900, color: '#3730a3', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Final Yield (Rendimiento)</p>
+                                <p style={{ fontSize: '18pt', fontWeight: 900, color: '#4338ca', margin: '4px 0 2px' }}>{stats.finalYieldPercent.toFixed(2)}%</p>
+                                <p style={{ fontSize: '6.5pt', color: '#3730a3', margin: 0 }}>{stats.noConformeVolume.toLocaleString()} L descontados del Yield</p>
+                            </div>
+                            <div style={{ border: '1px solid #fecdd3', padding: '12px', borderRadius: '12px', background: '#fff1f2' }}>
+                                <p style={{ fontSize: '7pt', fontWeight: 900, color: '#9f1239', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>No Conforme Final</p>
+                                <p style={{ fontSize: '18pt', fontWeight: 900, color: '#be123c', margin: '4px 0 2px' }}>{(100 - stats.finalYieldPercent).toFixed(2)}%</p>
+                                <p style={{ fontSize: '6.5pt', color: '#9f1239', margin: 0 }}>{stats.noConformeVolume.toLocaleString()} L no liberables (= 100 − Yield%)</p>
+                            </div>
+                        </div>
+                        {/* Fila B: Afectados · Descuento con fórmulas */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                            <div style={{ border: '1px solid #fde68a', padding: '12px', borderRadius: '12px', background: '#fffbeb' }}>
+                                <p style={{ fontSize: '7pt', fontWeight: 900, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px 0' }}>Volumen Afectado <span style={{ fontWeight: 400, textTransform: 'none', fontSize: '6.5pt' }}>(semi-conformes + no conformes)</span></p>
+                                <p style={{ fontSize: '16pt', fontWeight: 900, color: '#b45309', margin: '0 0 3px 0' }}>{stats.affectedVolume.toLocaleString()} L</p>
+                                <p style={{ fontSize: '6.5pt', color: '#92400e', margin: 0, fontFamily: 'monospace' }}>
+                                    Afectados = Total − FTQ_L = {stats.totalVolumeUnified.toLocaleString()} − {stats.ftqVolume.toLocaleString()} = {stats.affectedVolume.toLocaleString()} L
+                                    &nbsp;({(100 - stats.ftqPercent).toFixed(1)}% del total = 100 − FTQ%)
+                                </p>
+                            </div>
+                            <div style={{ border: '1px solid #fecdd3', padding: '12px', borderRadius: '12px', background: '#fff1f2' }}>
+                                <p style={{ fontSize: '7pt', fontWeight: 900, color: '#9f1239', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px 0' }}>Descuento del Yield <span style={{ fontWeight: 400, textTransform: 'none', fontSize: '6.5pt' }}>(solo no conformes totales)</span></p>
+                                <p style={{ fontSize: '16pt', fontWeight: 900, color: '#be123c', margin: '0 0 3px 0' }}>{stats.noConformeVolume.toLocaleString()} L</p>
+                                <p style={{ fontSize: '6.5pt', color: '#9f1239', margin: 0, fontFamily: 'monospace' }}>
+                                    Yield% = (Total − Descuento) ÷ Total → Descuento = Total × (1 − Yield%)
+                                    &nbsp;= {stats.totalVolumeUnified.toLocaleString()} × {(1 - stats.finalYieldPercent / 100).toFixed(4)} = {stats.noConformeVolume.toLocaleString()} L
+                                </p>
                             </div>
                         </div>
 
@@ -1251,14 +1276,40 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                             </div>
                         )}
 
-                        {/* ── 7. GLOSARIO ── */}
-                        <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '8pt', color: '#64748b' }}>
-                            <h5 style={{ fontWeight: 900, color: '#0f172a', margin: '0 0 6px 0', fontSize: '9pt' }}>Glosario y Criterios de Evaluación</h5>
-                            <p style={{ margin: '3px 0' }}><strong>First Time Quality (FTQ):</strong> Litros producidos que cumplen pH, sólidos y apariencia a la primera, sin ninguna desviación.</p>
-                            <p style={{ margin: '3px 0' }}><strong>Final Yield (Rendimiento):</strong> Litros aptos para liberación; se descuentan únicamente los lotes con No Conformidad total en cualquier parámetro.</p>
-                            <p style={{ margin: '3px 0' }}><strong>Semi-Conforme:</strong> Lote dentro de la tolerancia relativa ±5% del estándar; se considera afectado en FTQ pero no se descuenta del Yield.</p>
-                            <p style={{ margin: '3px 0' }}><strong>No Conforme:</strong> Lote fuera de tolerancia; genera NCR automática y se descuenta del Final Yield.</p>
-                            <p style={{ margin: '3px 0' }}><strong>Bases:</strong> Familias de bases se miden en piezas (pzs); se convierten a litros equivalentes con factor ×20 para los cálculos de volumen.</p>
+                        {/* ── 7. GLOSARIO Y FÓRMULAS ── */}
+                        <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden', fontSize: '8pt' }}>
+                            <div style={{ background: '#f1f5f9', padding: '8px 14px', borderBottom: '1px solid #e2e8f0' }}>
+                                <h5 style={{ fontWeight: 900, color: '#0f172a', margin: 0, fontSize: '9pt' }}>Glosario, Criterios y Fórmulas de Cálculo</h5>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0', color: '#374151' }}>
+                                <div style={{ padding: '10px 14px', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
+                                    <p style={{ fontWeight: 800, color: '#166534', margin: '0 0 3px 0' }}>① FTQ — First Time Quality</p>
+                                    <p style={{ margin: '2px 0' }}>Lotes donde <em>todos</em> los parámetros son conformes o sin estándar. Cualquier desviación (semi o no conforme) excluye el lote.</p>
+                                    <p style={{ margin: '4px 0 0 0', fontFamily: 'monospace', fontSize: '7pt', color: '#166534', background: '#f0fdf4', padding: '4px 6px', borderRadius: '4px' }}>
+                                        FTQ% = Vol.OK ÷ Total = {stats.ftqVolume.toLocaleString()} ÷ {stats.totalVolumeUnified.toLocaleString()} = {stats.ftqPercent.toFixed(1)}%
+                                    </p>
+                                </div>
+                                <div style={{ padding: '10px 14px', borderBottom: '1px solid #e2e8f0' }}>
+                                    <p style={{ fontWeight: 800, color: '#3730a3', margin: '0 0 3px 0' }}>② Final Yield — Rendimiento</p>
+                                    <p style={{ margin: '2px 0' }}>Se acumula el volumen de cada lote con ≥1 parámetro No Conforme. Los semi-conformes <em>no</em> se restan.</p>
+                                    <p style={{ margin: '4px 0 0 0', fontFamily: 'monospace', fontSize: '7pt', color: '#3730a3', background: '#eef2ff', padding: '4px 6px', borderRadius: '4px' }}>
+                                        Yield% = (Total − Descuento) ÷ Total = ({stats.totalVolumeUnified.toLocaleString()} − {stats.noConformeVolume.toLocaleString()}) ÷ {stats.totalVolumeUnified.toLocaleString()} = {stats.finalYieldPercent.toFixed(2)}%
+                                    </p>
+                                </div>
+                                <div style={{ padding: '10px 14px', borderRight: '1px solid #e2e8f0' }}>
+                                    <p style={{ fontWeight: 800, color: '#b45309', margin: '0 0 3px 0' }}>③ Afectados vs. Descuento</p>
+                                    <p style={{ margin: '2px 0' }}><strong>Afectados</strong> = semi + no conformes (todo lo que no fue FTQ). <strong>Descuento</strong> = solo los estrictamente no conformes. La diferencia = semi-conformes liberados.</p>
+                                    <p style={{ margin: '4px 0 0 0', fontFamily: 'monospace', fontSize: '7pt', color: '#92400e', background: '#fffbeb', padding: '4px 6px', borderRadius: '4px' }}>
+                                        Afectados {stats.affectedVolume.toLocaleString()} L − Descuento {stats.noConformeVolume.toLocaleString()} L = Semi-conformes {(stats.affectedVolume - stats.noConformeVolume).toLocaleString()} L
+                                    </p>
+                                </div>
+                                <div style={{ padding: '10px 14px' }}>
+                                    <p style={{ fontWeight: 800, color: '#64748b', margin: '0 0 3px 0' }}>④ Otros términos</p>
+                                    <p style={{ margin: '2px 0' }}><strong>Semi-Conforme:</strong> Dentro de ±5% de tolerancia. Afecta FTQ pero no el Yield.</p>
+                                    <p style={{ margin: '2px 0' }}><strong>No Conforme Final:</strong> 100% − Yield% = {(100 - stats.finalYieldPercent).toFixed(2)}% ({stats.noConformeVolume.toLocaleString()} L).</p>
+                                    <p style={{ margin: '2px 0' }}><strong>Bases:</strong> Se registran en pzs; se convierten ×20 para litros equivalentes.</p>
+                                </div>
+                            </div>
                         </div>
 
                         {/* ── NOTA METODOLÓGICA ── */}
