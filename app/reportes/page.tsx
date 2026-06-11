@@ -805,7 +805,7 @@ export default function ReportesPage() {
                         : 'grid-cols-2 max-w-[640px]'
                     }`}>
                         {(!isPreparador && !isGerente) && <TabsTrigger value="comercial">Análisis de Operación</TabsTrigger>}
-                        <TabsTrigger value="calidad">Calidad y Rendimiento (FTQ / SPY)</TabsTrigger>
+                        <TabsTrigger value="calidad">Calidad y Rendimiento (FTQ / FY)</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="calidad" className="space-y-6">
