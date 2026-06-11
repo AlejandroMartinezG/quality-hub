@@ -809,7 +809,7 @@ export default function ReportesPage() {
                     </TabsList>
 
                     <TabsContent value="calidad" className="space-y-6">
-                        <SPYReportPage records={records} profile={profile} />
+                        <SPYReportPage records={filteredRecords} profile={profile} />
                     </TabsContent>
 
                     {(!isPreparador && !isGerente) && (
