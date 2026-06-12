@@ -7,7 +7,7 @@ import { es } from "date-fns/locale"
 import { getBasePath } from "@/lib/utils"
 
 import { Button } from "@/components/ui/button"
-import { Printer, FileDown, X } from "lucide-react"
+import { Printer, FileDown, X, Loader2 } from "lucide-react"
 
 interface PrintReportWrapperProps {
     title: string
@@ -29,6 +29,7 @@ export function PrintReportWrapper({
     onClose
 }: PrintReportWrapperProps) {
     const [mounted, setMounted] = useState(false)
+    const [exporting, setExporting] = useState(false)
 
     useEffect(() => {
         setMounted(true)
@@ -44,11 +45,55 @@ export function PrintReportWrapper({
         }
     }, [mounted])
 
-    const handleExportPDF = () => {
-        const original = document.title
-        document.title = `${title.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-')}_${format(new Date(), 'yyyy-MM-dd')}`
-        window.print()
-        setTimeout(() => { document.title = original }, 2000)
+    const handleExportPDF = async () => {
+        const element = document.querySelector('.print-content-container') as HTMLElement | null
+        if (!element || exporting) return
+
+        setExporting(true)
+
+        const wasDark = document.documentElement.classList.contains('dark')
+        if (wasDark) document.documentElement.classList.remove('dark')
+
+        // Clonamos el contenido para no afectar la vista en pantalla y para
+        // que el footer (position: fixed) se inserte una sola vez al final.
+        const clone = element.cloneNode(true) as HTMLElement
+        clone.style.position = 'static'
+        clone.style.boxShadow = 'none'
+        clone.style.margin = '0'
+
+        const footer = clone.querySelector('.print-footer') as HTMLElement | null
+        if (footer) {
+            footer.style.position = 'static'
+            footer.style.marginTop = '20px'
+        }
+
+        const host = document.createElement('div')
+        host.style.position = 'fixed'
+        host.style.top = '0'
+        host.style.left = '-9999px'
+        host.appendChild(clone)
+        document.body.appendChild(host)
+
+        const filename = `${title.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`
+
+        try {
+            const html2pdf = (await import('html2pdf.js')).default
+            await html2pdf()
+                .set({
+                    margin: 0,
+                    filename,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+                    jsPDF: { unit: 'cm', format: 'letter', orientation: 'portrait' },
+                    pagebreak: { mode: ['css', 'avoid-all'], avoid: ['.print-no-break', '.print-chart-container', 'tr'] }
+                })
+                .from(clone)
+                .save()
+        } finally {
+            document.body.removeChild(host)
+            if (wasDark) document.documentElement.classList.add('dark')
+            setExporting(false)
+        }
     }
 
     const formatDate = (d: string) => {
@@ -89,9 +134,10 @@ export function PrintReportWrapper({
                         variant="outline"
                         className="gap-2 border-[#0e0c9b]/30 text-[#0e0c9b] hover:bg-[#0e0c9b]/5 px-4"
                         onClick={handleExportPDF}
+                        disabled={exporting}
                     >
-                        <FileDown className="h-4 w-4" />
-                        Exportar PDF
+                        {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+                        {exporting ? 'Generando...' : 'Exportar PDF'}
                     </Button>
                     <div className="w-[1px] h-6 bg-slate-200 mx-1" />
                     <Button
