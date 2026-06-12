@@ -735,6 +735,9 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                                 </div>
                             )}
                         </div>
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-3 leading-relaxed px-1">
+                            Los parámetros se ordenan de mayor a menor volumen afectado. La línea roja muestra el % acumulado — donde cruza el <span className="font-semibold text-purple-500">80%</span> indica qué parámetros concentran la mayoría de las desviaciones. Focalizar la mejora ahí tiene el mayor retorno.
+                        </p>
                     </CardContent>
                 </Card>
 
@@ -744,8 +747,8 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                         <CardTitle className="text-slate-700 dark:text-slate-200 text-lg font-bold">Parámetros Críticos</CardTitle>
                         <CardDescription className="text-xs">Frecuencia de fallos analíticos (# NCRs)</CardDescription>
                     </CardHeader>
-                    <CardContent className="pb-6 flex justify-center items-center">
-                        <div style={{ width: '100%', height: 320 }} className="flex justify-center items-center">
+                    <CardContent className="pb-6 flex flex-col">
+                        <div style={{ width: '100%', height: 280 }} className="flex justify-center items-center">
                             {spyRecords.length > 0 && stats.totalNCRs > 0 ? (
                                 <ResponsiveContainer width="100%" height="100%">
                                     <RadarChart data={chartsData.radarData} margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
@@ -766,6 +769,9 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                                 </div>
                             )}
                         </div>
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-3 leading-relaxed px-1">
+                            El área sombreada se extiende hacia cada vértice según la frecuencia de fallos en ese parámetro. Un área grande en un vértice indica alta incidencia. Un triángulo pequeño y simétrico refleja un proceso estable sin fallos dominantes.
+                        </p>
                     </CardContent>
                 </Card>
             </div>
@@ -799,6 +805,9 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                             No hay información de sucursales para mostrar.
                         </div>
                     )}
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-3 leading-relaxed">
+                        Cada barra muestra el total de lotes analizados en la sucursal, desglosados en <span className="font-semibold text-green-500">conformes</span>, <span className="font-semibold text-yellow-500">semi-conformes</span> y <span className="font-semibold text-red-500">no conformes</span>. Las sucursales con mayor proporción roja o amarilla tienen mayor incidencia de desviaciones y requieren atención prioritaria.
+                    </p>
                 </CardContent>
             </Card>
 
