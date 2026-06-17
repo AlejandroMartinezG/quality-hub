@@ -353,6 +353,7 @@ export default function CalidadPage() {
     const totalPages = Math.ceil(filteredRecords.length / PAGE_SIZE)
     const paginatedRecords = filteredRecords.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE)
 
+    const solidsRecords = filteredRecords.filter(r => !!PRODUCT_STANDARDS[r.codigo_producto])
     const phRecords = filteredRecords.filter(r => getPhStatus(r) !== 'none')
     const pzsAromatizantes = filteredRecords
         .filter(r => {
@@ -370,14 +371,21 @@ export default function CalidadPage() {
 
     const litrosBases = (pzsAromatizantes + pzsLimpiadores) * 20
 
-    const litrosProductos = filteredRecords
+    const litrosIntermedios = filteredRecords
         .filter(r => {
             const fam = (r.familia_producto || '').toLowerCase()
-            return !fam.includes('base')
+            return fam.includes('intermedio') || fam.includes('disolucion') || fam.includes('disolución')
         })
         .reduce((sum, r) => sum + (r.tamano_lote || 0), 0)
 
-    const totalLitrosGeneral = litrosProductos + litrosBases
+    const litrosProductos = filteredRecords
+        .filter(r => {
+            const fam = (r.familia_producto || '').toLowerCase()
+            return !fam.includes('base') && !fam.includes('intermedio') && !fam.includes('disolucion') && !fam.includes('disolución')
+        })
+        .reduce((sum, r) => sum + (r.tamano_lote || 0), 0)
+
+    const totalLitrosGeneral = litrosProductos + litrosBases + litrosIntermedios
 
     const pct = (n: number, total: number) => total > 0 ? ((n / total) * 100).toFixed(1) + '%' : '—'
 
@@ -516,12 +524,19 @@ export default function CalidadPage() {
                         </div>
                         
                         <div className="flex items-center justify-between mt-1">
-                            <span className="text-xs font-bold uppercase tracking-widest text-white/50">Total Productos (sin bases)</span>
+                            <span className="text-xs font-bold uppercase tracking-widest text-white/50">Productos Terminados</span>
                             <span className="text-lg font-bold text-white/90">{litrosProductos.toLocaleString()} L</span>
                         </div>
 
+                        {litrosIntermedios > 0 && (
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold uppercase tracking-widest text-teal-300/80">Productos Intermedios</span>
+                                <span className="text-lg font-bold text-teal-300">{litrosIntermedios.toLocaleString()} L</span>
+                            </div>
+                        )}
+
                         <div className="h-px bg-white/10" />
-                        
+
                         <div className="space-y-3 flex-1 flex flex-col justify-end">
                             <div>
                                 <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-2">Bases (Registradas en pzs)</p>
@@ -571,13 +586,13 @@ export default function CalidadPage() {
                                 <div className="mt-auto">
                                     <div className="flex items-baseline gap-2">
                                         <span className="text-5xl font-black tracking-tighter text-green-700 dark:text-green-400">
-                                            {filteredRecords.filter(r => getStatusInfo(r) === 'success').length}
+                                            {solidsRecords.filter(r => getStatusInfo(r) === 'success').length}
                                         </span>
                                         <span className="text-lg font-bold text-green-600/70 dark:text-green-500/70">
-                                            {pct(filteredRecords.filter(r => getStatusInfo(r) === 'success').length, filteredRecords.length)}
+                                            {pct(solidsRecords.filter(r => getStatusInfo(r) === 'success').length, solidsRecords.length)}
                                         </span>
                                     </div>
-                                    <p className="text-xs font-medium text-green-600/50 dark:text-green-400/40 mt-1">de {filteredRecords.length} muestras totales</p>
+                                    <p className="text-xs font-medium text-green-600/50 dark:text-green-400/40 mt-1">de {solidsRecords.length} con estándar de sólidos</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -595,13 +610,13 @@ export default function CalidadPage() {
                                 <div className="mt-auto">
                                     <div className="flex items-baseline gap-2">
                                         <span className="text-5xl font-black tracking-tighter text-yellow-700 dark:text-yellow-400">
-                                            {filteredRecords.filter(r => getStatusInfo(r) === 'warning').length}
+                                            {solidsRecords.filter(r => getStatusInfo(r) === 'warning').length}
                                         </span>
                                         <span className="text-lg font-bold text-yellow-600/70 dark:text-yellow-500/70">
-                                            {pct(filteredRecords.filter(r => getStatusInfo(r) === 'warning').length, filteredRecords.length)}
+                                            {pct(solidsRecords.filter(r => getStatusInfo(r) === 'warning').length, solidsRecords.length)}
                                         </span>
                                     </div>
-                                    <p className="text-xs font-medium text-yellow-600/50 dark:text-yellow-400/40 mt-1">de {filteredRecords.length} muestras totales</p>
+                                    <p className="text-xs font-medium text-yellow-600/50 dark:text-yellow-400/40 mt-1">de {solidsRecords.length} con estándar de sólidos</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -619,13 +634,13 @@ export default function CalidadPage() {
                                 <div className="mt-auto">
                                     <div className="flex items-baseline gap-2">
                                         <span className="text-5xl font-black tracking-tighter text-[#C1272D] dark:text-red-400">
-                                            {filteredRecords.filter(r => getStatusInfo(r) === 'error').length}
+                                            {solidsRecords.filter(r => getStatusInfo(r) === 'error').length}
                                         </span>
                                         <span className="text-lg font-bold text-[#C1272D]/70 dark:text-red-500/70">
-                                            {pct(filteredRecords.filter(r => getStatusInfo(r) === 'error').length, filteredRecords.length)}
+                                            {pct(solidsRecords.filter(r => getStatusInfo(r) === 'error').length, solidsRecords.length)}
                                         </span>
                                     </div>
-                                    <p className="text-xs font-medium text-red-600/50 dark:text-red-400/40 mt-1">de {filteredRecords.length} muestras totales</p>
+                                    <p className="text-xs font-medium text-red-600/50 dark:text-red-400/40 mt-1">de {solidsRecords.length} con estándar de sólidos</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -691,7 +706,7 @@ export default function CalidadPage() {
             <div className="flex items-start gap-3 px-4 py-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800">
                 <AlertCircle className="h-4 w-4 mt-0.5 shrink-0 text-amber-500" />
                 <p className="text-xs leading-relaxed">
-                    <span className="font-bold">Nota:</span> En este módulo, los lotes cuyo código de producto no tiene un estándar técnico registrado se contabilizan como <span className="font-semibold">Conformes</span> en las tarjetas de resumen. El módulo de <span className="font-semibold">Reportes (FTQ / SPY)</span> los excluye de todos los conteos de conformidad (estado <em>N/A</em>), por lo que los totales por categoría pueden diferir entre ambos módulos para el mismo período.
+                    <span className="font-bold">Nota metodológica:</span> Los lotes cuyo código de producto no tiene un estándar técnico registrado se clasifican como <em>N/A</em> y se excluyen de los conteos de conformidad de sólidos y pH. Solo se contabilizan los lotes con estándar definido, homologando la lógica con el módulo de <span className="font-semibold">Reportes (FTQ / FY)</span>.
                 </p>
             </div>
 
