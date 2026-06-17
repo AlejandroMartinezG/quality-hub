@@ -1900,8 +1900,10 @@ export default function ReportesPage() {
                 }
 
                 const PIECE_FAMILIES = ["Bases aromatizante ambiental", "Bases limpiadores liquidos multiusos", "Bases Aromatizantes"]
-                const totalVol = pr.reduce((sum, r) => !PIECE_FAMILIES.includes(r.familia_producto) ? sum + (r.tamano_lote || 0) : sum, 0)
+                const INTERMEDIATE_FAMILIES = ["Producto intermedio", "Disoluciones intermedias"]
+                const totalVol = pr.reduce((sum, r) => (!PIECE_FAMILIES.includes(r.familia_producto) && !INTERMEDIATE_FAMILIES.includes(r.familia_producto)) ? sum + (r.tamano_lote || 0) : sum, 0)
                 const totalPcs = pr.reduce((sum, r) => PIECE_FAMILIES.includes(r.familia_producto) ? sum + (r.tamano_lote || 0) : sum, 0)
+                const totalInterm = pr.reduce((sum, r) => INTERMEDIATE_FAMILIES.includes(r.familia_producto) ? sum + (r.tamano_lote || 0) : sum, 0)
 
                 // By sucursal
                 const bySuc: Record<string, number> = {}
@@ -2125,21 +2127,26 @@ export default function ReportesPage() {
                         onClose={() => setPrintView(null)}
                     >
                         {/* KPIs */}
-                        <div className="print-kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
+                        <div className="print-kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
                             <div className="print-kpi-card" style={{ borderTop: '4px solid #0e0c9b' }}>
-                                <p className="text-[10pt] text-slate-500 font-bold uppercase mb-1">Volumen Líquidos</p>
-                                <p className="text-3xl font-extrabold text-[#0e0c9b] tracking-tight">{totalVol.toLocaleString()} L</p>
-                                <p className="text-[8pt] text-slate-400 font-medium">Producción acumulada</p>
+                                <p style={{ fontSize: '8pt', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>Productos Terminados</p>
+                                <p style={{ fontSize: '22pt', fontWeight: 900, color: '#0e0c9b', letterSpacing: '-0.02em', margin: 0 }}>{totalVol.toLocaleString()} L</p>
+                                <p style={{ fontSize: '7pt', color: '#94a3b8', fontWeight: 500 }}>Volumen producido</p>
+                            </div>
+                            <div className="print-kpi-card" style={{ borderTop: '4px solid #0f766e' }}>
+                                <p style={{ fontSize: '8pt', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>Productos Intermedios</p>
+                                <p style={{ fontSize: '22pt', fontWeight: 900, color: '#0f766e', letterSpacing: '-0.02em', margin: 0 }}>{totalInterm.toLocaleString()} L</p>
+                                <p style={{ fontSize: '7pt', color: '#94a3b8', fontWeight: 500 }}>Intermedios y disoluciones</p>
                             </div>
                             <div className="print-kpi-card" style={{ borderTop: '4px solid #c1272d' }}>
-                                <p className="text-[10pt] text-slate-500 font-bold uppercase mb-1">Bases / Piezas</p>
-                                <p className="text-3xl font-extrabold text-[#c1272d] tracking-tight">{totalPcs.toLocaleString()} pzas</p>
-                                <p className="text-[8pt] text-slate-400 font-medium">{ (totalPcs * 20).toLocaleString() } L equiv.</p>
+                                <p style={{ fontSize: '8pt', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>Bases / Piezas</p>
+                                <p style={{ fontSize: '22pt', fontWeight: 900, color: '#c1272d', letterSpacing: '-0.02em', margin: 0 }}>{totalPcs.toLocaleString()} pzas</p>
+                                <p style={{ fontSize: '7pt', color: '#94a3b8', fontWeight: 500 }}>{(totalPcs * 20).toLocaleString()} L equiv. (×20)</p>
                             </div>
                             <div className="print-kpi-card" style={{ borderTop: '4px solid #64748b' }}>
-                                <p className="text-[10pt] text-slate-500 font-bold uppercase mb-1">Total Registros</p>
-                                <p className="text-3xl font-extrabold text-slate-900 tracking-tight">{pr.length}</p>
-                                <p className="text-[8pt] text-slate-400 font-medium">Lotes registrados</p>
+                                <p style={{ fontSize: '8pt', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>Total Registros</p>
+                                <p style={{ fontSize: '22pt', fontWeight: 900, color: '#334155', letterSpacing: '-0.02em', margin: 0 }}>{pr.length}</p>
+                                <p style={{ fontSize: '7pt', color: '#94a3b8', fontWeight: 500 }}>Lotes registrados</p>
                             </div>
                         </div>
 
