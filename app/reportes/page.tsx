@@ -8,7 +8,7 @@ import { analyzeRecord, EnrichedRecord } from "@/lib/analysis-utils"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Loader2, RefreshCcw, Filter, Download, Factory, Trophy, TrendingUp, Package, Activity, AlertCircle, ChevronRight, Printer, Box, Search } from "lucide-react"
+import { Loader2, RefreshCcw, Filter, Download, Factory, Trophy, TrendingUp, Package, Activity, AlertCircle, ChevronRight, Printer, Box, Search, FlaskConical } from "lucide-react"
 import { PrintReportWrapper } from "@/components/PrintReportWrapper"
 import { DateRangeModal } from "@/components/DateRangeModal"
 import { toast } from "sonner"
@@ -280,9 +280,10 @@ export default function ReportesPage() {
         // Families that are counted in Pieces instead of Volume
         // Matching exact strings from CATEGORY_PRODUCTS keys or likely DB values
         const PIECE_FAMILIES = ["Bases aromatizante ambiental", "Bases limpiadores liquidos multiusos", "Bases Aromatizantes"]
+        const INTERMEDIATE_FAMILIES = ["Producto intermedio", "Disoluciones intermedias"]
 
         const totalVolume = filteredRecords.reduce((sum, r) => {
-            if (!PIECE_FAMILIES.includes(r.familia_producto)) {
+            if (!PIECE_FAMILIES.includes(r.familia_producto) && !INTERMEDIATE_FAMILIES.includes(r.familia_producto)) {
                 return sum + (r.tamano_lote || 0)
             }
             return sum
@@ -290,6 +291,13 @@ export default function ReportesPage() {
 
         const totalPieces = filteredRecords.reduce((sum, r) => {
             if (PIECE_FAMILIES.includes(r.familia_producto)) {
+                return sum + (r.tamano_lote || 0)
+            }
+            return sum
+        }, 0)
+
+        const totalIntermediates = filteredRecords.reduce((sum, r) => {
+            if (INTERMEDIATE_FAMILIES.includes(r.familia_producto)) {
                 return sum + (r.tamano_lote || 0)
             }
             return sum
@@ -323,6 +331,7 @@ export default function ReportesPage() {
             percentNoConformidad,
             totalVolume,
             totalPieces,
+            totalIntermediates,
             totalLitrosUnificado,
             conformesPH,
             noConformesPH,
@@ -829,7 +838,7 @@ export default function ReportesPage() {
                             {/* Commercial KPIs */}
                             <div className="space-y-4">
                                 {/* Row 1: Volume KPIs */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                                     {/* KPI: Total Unificado */}
                                     <Card className="border-none shadow-md bg-gradient-to-br from-[#0d1490] to-[#090e72] text-white rounded-[2rem]">
                                         <CardContent className="p-6 relative overflow-hidden">
@@ -867,6 +876,26 @@ export default function ReportesPage() {
                                                 </p>
                                             </div>
                                             <Package className="absolute -right-6 -bottom-6 h-28 w-28 text-white opacity-10 rotate-12" />
+                                        </CardContent>
+                                    </Card>
+
+                                    {/* KPI: Productos Intermedios */}
+                                    <Card className="border-none shadow-md bg-gradient-to-br from-[#0f766e] to-[#115e59] text-white rounded-[2rem]">
+                                        <CardContent className="p-6 relative overflow-hidden">
+                                            <div className="relative z-10">
+                                                <p className="text-[#99d8d3] font-medium mb-3 flex items-center gap-2 text-sm uppercase tracking-wide">
+                                                    <FlaskConical className="h-4 w-4" />
+                                                    Productos Intermedios
+                                                </p>
+                                                <div className="text-4xl font-extrabold tracking-tight">
+                                                    {kpis.totalIntermediates.toLocaleString()}
+                                                    <span className="text-xl font-normal opacity-80 ml-2">L</span>
+                                                </div>
+                                                <p className="text-xs text-[#99d8d3] mt-2 opacity-80">
+                                                    Intermedios y disoluciones
+                                                </p>
+                                            </div>
+                                            <FlaskConical className="absolute -right-6 -bottom-6 h-28 w-28 text-white opacity-10 rotate-12" />
                                         </CardContent>
                                     </Card>
 
