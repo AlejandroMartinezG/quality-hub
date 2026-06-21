@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabase"
 import {
     Search, Filter, CheckCircle2, AlertCircle, XCircle, Loader2,
-    Calendar, Trash2, Edit2, RotateCcw, ClipboardList, MessageSquare, Send, Download, StickyNote
+    Calendar, Trash2, Edit2, RotateCcw, ClipboardList, MessageSquare, Send, Download, StickyNote, BookOpen
 } from "lucide-react"
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -28,7 +28,7 @@ import { toast } from "sonner"
 import {
     PRODUCT_STANDARDS, PH_STANDARDS, APPEARANCE_STANDARDS, SUCURSALES
 } from "@/lib/production-constants"
-import { cn } from "@/lib/utils"
+import { cn, getBasePath } from "@/lib/utils"
 
 interface BitacoraRecord {
     id: number
@@ -88,6 +88,9 @@ export default function CalidadPage() {
 
     // Observations dialog state
     const [obsRecord, setObsRecord] = useState<BitacoraRecord | null>(null)
+
+    // Catálogo de parámetros (PDF) dialog state
+    const [catalogOpen, setCatalogOpen] = useState(false)
 
     // Export state
     const [exportOpen, setExportOpen] = useState(false)
@@ -491,6 +494,10 @@ export default function CalidadPage() {
                     </p>
                 </div>
                 <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setCatalogOpen(true)} className="gap-2">
+                        <BookOpen className="h-4 w-4" />
+                        Catálogo de Parámetros
+                    </Button>
                     <Button variant="outline" size="sm" onClick={() => setExportOpen(true)} className="gap-2">
                         <Download className="h-4 w-4" />
                         Exportar datos
@@ -1101,6 +1108,37 @@ export default function CalidadPage() {
                     </DialogHeader>
                     <div className="mt-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
                         {obsRecord?.observaciones || '—'}
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Catálogo de Parámetros (PDF) Dialog ── */}
+            <Dialog open={catalogOpen} onOpenChange={setCatalogOpen}>
+                <DialogContent className="sm:max-w-4xl w-[95vw] h-[90vh] sm:rounded-[1.5rem] flex flex-col p-4">
+                    <DialogHeader>
+                        <div className="flex items-start justify-between gap-4 pr-6">
+                            <div>
+                                <DialogTitle className="flex items-center gap-2">
+                                    <BookOpen className="h-5 w-5 text-[#0e0c9b]" />
+                                    Catálogo de Parámetros — Productos Terminados
+                                </DialogTitle>
+                                <DialogDescription>
+                                    Consulta de rangos y especificaciones técnicas por producto
+                                </DialogDescription>
+                            </div>
+                            <Button asChild variant="outline" size="sm" className="gap-2 shrink-0">
+                                <a href={`${getBasePath()}/CATALOGO_PT_GINEZ-compressed.pdf`} target="_blank" rel="noopener noreferrer">
+                                    Abrir en pestaña nueva
+                                </a>
+                            </Button>
+                        </div>
+                    </DialogHeader>
+                    <div className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                        <iframe
+                            src={`${getBasePath()}/CATALOGO_PT_GINEZ-compressed.pdf`}
+                            className="w-full h-full"
+                            title="Catálogo de Parámetros - Productos Terminados"
+                        />
                     </div>
                 </DialogContent>
             </Dialog>
