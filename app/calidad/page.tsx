@@ -806,7 +806,7 @@ export default function CalidadPage() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="bg-gradient-to-r from-[#0e0c9b] to-[#2a28b5] hover:from-[#0e0c9b] hover:to-[#2a28b5] border-none h-12">
-                                            <TableHead className="w-[150px] text-white font-bold text-sm rounded-l-2xl pl-6">Lote</TableHead>
+                                            <TableHead className="w-[150px] text-white font-bold text-sm rounded-l-2xl pl-6">Número de Lote</TableHead>
                                             <TableHead className="text-white font-bold text-sm">Producto / Sucursal</TableHead>
                                             <TableHead className="text-center text-white font-bold text-sm">Tamaño Lote</TableHead>
                                             <TableHead className="text-center text-white font-bold text-sm">pH</TableHead>
