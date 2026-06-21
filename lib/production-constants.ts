@@ -92,7 +92,7 @@ export const CATEGORY_PRODUCTS: Record<string, string[]> = {
     "Reforzador de aromas(REFARO)": ["REFARO-SUE", "REFARO-LIB", "REFARO-MAG", "REFARO-INT", "REFARO-NAT", "REFARO-LUN", "REFARO-BLUE", "REFARO-EDE", "REFARO-PAS", "REFARO-SEN", "REFARO-PRI", "REFARO-BAB", "REFARO-DEL"],
     "Shampoo capilar": ["SHAPAN", "SHAHEA", "SHADUR", "SHAPLU", "SHAHIE"],
     "Suavizante de telas": ["SUASUE", "SUALIB", "SUAMAG", "SUAINT", "SUANAT", "SUALUN", "SUABLU", "SUAPAS", "SUASEN", "SUAPRI", "SUABAB", "SUADEL", "SUANEU"],
-    "Disoluciones de control": ["CITGIN", "SOSA10", "ESP25"]
+    "Disoluciones de control": ["CITGIN", "SOSA10", "ESP25", "LNG5"]
 };
 
 export const PRODUCT_STANDARDS: Record<string, { min?: number, max?: number }> = {
@@ -478,7 +478,8 @@ export const APPEARANCE_STANDARDS: Record<string, string> = {
     // === DISOLUCIONES INTERMEDIOS ===
     "CITGIN": "CRISTALINO",
     "SOSA10": "CRISTALINO",
-    "ESP25": "CRISTALINO"
+    "ESP25": "CRISTALINO",
+    "LNG5": "OPACO"
 };
 
 export const PARAMETER_APPLICABILITY: Record<string, { solidos: boolean, ph: boolean }> = {
@@ -498,7 +499,7 @@ export const PARAMETER_APPLICABILITY: Record<string, { solidos: boolean, ph: boo
     "CREDEL": { solidos: true, ph: true }, "CREBAB": { solidos: true, ph: true }, "CRELIM": { solidos: true, ph: true }, "CREMIE": { solidos: true, ph: true }, "CREROS": { solidos: true, ph: true }, "CRESAB": { solidos: true, ph: true }, "CREWHI": { solidos: true, ph: true },
     "REFARO-SUE": { solidos: false, ph: false }, "REFARO-LIB": { solidos: false, ph: false }, "REFARO-MAG": { solidos: false, ph: false }, "REFARO-INT": { solidos: false, ph: false }, "REFARO-NAT": { solidos: false, ph: false }, "REFARO-LUN": { solidos: false, ph: false }, "REFARO-BLUE": { solidos: false, ph: false }, "REFARO-EDE": { solidos: false, ph: false }, "REFARO-PAS": { solidos: false, ph: false }, "REFARO-SEN": { solidos: false, ph: false }, "REFARO-PRI": { solidos: false, ph: false }, "REFARO-BAB": { solidos: false, ph: false }, "REFARO-DEL": { solidos: false, ph: false },
     "DETALC": { solidos: true, ph: true }, "EMU": { solidos: false, ph: false }, "FFLO": { solidos: false, ph: false }, "BSUA": { solidos: false, ph: false }, "RAOI": { solidos: false, ph: false },
-    "CITGIN": { solidos: true, ph: false }, "SOSA10": { solidos: true, ph: false }, "ESP25": { solidos: true, ph: false }
+    "CITGIN": { solidos: true, ph: false }, "SOSA10": { solidos: true, ph: false }, "ESP25": { solidos: true, ph: false }, "LNG5": { solidos: false, ph: false }
 };
 
 export const PRODUCT_GROUPS = [
