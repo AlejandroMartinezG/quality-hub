@@ -620,7 +620,7 @@ export default function BitacoraPage() {
                                     <div className="pt-4 border-t border-dashed space-y-6">
                                         <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-bold">
                                             <Droplets className="h-5 w-5" />
-                                            Mediciones Adicionales
+                                            Mediciones Cualitativas
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                             <div className="space-y-2">
