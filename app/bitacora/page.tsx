@@ -375,7 +375,7 @@ export default function BitacoraPage() {
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="fecha_fabricacion">Fecha de Elaboración</Label>
+                        <Label htmlFor="fecha_fabricacion">Fecha de Producción</Label>
                         <Input
                             id="fecha_fabricacion"
                             name="fecha_fabricacion"
