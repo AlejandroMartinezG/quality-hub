@@ -280,7 +280,7 @@ export default function ReportesPage() {
         // Families that are counted in Pieces instead of Volume
         // Matching exact strings from CATEGORY_PRODUCTS keys or likely DB values
         const PIECE_FAMILIES = ["Bases aromatizante ambiental", "Bases limpiadores liquidos multiusos", "Bases Aromatizantes"]
-        const INTERMEDIATE_FAMILIES = ["Producto intermedio", "Disoluciones intermedias"]
+        const INTERMEDIATE_FAMILIES = ["Producto intermedio", "Disoluciones de control"]
 
         const totalVolume = filteredRecords.reduce((sum, r) => {
             if (!PIECE_FAMILIES.includes(r.familia_producto) && !INTERMEDIATE_FAMILIES.includes(r.familia_producto)) {
@@ -1900,7 +1900,7 @@ export default function ReportesPage() {
                 }
 
                 const PIECE_FAMILIES = ["Bases aromatizante ambiental", "Bases limpiadores liquidos multiusos", "Bases Aromatizantes"]
-                const INTERMEDIATE_FAMILIES = ["Producto intermedio", "Disoluciones intermedias"]
+                const INTERMEDIATE_FAMILIES = ["Producto intermedio", "Disoluciones de control"]
                 const totalVol = pr.reduce((sum, r) => (!PIECE_FAMILIES.includes(r.familia_producto) && !INTERMEDIATE_FAMILIES.includes(r.familia_producto)) ? sum + (r.tamano_lote || 0) : sum, 0)
                 const totalPcs = pr.reduce((sum, r) => PIECE_FAMILIES.includes(r.familia_producto) ? sum + (r.tamano_lote || 0) : sum, 0)
                 const totalInterm = pr.reduce((sum, r) => INTERMEDIATE_FAMILIES.includes(r.familia_producto) ? sum + (r.tamano_lote || 0) : sum, 0)

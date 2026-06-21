@@ -71,7 +71,7 @@ export const PRODUCT_CATEGORIES = [
     { id: "refaro", name: "Reforzador de aromas(REFARO)", image: "https://i.imgur.com/MIJLRTO.png" },
     { id: "shampoo", name: "Shampoo capilar", image: "https://i.imgur.com/lbWy7oY.jpeg" },
     { id: "suavizante", name: "Suavizante de telas", image: "https://i.imgur.com/UrZoUPG.jpeg" },
-    { id: "disoluciones", name: "Disoluciones intermedias", image: "https://i.imgur.com/RqcQxOB.jpeg" }
+    { id: "disoluciones", name: "Disoluciones de control", image: "https://i.imgur.com/RqcQxOB.jpeg" }
 ];
 
 export const CATEGORY_PRODUCTS: Record<string, string[]> = {
@@ -92,7 +92,7 @@ export const CATEGORY_PRODUCTS: Record<string, string[]> = {
     "Reforzador de aromas(REFARO)": ["REFARO-SUE", "REFARO-LIB", "REFARO-MAG", "REFARO-INT", "REFARO-NAT", "REFARO-LUN", "REFARO-BLUE", "REFARO-EDE", "REFARO-PAS", "REFARO-SEN", "REFARO-PRI", "REFARO-BAB", "REFARO-DEL"],
     "Shampoo capilar": ["SHAPAN", "SHAHEA", "SHADUR", "SHAPLU", "SHAHIE"],
     "Suavizante de telas": ["SUASUE", "SUALIB", "SUAMAG", "SUAINT", "SUANAT", "SUALUN", "SUABLU", "SUAPAS", "SUASEN", "SUAPRI", "SUABAB", "SUADEL", "SUANEU"],
-    "Disoluciones intermedias": ["CITGIN", "SOSA10", "ESP25"]
+    "Disoluciones de control": ["CITGIN", "SOSA10", "ESP25"]
 };
 
 export const PRODUCT_STANDARDS: Record<string, { min?: number, max?: number }> = {
