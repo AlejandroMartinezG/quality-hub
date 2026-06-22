@@ -3,12 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/copy-pdf-worker.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/copy-pdf-worker.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "build-data": "node scripts/build-data.mjs",
-    "postinstall": "node scripts/copy-pdf-worker.mjs"
+    "build-data": "node scripts/build-data.mjs"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.11",
