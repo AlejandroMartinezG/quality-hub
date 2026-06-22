@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { updateBitacoraRecord } from "./actions"
 import { useAuth } from "@/components/AuthProvider"
@@ -29,6 +30,8 @@ import {
     PRODUCT_STANDARDS, PH_STANDARDS, APPEARANCE_STANDARDS, SUCURSALES
 } from "@/lib/production-constants"
 import { cn, getBasePath } from "@/lib/utils"
+
+const PdfViewer = dynamic(() => import("@/components/PdfViewer").then(mod => mod.PdfViewer), { ssr: false })
 
 interface BitacoraRecord {
     id: number
@@ -1133,12 +1136,8 @@ export default function CalidadPage() {
                             </Button>
                         </div>
                     </DialogHeader>
-                    <div className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                        <iframe
-                            src={`${getBasePath()}/CATALOGO_PT_GINEZ-compressed.pdf`}
-                            className="w-full h-full"
-                            title="Catálogo de Parámetros - Productos Terminados"
-                        />
+                    <div className="flex-1 overflow-hidden">
+                        {catalogOpen && <PdfViewer url={`${getBasePath()}/CATALOGO_PT_GINEZ-compressed.pdf`} />}
                     </div>
                 </DialogContent>
             </Dialog>

@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "build-data": "node scripts/build-data.mjs"
+    "build-data": "node scripts/build-data.mjs",
+    "postinstall": "node scripts/copy-pdf-worker.mjs"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.11",
@@ -39,6 +40,7 @@
     "node-fetch": "^3.3.2",
     "react": "^18",
     "react-dom": "^18",
+    "react-pdf": "^7.7.3",
     "recharts": "^3.7.0",
     "resend": "^6.12.3",
     "sonner": "^2.0.7",
