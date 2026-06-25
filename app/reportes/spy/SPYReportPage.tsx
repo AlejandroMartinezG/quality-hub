@@ -35,7 +35,8 @@ import {
     AlertCircle,
     XCircle,
     Filter,
-    Info
+    Info,
+    FlaskConical
 } from 'lucide-react'
 import {
     Select,
@@ -50,6 +51,8 @@ import { PRODUCT_STANDARDS, PH_STANDARDS, SUCURSALES } from "@/lib/production-co
 
 // Definir constante local para las familias que se tratan como piezas
 const PIECE_FAMILIES = ["Bases aromatizante ambiental", "Bases limpiadores liquidos multiusos", "Bases Aromatizantes"];
+// Familias de producto intermedio — se excluyen de FTQ/Yield y de los totales de producto terminado
+const INTERMEDIATE_FAMILIES = ["Producto intermedio", "Disoluciones de control"];
 
 interface SPYReportPageProps {
     records: any[];
@@ -93,6 +96,7 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
     // ─── A. CÁLCULO DE VOLÚMENES Y REGISTROS ─────────────────────────
     const stats = useMemo(() => {
         let totalVolumeProducts = 0
+        let totalVolumeIntermediates = 0
         let totalPiecesBases = 0
         let totalNCRs = 0
         let ftqVolume = 0
@@ -112,7 +116,13 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
         let noConformesSolidsLiters = 0
 
         spyRecords.forEach(r => {
-            const isPiece = PIECE_FAMILIES.includes(r.familia_producto || '')
+            const fam = r.familia_producto || ''
+            if (INTERMEDIATE_FAMILIES.includes(fam)) {
+                totalVolumeIntermediates += Number(r.tamano_lote) || 0
+                return // los intermedios no entran a FTQ/Yield ni a los totales de producto terminado
+            }
+
+            const isPiece = PIECE_FAMILIES.includes(fam)
             const val = Number(r.tamano_lote) || 0
             const vol = isPiece ? (val * 20) : val
 
@@ -186,6 +196,7 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
 
         return {
             totalVolumeProducts,
+            totalVolumeIntermediates,
             totalPiecesBases,
             totalVolumeBases,
             totalVolumeUnified,
@@ -271,6 +282,8 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
         const defects = { ph: 0, solidos: 0, apariencia: 0 }
 
         spyRecords.forEach(r => {
+            if (INTERMEDIATE_FAMILIES.includes(r.familia_producto || '')) return
+
             const isPiece = PIECE_FAMILIES.includes(r.familia_producto || '')
             const val = Number(r.tamano_lote) || 0
             const vol = isPiece ? (val * 20) : val
@@ -304,15 +317,16 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
         })
 
         // Radar chart
+        const finishedRecords = spyRecords.filter(r => !INTERMEDIATE_FAMILIES.includes(r.familia_producto || ''))
         const radarData = [
-            { param: "pH", count: spyRecords.filter(r => r.analysis?.phStatus === 'no-conforme').length },
-            { param: "Sólidos", count: spyRecords.filter(r => r.analysis?.solidsStatus === 'semi-conforme' || r.analysis?.solidsStatus === 'no-conforme').length },
-            { param: "Apariencia", count: spyRecords.filter(r => r.analysis?.appearanceStatus === 'no-conforme').length },
+            { param: "pH", count: finishedRecords.filter(r => r.analysis?.phStatus === 'no-conforme').length },
+            { param: "Sólidos", count: finishedRecords.filter(r => r.analysis?.solidsStatus === 'semi-conforme' || r.analysis?.solidsStatus === 'no-conforme').length },
+            { param: "Apariencia", count: finishedRecords.filter(r => r.analysis?.appearanceStatus === 'no-conforme').length },
         ]
 
         // Sucursal breakdown
         const groupedSucursal: Record<string, { name: string, conformes: number, semiConformes: number, noConformes: number }> = {}
-        spyRecords.forEach(r => {
+        finishedRecords.forEach(r => {
             const suc = r.sucursal || "Sin Sucursal"
             if (!groupedSucursal[suc]) {
                 groupedSucursal[suc] = { name: suc, conformes: 0, semiConformes: 0, noConformes: 0 }
@@ -472,6 +486,21 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                                     </p>
                                 </div>
                             </div>
+
+                            {/* Desglose Segmento 1.5: Productos Intermedios */}
+                            {stats.totalVolumeIntermediates > 0 && (
+                                <div className="flex-1 flex items-center gap-3">
+                                    <div className="p-3 bg-teal-50 dark:bg-teal-900/30 rounded-xl text-teal-600 dark:text-teal-400 border border-teal-100 dark:border-teal-800/50">
+                                        <FlaskConical className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Productos Intermedios</p>
+                                        <p className="text-xl font-black text-slate-800 dark:text-slate-200 mt-0.5 tracking-tight">
+                                            {stats.totalVolumeIntermediates.toLocaleString()} <span className="text-xs font-semibold text-slate-400">L</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Desglose Segmento 2: Bases en Piezas */}
                             <div className="flex-1 flex items-center gap-3">
@@ -1102,7 +1131,7 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                             <div style={{ border: '1px solid #e2e8f0', padding: '12px', borderRadius: '12px', background: '#f8fafc' }}>
                                 <p style={{ fontSize: '7pt', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Volumen Total</p>
                                 <p style={{ fontSize: '18pt', fontWeight: 900, color: '#0f172a', margin: '4px 0 2px' }}>{stats.totalVolumeUnified.toLocaleString()} <span style={{ fontSize: '9pt', fontWeight: 600 }}>L</span></p>
-                                <p style={{ fontSize: '6.5pt', color: '#94a3b8', margin: 0 }}>PT: {stats.totalVolumeProducts.toLocaleString()} L | Bases: {stats.totalPiecesBases.toLocaleString()} pzs</p>
+                                <p style={{ fontSize: '6.5pt', color: '#94a3b8', margin: 0 }}>PT: {stats.totalVolumeProducts.toLocaleString()} L | Bases: {stats.totalPiecesBases.toLocaleString()} pzs{stats.totalVolumeIntermediates > 0 ? ` | Intermedios: ${stats.totalVolumeIntermediates.toLocaleString()} L (no incluidos)` : ''}</p>
                             </div>
                             <div style={{ border: '1px solid #bbf7d0', padding: '12px', borderRadius: '12px', background: '#f0fdf4' }}>
                                 <p style={{ fontSize: '7pt', fontWeight: 900, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>First Time Quality (FTQ)</p>
