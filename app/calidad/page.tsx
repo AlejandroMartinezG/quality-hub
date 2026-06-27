@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, Fragment } from "react"
 import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { updateBitacoraRecord } from "./actions"
@@ -15,7 +15,8 @@ import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabase"
 import {
     Search, Filter, CheckCircle2, AlertCircle, XCircle, Loader2,
-    Calendar, Trash2, Edit2, RotateCcw, ClipboardList, MessageSquare, Send, Download, StickyNote, BookOpen
+    Calendar, Trash2, Edit2, RotateCcw, ClipboardList, MessageSquare, Send, Download, StickyNote, BookOpen,
+    ChevronDown, ChevronRight, Thermometer, Droplet, Palette, Wind
 } from "lucide-react"
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -43,6 +44,9 @@ interface BitacoraRecord {
     ph: number | null
     solidos_medicion_1: number | null
     solidos_medicion_2: number | null
+    temp_med1?: number | null
+    temp_med2?: number | null
+    temperatura?: number | null
     apariencia: string
     color: string
     aroma: string
@@ -88,6 +92,11 @@ export default function CalidadPage() {
     const [sendingChat, setSendingChat] = useState(false)
     const [unreadChatCounts, setUnreadChatCounts] = useState<Map<string, number>>(new Map())
     const chatEndRef = useRef<HTMLDivElement>(null)
+
+    // Expanded row detail state
+    const [expandedRowId, setExpandedRowId] = useState<number | null>(null)
+    const [expandedChatMsgs, setExpandedChatMsgs] = useState<ChatMessage[]>([])
+    const [expandedChatLoading, setExpandedChatLoading] = useState(false)
 
     // Observations dialog state
     const [obsRecord, setObsRecord] = useState<BitacoraRecord | null>(null)
@@ -227,6 +236,51 @@ export default function CalidadPage() {
             author_name: nameMap[m.author_user_id] || 'Usuario',
             author_avatar: avatarMap[m.author_user_id] ?? null,
         }) as ChatMessage))
+    }
+
+    const toggleExpandRow = async (record: BitacoraRecord) => {
+        if (expandedRowId === record.id) {
+            setExpandedRowId(null)
+            return
+        }
+        setExpandedRowId(record.id)
+        setExpandedChatMsgs([])
+        setExpandedChatLoading(true)
+
+        const mid = String(record.id)
+        const { data: msgs } = await supabase
+            .from('measurement_chat_messages')
+            .select('id, measurement_id, author_user_id, message, created_at')
+            .eq('measurement_id', mid)
+            .order('created_at', { ascending: true })
+
+        if (msgs && msgs.length > 0) {
+            const authorIds = Array.from(new Set((msgs as any[]).map((m: any) => m.author_user_id as string)))
+            const nameMap: Record<string, string> = {}
+            const avatarMap: Record<string, string | null> = {}
+            try {
+                const profilesRes = await fetch('/api/profiles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids: authorIds }),
+                })
+                const profilesData = profilesRes.ok ? await profilesRes.json() : []
+                for (const p of (profilesData || []) as any[]) {
+                    if (p.id) {
+                        nameMap[p.id as string] = (p.full_name as string | null) || ''
+                        avatarMap[p.id as string] = (p.avatar_url as string | null) || null
+                    }
+                }
+            } catch (err) {
+                console.error('Error al resolver perfiles del chat:', err)
+            }
+            setExpandedChatMsgs((msgs as any[]).map((m: any) => ({
+                ...m,
+                author_name: nameMap[m.author_user_id] || (m.author_user_id === user?.id ? (profile?.full_name || 'Tú') : 'Usuario eliminado'),
+                author_avatar: avatarMap[m.author_user_id] ?? null,
+            }) as ChatMessage))
+        }
+        setExpandedChatLoading(false)
     }
 
     const openChat = async (record: BitacoraRecord) => {
@@ -846,10 +900,16 @@ export default function CalidadPage() {
                                             const stdPH = PH_STANDARDS[record.codigo_producto]
                                             const stdApp = APPEARANCE_STANDARDS[record.codigo_producto]
 
+                                            const isExpanded = expandedRowId === record.id
+
                                             return (
-                                                <TableRow key={record.id} className="hover:bg-muted/30 transition-colors">
+                                                <Fragment key={record.id}>
+                                                <TableRow className="hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => toggleExpandRow(record)}>
                                                     <TableCell className="font-mono font-bold text-sm text-slate-700 dark:text-slate-200 pl-6">
-                                                        {record.lote_producto}
+                                                        <div className="flex items-center gap-1.5">
+                                                            {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-slate-400 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />}
+                                                            {record.lote_producto}
+                                                        </div>
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="flex flex-col">
@@ -913,7 +973,7 @@ export default function CalidadPage() {
                                                     </TableCell>
                                                     <TableCell className="text-center">
                                                         <div className="relative inline-flex">
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" title="Abrir chat" onClick={() => openChat(record)}>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" title="Abrir chat" onClick={e => { e.stopPropagation(); openChat(record) }}>
                                                                 <MessageSquare className="h-4 w-4" />
                                                             </Button>
                                                             {(unreadChatCounts.get(String(record.id)) ?? 0) > 0 && (
@@ -925,7 +985,7 @@ export default function CalidadPage() {
                                                     </TableCell>
                                                     <TableCell className="text-center">
                                                         {record.observaciones ? (
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50" title="Ver observaciones" onClick={() => setObsRecord(record)}>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50" title="Ver observaciones" onClick={e => { e.stopPropagation(); setObsRecord(record) }}>
                                                                 <StickyNote className="h-4 w-4" />
                                                             </Button>
                                                         ) : (
@@ -957,6 +1017,101 @@ export default function CalidadPage() {
                                                         </TableCell>
                                                     )}
                                                 </TableRow>
+                                                {isExpanded && (
+                                                    <TableRow className="bg-slate-50/70 dark:bg-slate-800/40 hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                                                        <TableCell colSpan={isAdmin ? 12 : 10} className="p-0">
+                                                            <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-5">
+                                                                {/* Mediciones de Sólidos + Temperatura */}
+                                                                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
+                                                                    <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+                                                                        <Droplet className="h-3.5 w-3.5" /> Mediciones de Sólidos
+                                                                    </p>
+                                                                    <div className="grid grid-cols-2 gap-3">
+                                                                        <div className="rounded-xl bg-slate-50 dark:bg-slate-800 p-3">
+                                                                            <p className="text-[10px] text-muted-foreground uppercase">Medición 1</p>
+                                                                            <p className="text-lg font-black text-slate-800 dark:text-slate-100">{record.solidos_medicion_1 !== null ? `${record.solidos_medicion_1}%` : '—'}</p>
+                                                                            <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                                                                                <Thermometer className="h-3 w-3" /> {record.temp_med1 ?? '—'}°C
+                                                                            </p>
+                                                                        </div>
+                                                                        <div className="rounded-xl bg-slate-50 dark:bg-slate-800 p-3">
+                                                                            <p className="text-[10px] text-muted-foreground uppercase">Medición 2</p>
+                                                                            <p className="text-lg font-black text-slate-800 dark:text-slate-100">{record.solidos_medicion_2 !== null ? `${record.solidos_medicion_2}%` : '—'}</p>
+                                                                            <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                                                                                <Thermometer className="h-3 w-3" /> {record.temp_med2 ?? '—'}°C
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+                                                                        <span className="text-[11px] font-semibold text-muted-foreground">Promedio</span>
+                                                                        <span className="text-base font-black text-blue-700 dark:text-blue-400">{avgSolids !== null ? `${avgSolids.toFixed(2)}%` : '—'}</span>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Info adicional: pH, Color, Aroma, Apariencia */}
+                                                                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
+                                                                    <p className="text-[11px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
+                                                                        <Palette className="h-3.5 w-3.5" /> Características del Lote
+                                                                    </p>
+                                                                    <div className="space-y-2 text-sm">
+                                                                        <div className="flex justify-between"><span className="text-muted-foreground">pH</span><span className="font-semibold">{record.ph ?? 'N/A'}</span></div>
+                                                                        <div className="flex justify-between"><span className="text-muted-foreground">Apariencia</span><span className="font-semibold">{record.apariencia || 'N/A'}</span></div>
+                                                                        <div className="flex justify-between"><span className="text-muted-foreground">Color</span><span className="font-semibold">{record.color || 'N/A'}</span></div>
+                                                                        <div className="flex justify-between items-center"><span className="text-muted-foreground flex items-center gap-1"><Wind className="h-3 w-3" /> Aroma</span><span className="font-semibold">{record.aroma || 'N/A'}</span></div>
+                                                                    </div>
+                                                                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                                                                        <p className="text-[10px] text-muted-foreground uppercase mb-1">Observaciones</p>
+                                                                        <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
+                                                                            {record.observaciones || '— Sin observaciones —'}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Chat inline */}
+                                                                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 flex flex-col">
+                                                                    <div className="flex items-center justify-between mb-2">
+                                                                        <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+                                                                            <MessageSquare className="h-3.5 w-3.5" /> Chat del Lote
+                                                                        </p>
+                                                                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px] text-blue-600" onClick={e => { e.stopPropagation(); openChat(record) }}>
+                                                                            Abrir completo
+                                                                        </Button>
+                                                                    </div>
+                                                                    <div className="flex-1 max-h-40 overflow-y-auto space-y-2 pr-1">
+                                                                        {expandedChatLoading ? (
+                                                                            <div className="flex items-center justify-center py-6"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+                                                                        ) : expandedChatMsgs.length === 0 ? (
+                                                                            <p className="text-xs text-muted-foreground text-center py-6">Sin mensajes en este lote.</p>
+                                                                        ) : (
+                                                                            expandedChatMsgs.map(msg => {
+                                                                                const isMe = msg.author_user_id === user?.id
+                                                                                const label = isMe ? 'Tú' : msg.author_name
+                                                                                const initials = (label || 'U').charAt(0).toUpperCase()
+                                                                                return (
+                                                                                    <div key={msg.id} className="flex items-start gap-2 text-xs bg-slate-50 dark:bg-slate-800 rounded-lg p-2">
+                                                                                        <div className={cn(
+                                                                                            "h-6 w-6 rounded-full shrink-0 overflow-hidden flex items-center justify-center text-[10px] font-bold mt-0.5",
+                                                                                            isMe ? "bg-blue-200 text-blue-700" : "bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-slate-200"
+                                                                                        )}>
+                                                                                            {msg.author_avatar
+                                                                                                ? <img src={msg.author_avatar} alt={label} className="h-full w-full object-cover" />
+                                                                                                : initials}
+                                                                                        </div>
+                                                                                        <div className="min-w-0">
+                                                                                            <p className={cn("font-semibold", isMe ? "text-blue-700 dark:text-blue-400" : "text-slate-700 dark:text-slate-300")}>{label}</p>
+                                                                                            <p className="text-slate-600 dark:text-slate-400 break-words">{msg.message}</p>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                )
+                                                                            })
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                                </Fragment>
                                             )
                                         }) : (
                                             <TableRow>
