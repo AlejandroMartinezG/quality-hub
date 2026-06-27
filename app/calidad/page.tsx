@@ -209,31 +209,35 @@ export default function CalidadPage() {
     const fetchChatMessages = async (measurementId: string) => {
         const { data: msgs } = await supabase
             .from('measurement_chat_messages')
-            .select('id, measurement_id, author_user_id, message, created_at')
+            .select('id, measurement_id, author_user_id, author_name, message, created_at')
             .eq('measurement_id', measurementId)
             .order('created_at', { ascending: true })
 
         if (!msgs || msgs.length === 0) { setChatMessages([]); return }
 
+        // Solo se necesita resolver avatar + nombre de respaldo para mensajes
+        // antiguos que no tengan author_name guardado (anteriores a esta migración)
+        const needsLookup = (msgs as any[]).some((m: any) => !m.author_name)
         const authorIds = Array.from(new Set((msgs as any[]).map((m: any) => m.author_user_id as string)))
-        const profilesRes = await fetch('/api/profiles', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ids: authorIds }),
-        })
-        const profilesData = profilesRes.ok ? await profilesRes.json() : []
-
-        const nameMap: Record<string, string> = {}
-        const avatarMap: Record<string, string | null> = {}
-        for (const p of (profilesData || []) as any[]) {
-            if (p.id) {
-                nameMap[p.id as string] = (p.full_name as string | null) || 'Usuario'
-                avatarMap[p.id as string] = (p.avatar_url as string | null) || null
+        let nameMap: Record<string, string> = {}
+        let avatarMap: Record<string, string | null> = {}
+        if (needsLookup || authorIds.length > 0) {
+            const profilesRes = await fetch('/api/profiles', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: authorIds }),
+            })
+            const profilesData = profilesRes.ok ? await profilesRes.json() : []
+            for (const p of (profilesData || []) as any[]) {
+                if (p.id) {
+                    nameMap[p.id as string] = (p.full_name as string | null) || ''
+                    avatarMap[p.id as string] = (p.avatar_url as string | null) || null
+                }
             }
         }
         setChatMessages((msgs as any[]).map((m: any) => ({
             ...m,
-            author_name: nameMap[m.author_user_id] || 'Usuario',
+            author_name: m.author_name || nameMap[m.author_user_id] || 'Usuario eliminado',
             author_avatar: avatarMap[m.author_user_id] ?? null,
         }) as ChatMessage))
     }
@@ -250,7 +254,7 @@ export default function CalidadPage() {
         const mid = String(record.id)
         const { data: msgs } = await supabase
             .from('measurement_chat_messages')
-            .select('id, measurement_id, author_user_id, message, created_at')
+            .select('id, measurement_id, author_user_id, author_name, message, created_at')
             .eq('measurement_id', mid)
             .order('created_at', { ascending: true })
 
@@ -276,7 +280,7 @@ export default function CalidadPage() {
             }
             setExpandedChatMsgs((msgs as any[]).map((m: any) => ({
                 ...m,
-                author_name: nameMap[m.author_user_id] || (m.author_user_id === user?.id ? (profile?.full_name || 'Tú') : 'Usuario eliminado'),
+                author_name: m.author_name || nameMap[m.author_user_id] || 'Usuario eliminado',
                 author_avatar: avatarMap[m.author_user_id] ?? null,
             }) as ChatMessage))
         }
@@ -317,7 +321,7 @@ export default function CalidadPage() {
         try {
             const { error } = await supabase
                 .from('measurement_chat_messages')
-                .insert({ measurement_id: mid, author_user_id: profile.id, message: newChatMsg.trim() })
+                .insert({ measurement_id: mid, author_user_id: profile.id, author_name: profile.full_name, message: newChatMsg.trim() })
             if (error) throw error
             setNewChatMsg('')
             await fetchChatMessages(mid)
