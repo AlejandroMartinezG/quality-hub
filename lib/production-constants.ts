@@ -189,7 +189,7 @@ export const PRODUCT_STANDARDS: Record<string, { min?: number, max?: number }> =
     "SHAPAN": { min: 7.5, max: 9.5 },
     "SHAHEA": { min: 7.5, max: 9.5 },
     "ENJROS": { min: 1.5, max: 2.5 },
-    "DETALC": { min: 15.5, max: 17.5 },
+    "DETALC": { min: 15.5, max: 18.5 },
     "CITGIN": { min: 20.0, max: 25.0 },
     "SOSA10": { min: 8.0, max: 12.0 },
     "ESP25": { min: 25.0, max: 30.0 },
