@@ -1020,55 +1020,65 @@ export default function CalidadPage() {
                                                 {isExpanded && (
                                                     <TableRow className="bg-slate-50/70 dark:bg-slate-800/40 hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
                                                         <TableCell colSpan={isAdmin ? 12 : 10} className="p-0">
-                                                            <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-5">
+                                                            <div className="p-6 grid grid-cols-1 lg:grid-cols-4 gap-4">
                                                                 {/* Mediciones de Sólidos + Temperatura */}
-                                                                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
-                                                                    <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
-                                                                        <Droplet className="h-3.5 w-3.5" /> Mediciones de Sólidos
+                                                                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-3 space-y-2">
+                                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+                                                                        <Droplet className="h-3 w-3" /> Mediciones de Sólidos
                                                                     </p>
-                                                                    <div className="grid grid-cols-2 gap-3">
-                                                                        <div className="rounded-xl bg-slate-50 dark:bg-slate-800 p-3">
-                                                                            <p className="text-[10px] text-muted-foreground uppercase">Medición 1</p>
-                                                                            <p className="text-lg font-black text-slate-800 dark:text-slate-100">{record.solidos_medicion_1 !== null ? `${record.solidos_medicion_1}%` : '—'}</p>
-                                                                            <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
-                                                                                <Thermometer className="h-3 w-3" /> {record.temp_med1 ?? '—'}°C
+                                                                    <div className="grid grid-cols-2 gap-2">
+                                                                        <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-2">
+                                                                            <p className="text-[9px] text-muted-foreground uppercase">Medición 1</p>
+                                                                            <p className="text-base font-black text-slate-800 dark:text-slate-100">{record.solidos_medicion_1 !== null ? `${record.solidos_medicion_1}%` : '—'}</p>
+                                                                            <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                                                                                <Thermometer className="h-2.5 w-2.5" /> {record.temp_med1 ?? '—'}°C
                                                                             </p>
                                                                         </div>
-                                                                        <div className="rounded-xl bg-slate-50 dark:bg-slate-800 p-3">
-                                                                            <p className="text-[10px] text-muted-foreground uppercase">Medición 2</p>
-                                                                            <p className="text-lg font-black text-slate-800 dark:text-slate-100">{record.solidos_medicion_2 !== null ? `${record.solidos_medicion_2}%` : '—'}</p>
-                                                                            <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
-                                                                                <Thermometer className="h-3 w-3" /> {record.temp_med2 ?? '—'}°C
+                                                                        <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-2">
+                                                                            <p className="text-[9px] text-muted-foreground uppercase">Medición 2</p>
+                                                                            <p className="text-base font-black text-slate-800 dark:text-slate-100">{record.solidos_medicion_2 !== null ? `${record.solidos_medicion_2}%` : '—'}</p>
+                                                                            <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                                                                                <Thermometer className="h-2.5 w-2.5" /> {record.temp_med2 ?? '—'}°C
                                                                             </p>
                                                                         </div>
                                                                     </div>
-                                                                    <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
-                                                                        <span className="text-[11px] font-semibold text-muted-foreground">Promedio</span>
-                                                                        <span className="text-base font-black text-blue-700 dark:text-blue-400">{avgSolids !== null ? `${avgSolids.toFixed(2)}%` : '—'}</span>
+                                                                    <div className="flex items-center justify-between pt-1.5 border-t border-slate-100 dark:border-slate-800">
+                                                                        <span className="text-[10px] font-semibold text-muted-foreground">Promedio</span>
+                                                                        <span className="text-sm font-black text-blue-700 dark:text-blue-400">{avgSolids !== null ? `${avgSolids.toFixed(2)}%` : '—'}</span>
                                                                     </div>
+                                                                    {stdSolids && (
+                                                                        <div className="flex flex-col gap-1 pt-1">
+                                                                            <span className="text-[9px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded text-center">
+                                                                                Std: {stdSolids.min}–{stdSolids.max}%
+                                                                            </span>
+                                                                            <span className="text-[9px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-1.5 py-0.5 rounded text-center">
+                                                                                Tol: {(stdSolids.min! * 0.95).toFixed(2)}–{(stdSolids.max! * 1.05).toFixed(2)}%
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
 
                                                                 {/* Info adicional: pH, Color, Aroma, Apariencia */}
-                                                                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
-                                                                    <p className="text-[11px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
-                                                                        <Palette className="h-3.5 w-3.5" /> Características del Lote
+                                                                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-3 space-y-2">
+                                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
+                                                                        <Palette className="h-3 w-3" /> Características del Lote
                                                                     </p>
-                                                                    <div className="space-y-2 text-sm">
+                                                                    <div className="space-y-1.5 text-xs">
                                                                         <div className="flex justify-between"><span className="text-muted-foreground">pH</span><span className="font-semibold">{record.ph ?? 'N/A'}</span></div>
                                                                         <div className="flex justify-between"><span className="text-muted-foreground">Apariencia</span><span className="font-semibold">{record.apariencia || 'N/A'}</span></div>
                                                                         <div className="flex justify-between"><span className="text-muted-foreground">Color</span><span className="font-semibold">{record.color || 'N/A'}</span></div>
-                                                                        <div className="flex justify-between items-center"><span className="text-muted-foreground flex items-center gap-1"><Wind className="h-3 w-3" /> Aroma</span><span className="font-semibold">{record.aroma || 'N/A'}</span></div>
+                                                                        <div className="flex justify-between items-center"><span className="text-muted-foreground flex items-center gap-1"><Wind className="h-2.5 w-2.5" /> Aroma</span><span className="font-semibold">{record.aroma || 'N/A'}</span></div>
                                                                     </div>
-                                                                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                                                                        <p className="text-[10px] text-muted-foreground uppercase mb-1">Observaciones</p>
-                                                                        <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
+                                                                    <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800">
+                                                                        <p className="text-[9px] text-muted-foreground uppercase mb-1">Observaciones</p>
+                                                                        <p className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
                                                                             {record.observaciones || '— Sin observaciones —'}
                                                                         </p>
                                                                     </div>
                                                                 </div>
 
                                                                 {/* Chat inline */}
-                                                                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 flex flex-col">
+                                                                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 flex flex-col lg:col-span-2">
                                                                     <div className="flex items-center justify-between mb-2">
                                                                         <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
                                                                             <MessageSquare className="h-3.5 w-3.5" /> Chat del Lote
@@ -1077,7 +1087,7 @@ export default function CalidadPage() {
                                                                             Abrir completo
                                                                         </Button>
                                                                     </div>
-                                                                    <div className="flex-1 max-h-40 overflow-y-auto space-y-2 pr-1">
+                                                                    <div className="flex-1 max-h-56 overflow-y-auto space-y-2 pr-1">
                                                                         {expandedChatLoading ? (
                                                                             <div className="flex items-center justify-center py-6"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
                                                                         ) : expandedChatMsgs.length === 0 ? (
