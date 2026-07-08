@@ -131,7 +131,7 @@ export const PRODUCT_STANDARDS: Record<string, { min?: number, max?: number }> =
     "TEFLIQ": { min: 10.0, max: 11.5 },
     "TEFESP": { min: 17.0, max: 19.5 },
     "SHAMAS": { min: 8.0, max: 9.7 },
-    "QUILIQ": { min: 8.0, max: 9.7 },
+    "QUILIQ": { min: 12.0, max: 14.5 },
     "COLGIN": { min: 9.0, max: 10.5 },
     "COLBLA": { min: 9.0, max: 10.5 },
     "COLNEG": { min: 9.0, max: 10.5 },
