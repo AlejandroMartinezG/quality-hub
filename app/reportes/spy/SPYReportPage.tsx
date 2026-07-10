@@ -841,6 +841,53 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                     <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-3 leading-relaxed">
                         Cada barra muestra el total de lotes analizados en la sucursal, desglosados en <span className="font-semibold text-green-500">conformes</span>, <span className="font-semibold text-yellow-500">semi-conformes</span> y <span className="font-semibold text-red-500">no conformes</span>. Las sucursales con mayor proporción roja o amarilla tienen mayor incidencia de desviaciones y requieren atención prioritaria.
                     </p>
+
+                    {/* Tabla resumen por sucursal */}
+                    {chartsData.sucursalData.length > 0 && (
+                        <div className="mt-5 overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800">
+                                        <th className="text-left py-2.5 px-4 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Sucursal</th>
+                                        <th className="text-center py-2.5 px-4 text-[10px] font-bold text-green-600 dark:text-green-400 uppercase tracking-wider">FTQ %</th>
+                                        <th className="text-center py-2.5 px-4 text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">FY %</th>
+                                        <th className="text-center py-2.5 px-4 text-[10px] font-bold text-red-500 dark:text-red-400 uppercase tracking-wider">No Conformes</th>
+                                        <th className="text-center py-2.5 px-4 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Total lotes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {[...chartsData.sucursalData]
+                                        .sort((a, b) => {
+                                            const totalA = a.conformes + a.semiConformes + a.noConformes
+                                            const totalB = b.conformes + b.semiConformes + b.noConformes
+                                            const ftqA = totalA > 0 ? a.conformes / totalA : 0
+                                            const ftqB = totalB > 0 ? b.conformes / totalB : 0
+                                            return ftqB - ftqA
+                                        })
+                                        .map((s, i) => {
+                                            const total = s.conformes + s.semiConformes + s.noConformes
+                                            const ftq = total > 0 ? (s.conformes / total) * 100 : 0
+                                            const fy = total > 0 ? ((s.conformes + s.semiConformes) / total) * 100 : 0
+                                            const ftqColor = ftq >= 90 ? 'text-green-600 dark:text-green-400' : ftq >= 75 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'
+                                            const fyColor = fy >= 95 ? 'text-green-600 dark:text-green-400' : fy >= 85 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'
+                                            return (
+                                                <tr key={s.name} className={`border-b border-slate-50 dark:border-slate-800/40 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 ${i % 2 === 0 ? '' : 'bg-slate-50/40 dark:bg-slate-800/20'}`}>
+                                                    <td className="py-2.5 px-4 font-semibold text-slate-700 dark:text-slate-200 text-xs">{s.name}</td>
+                                                    <td className={`py-2.5 px-4 text-center font-bold text-sm tabular-nums ${ftqColor}`}>{ftq.toFixed(1)}%</td>
+                                                    <td className={`py-2.5 px-4 text-center font-bold text-sm tabular-nums ${fyColor}`}>{fy.toFixed(1)}%</td>
+                                                    <td className="py-2.5 px-4 text-center text-sm tabular-nums">
+                                                        <span className={`font-bold ${s.noConformes > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-400'}`}>
+                                                            {s.noConformes}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-2.5 px-4 text-center text-xs text-slate-400 dark:text-slate-500 tabular-nums">{total}</td>
+                                                </tr>
+                                            )
+                                        })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
