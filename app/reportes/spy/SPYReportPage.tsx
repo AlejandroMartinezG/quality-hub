@@ -1175,10 +1175,10 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                             const phVals = displayData.map((d: any) => d.ph).filter((v: any) => v != null && !isNaN(v))
 
                             const solidRefs = currentStandards?.solids
-                                ? [currentStandards.solids.min * 0.95, currentStandards.solids.max * 1.05]
+                                ? [(currentStandards.solids.min || 0) * 0.95, (currentStandards.solids.max || 0) * 1.05]
                                 : []
                             const phRefs = currentStandards?.ph
-                                ? [currentStandards.ph.min, currentStandards.ph.max]
+                                ? [(currentStandards.ph.min || 0), (currentStandards.ph.max || 0)]
                                 : []
 
                             const allSolid = [...solidVals, ...solidRefs]
