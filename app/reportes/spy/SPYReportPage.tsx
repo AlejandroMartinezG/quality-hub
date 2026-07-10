@@ -36,7 +36,8 @@ import {
     XCircle,
     Filter,
     Info,
-    FlaskConical
+    FlaskConical,
+    Maximize2
 } from 'lucide-react'
 import {
     Select,
@@ -46,6 +47,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { DateRangeModal } from '@/components/DateRangeModal'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { PrintReportWrapper } from '@/components/PrintReportWrapper'
 import { PRODUCT_STANDARDS, PH_STANDARDS, SUCURSALES } from "@/lib/production-constants"
 
@@ -62,6 +64,8 @@ interface SPYReportPageProps {
 export default function SPYReportPage({ records = [], profile }: SPYReportPageProps) {
     const [showPrintModal, setShowPrintModal] = useState(false)
     const [printView, setPrintView] = useState<{ dateFrom: string, dateTo: string } | null>(null)
+    const [chartModal, setChartModal] = useState<'solids' | 'ph' | null>(null)
+    const [chartLimit, setChartLimit] = useState<number>(60)
 
     // ─── FILTROS INTERNOS ────────────────────────────────────────────
     const [filterSucursal, setFilterSucursal] = useState("all")
@@ -976,11 +980,16 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                                 <CardTitle className="text-base font-bold text-slate-700 dark:text-slate-200">Gráfico de Control: % Sólidos</CardTitle>
                                 <CardDescription className="text-xs">Historial y límites de tolerancia (+-5%) y estándar del producto</CardDescription>
                             </div>
-                            {selectedProductCode !== "all" && currentStandards?.solids && (
-                                <div className="text-xs text-slate-500 font-semibold font-mono">
-                                    Estándar: {currentStandards.solids.min}% - {currentStandards.solids.max}%
-                                </div>
-                            )}
+                            <div className="flex items-center gap-3">
+                                {selectedProductCode !== "all" && currentStandards?.solids && (
+                                    <div className="text-xs text-slate-500 font-semibold font-mono">
+                                        Estándar: {currentStandards.solids.min}% - {currentStandards.solids.max}%
+                                    </div>
+                                )}
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200" onClick={() => setChartModal('solids')}>
+                                    <Maximize2 className="h-4 w-4" />
+                                </Button>
+                            </div>
                         </div>
                     </CardHeader>
                     <CardContent>
@@ -1073,11 +1082,16 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                                 <CardTitle className="text-base font-bold text-slate-700 dark:text-slate-200">Gráfico de Control: pH</CardTitle>
                                 <CardDescription className="text-xs">Historial y límites específicos de tolerancia estándar de pH</CardDescription>
                             </div>
-                            {selectedProductCode !== "all" && currentStandards?.ph && (
-                                <div className="text-xs text-slate-500 font-semibold font-mono">
-                                    Rango Estándar: {currentStandards.ph.min} - {currentStandards.ph.max}
-                                </div>
-                            )}
+                            <div className="flex items-center gap-3">
+                                {selectedProductCode !== "all" && currentStandards?.ph && (
+                                    <div className="text-xs text-slate-500 font-semibold font-mono">
+                                        Rango Estándar: {currentStandards.ph.min} - {currentStandards.ph.max}
+                                    </div>
+                                )}
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200" onClick={() => setChartModal('ph')}>
+                                    <Maximize2 className="h-4 w-4" />
+                                </Button>
+                            </div>
                         </div>
                     </CardHeader>
                     <CardContent>
@@ -1103,6 +1117,93 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Modal: Gráfico de Control en pantalla completa */}
+            <Dialog open={chartModal !== null} onOpenChange={(open) => !open && setChartModal(null)}>
+                <DialogContent className="max-w-[95vw] w-[95vw] max-h-[90vh] flex flex-col">
+                    <DialogHeader className="flex-shrink-0">
+                        <div className="flex items-center justify-between">
+                            <DialogTitle className="text-lg font-bold">
+                                {chartModal === 'solids' ? 'Gráfico de Control: % Sólidos' : 'Gráfico de Control: pH'}
+                                {selectedProductCode !== "all" && (
+                                    <span className="ml-3 text-sm font-mono text-slate-500">
+                                        {chartModal === 'solids' && currentStandards?.solids
+                                            ? `Estándar: ${currentStandards.solids.min}% – ${currentStandards.solids.max}%`
+                                            : chartModal === 'ph' && currentStandards?.ph
+                                            ? `Rango: ${currentStandards.ph.min} – ${currentStandards.ph.max}`
+                                            : ''}
+                                    </span>
+                                )}
+                            </DialogTitle>
+                            {/* Selector de rango */}
+                            <div className="flex gap-1 mr-8">
+                                {([30, 60, 90, 0] as const).map((n) => (
+                                    <button
+                                        key={n}
+                                        onClick={() => setChartLimit(n)}
+                                        className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                                            chartLimit === n
+                                                ? 'bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900'
+                                                : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
+                                        }`}
+                                    >
+                                        {n === 0 ? 'Todos' : `Últ. ${n}`}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">
+                            {chartLimit === 0 ? `${controlChartData.length} registros` : `Mostrando últimos ${Math.min(chartLimit, controlChartData.length)} de ${controlChartData.length} registros`}
+                            {' · '}Desplázate horizontalmente para ver todos los lotes
+                        </p>
+                    </DialogHeader>
+                    <div className="flex-1 overflow-x-auto overflow-y-hidden mt-2">
+                        {(() => {
+                            const displayData = chartLimit === 0
+                                ? controlChartData
+                                : controlChartData.slice(-chartLimit)
+                            const chartWidth = Math.max(900, displayData.length * 32)
+                            return (
+                                <div style={{ width: chartWidth, height: 480 }}>
+                                    {chartModal === 'solids' ? (
+                                        <LineChart data={displayData} width={chartWidth} height={480} margin={{ top: 24, right: 50, left: 10, bottom: 60 }}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.2} />
+                                            <XAxis dataKey="lote" fontSize={9} angle={-45} textAnchor="end" height={70} interval={0} tick={{ fill: '#64748b' }} />
+                                            <YAxis domain={canvasSolids as any} fontSize={11} tickLine={false} axisLine={false} unit="%" tick={{ fill: '#64748b' }} />
+                                            <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} />
+                                            <Legend verticalAlign="top" height={36} />
+                                            <Line type="monotone" dataKey="solidos" name="% Sólidos" stroke="#eab308" strokeWidth={2} dot={{ r: 4, fill: '#eab308', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                                            {selectedProductCode !== "all" && currentStandards?.solids && (
+                                                <>
+                                                    <ReferenceLine y={(currentStandards.solids.max || 0) * 1.05} label={{ value: 'TLS (+5%)', position: 'insideTopRight', fill: '#eab308', fontSize: 10 }} stroke="#eab308" strokeDasharray="5 5" strokeWidth={1.5} />
+                                                    <ReferenceLine y={(currentStandards.solids.min || 0) * 0.95} label={{ value: 'TLI (-5%)', position: 'insideBottomRight', fill: '#eab308', fontSize: 10 }} stroke="#eab308" strokeDasharray="5 5" strokeWidth={1.5} />
+                                                    <ReferenceLine y={currentStandards.solids.max || 0} label={{ value: 'LCS', position: 'insideTopRight', fill: '#c41f1a', fontSize: 10, dy: 10 }} stroke="#c41f1a" strokeWidth={2} />
+                                                    <ReferenceLine y={currentStandards.solids.min || 0} label={{ value: 'LCI', position: 'insideBottomRight', fill: '#c41f1a', fontSize: 10, dy: -10 }} stroke="#c41f1a" strokeWidth={2} />
+                                                </>
+                                            )}
+                                        </LineChart>
+                                    ) : (
+                                        <LineChart data={displayData} width={chartWidth} height={480} margin={{ top: 24, right: 50, left: 10, bottom: 60 }}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.2} />
+                                            <XAxis dataKey="lote" fontSize={9} angle={-45} textAnchor="end" height={70} interval={0} tick={{ fill: '#64748b' }} />
+                                            <YAxis domain={canvasPH as [number, number]} fontSize={11} tickLine={false} axisLine={false} tick={{ fill: '#64748b' }} />
+                                            <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} />
+                                            <Legend verticalAlign="top" height={36} />
+                                            <Line type="monotone" dataKey="ph" name="Valor pH" stroke="#0000A0" strokeWidth={2} dot={{ r: 4, fill: '#0000A0', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                                            {selectedProductCode !== "all" && currentStandards?.ph && (
+                                                <>
+                                                    <ReferenceLine y={currentStandards.ph.max} label={{ value: 'LCS', position: 'insideTopRight', fill: '#c41f1a', fontSize: 10 }} stroke="#c41f1a" strokeWidth={2} />
+                                                    <ReferenceLine y={currentStandards.ph.min} label={{ value: 'LCI', position: 'insideBottomRight', fill: '#c41f1a', fontSize: 10 }} stroke="#c41f1a" strokeWidth={2} />
+                                                </>
+                                            )}
+                                        </LineChart>
+                                    )}
+                                </div>
+                            )
+                        })()}
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             {/* Print View y Modal */}
             <DateRangeModal
