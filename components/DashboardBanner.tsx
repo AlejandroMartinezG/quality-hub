@@ -25,7 +25,7 @@ export function DashboardBanner() {
         },
         {
             id: 2,
-            image: "/banners/slide_2.png",
+            image: "/banners/baner_ambientadores_good.png",
             alt: "Ambientadores Ginez",
         },
         {
@@ -40,11 +40,16 @@ export function DashboardBanner() {
         },
         {
             id: 5,
-            image: "/banners/slide_5.png",
-            alt: "Limpieza de Envases Ginez",
+            image: "/banners/baner_porrones_ambientador_retorno.png",
+            alt: "Porrones Ambientador Retorno Ginez",
         },
         {
             id: 6,
+            image: "/banners/banner_porron_colores.png",
+            alt: "Porrón Colores Ginez",
+        },
+        {
+            id: 7,
             image: "/banners/slide_6.png",
             alt: "Soluciones Integrales",
         },
