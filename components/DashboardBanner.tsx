@@ -20,37 +20,37 @@ export function DashboardBanner() {
     const slides = [
         {
             id: 1,
-            image: "/banners/slide_1_mundial.png",
+            image: "/banners/slide_1_mundial.jpg",
             alt: "Bitácora de Producción - Calidad en Acción",
         },
         {
             id: 2,
-            image: "/banners/baner_ambientadores_good.png",
+            image: "/banners/baner_ambientadores_good.jpg",
             alt: "Ambientadores Ginez",
         },
         {
             id: 3,
-            image: "/banners/slide_3.png",
+            image: "/banners/slide_3.jpg",
             alt: "Productos de Limpieza Ginez",
         },
         {
             id: 4,
-            image: "/banners/slide_4.png",
+            image: "/banners/slide_4.jpg",
             alt: "Calidad Garantizada",
         },
         {
             id: 5,
-            image: "/banners/baner_porrones_ambientador_retorno.png",
+            image: "/banners/baner_porrones_ambientador_retorno.jpg",
             alt: "Porrones Ambientador Retorno Ginez",
         },
         {
             id: 6,
-            image: "/banners/banner_porron_colores.png",
+            image: "/banners/banner_porron_colores.jpg",
             alt: "Porrón Colores Ginez",
         },
         {
             id: 7,
-            image: "/banners/slide_6.png",
+            image: "/banners/slide_6.jpg",
             alt: "Soluciones Integrales",
         },
     ]
