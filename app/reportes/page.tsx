@@ -8,7 +8,7 @@ import { analyzeRecord, EnrichedRecord } from "@/lib/analysis-utils"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Loader2, RefreshCcw, Filter, Download, Factory, Trophy, TrendingUp, Package, Activity, AlertCircle, ChevronRight, Printer, Box, Search, FlaskConical } from "lucide-react"
+import { Loader2, RefreshCcw, Filter, Download, Factory, Trophy, TrendingUp, Package, Activity, AlertCircle, ChevronRight, Printer, Box, Search, FlaskConical, XCircle } from "lucide-react"
 import { PrintReportWrapper } from "@/components/PrintReportWrapper"
 import { DateRangeModal } from "@/components/DateRangeModal"
 import { toast } from "sonner"
@@ -91,7 +91,8 @@ export default function ReportesPage() {
     const [selectedPreparer, setSelectedPreparer] = useState<string>("all")
     const [showAllProducts, setShowAllProducts] = useState(false)
     const [rankingCategoryFilter, setRankingCategoryFilter] = useState<string>("all")
-    const [selectedDateRange, setSelectedDateRange] = useState("all") // Date range filter
+    const [filterDateFrom, setFilterDateFrom] = useState("")
+    const [filterDateTo, setFilterDateTo] = useState("")
 
     // Drill-down modal state
     const [drillDownFamily, setDrillDownFamily] = useState<string | null>(null)
@@ -213,54 +214,19 @@ export default function ReportesPage() {
 
     // 1. Filtered Data
     const filteredRecords = useMemo(() => {
-        // Calculate date threshold based on selected range
-        const now = new Date()
-        let dateThreshold: Date | null = null
-
-        switch (selectedDateRange) {
-            case '7d':
-                dateThreshold = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-                break
-            case '30d':
-                dateThreshold = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-                break
-            case '3m':
-                dateThreshold = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
-                break
-            case '6m':
-                dateThreshold = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000)
-                break
-            case '1y':
-                dateThreshold = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
-                break
-            case 'all':
-            default:
-                dateThreshold = null
-                break
-        }
-
         return records.filter(r => {
-            // Filter by sucursal
             if (selectedSucursal !== "all" && r.sucursal !== selectedSucursal) return false
-
-            // Filter by category
             if (selectedCategory !== "all" && r.familia_producto !== selectedCategory) return false
-
-            // Filter by product
             if (selectedProduct !== "all" && r.codigo_producto !== selectedProduct) return false
-
-            // Filter by preparer
             if (selectedPreparer !== "all" && r.nombre_preparador !== selectedPreparer) return false
 
-            // Filter by date range
-            if (dateThreshold && r.fecha_fabricacion) {
-                const recordDate = new Date(r.fecha_fabricacion)
-                if (recordDate < dateThreshold) return false
-            }
+            const fecha = r.fecha_fabricacion?.split('T')[0] ?? ''
+            if (filterDateFrom && fecha && fecha < filterDateFrom) return false
+            if (filterDateTo && fecha && fecha > filterDateTo) return false
 
             return true
         })
-    }, [records, selectedSucursal, selectedCategory, selectedProduct, selectedPreparer, selectedDateRange])
+    }, [records, selectedSucursal, selectedCategory, selectedProduct, selectedPreparer, filterDateFrom, filterDateTo])
 
     // Filter records by print date range
     const printFilteredRecords = useMemo(() => {
@@ -784,19 +750,28 @@ export default function ReportesPage() {
                         </Select>
                     )}
 
-                    <Select value={selectedDateRange} onValueChange={setSelectedDateRange}>
-                        <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Período" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Todo el tiempo</SelectItem>
-                            <SelectItem value="7d">Últimos 7 días</SelectItem>
-                            <SelectItem value="30d">Últimos 30 días</SelectItem>
-                            <SelectItem value="3m">Últimos 3 meses</SelectItem>
-                            <SelectItem value="6m">Últimos 6 meses</SelectItem>
-                            <SelectItem value="1y">Último año</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <div className="flex items-center gap-1.5">
+                        <input
+                            type="date"
+                            value={filterDateFrom}
+                            onChange={e => setFilterDateFrom(e.target.value)}
+                            className="h-9 rounded-lg border border-input bg-background px-2.5 text-xs text-foreground shadow-sm focus:outline-none focus:ring-1 focus:ring-ring w-[138px]"
+                            title="Fecha de inicio"
+                        />
+                        <span className="text-xs text-muted-foreground">–</span>
+                        <input
+                            type="date"
+                            value={filterDateTo}
+                            onChange={e => setFilterDateTo(e.target.value)}
+                            className="h-9 rounded-lg border border-input bg-background px-2.5 text-xs text-foreground shadow-sm focus:outline-none focus:ring-1 focus:ring-ring w-[138px]"
+                            title="Fecha de fin"
+                        />
+                        {(filterDateFrom || filterDateTo) && (
+                            <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground" onClick={() => { setFilterDateFrom(""); setFilterDateTo("") }} title="Limpiar fechas">
+                                <XCircle className="h-4 w-4" />
+                            </Button>
+                        )}
+                    </div>
 
                     <Button variant="outline" size="icon" onClick={fetchData} title="Actualizar datos">
                         <RefreshCcw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
