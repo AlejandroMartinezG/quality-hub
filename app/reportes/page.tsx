@@ -163,7 +163,7 @@ export default function ReportesPage() {
         try {
             let query = supabase
                 .from('bitacora_produccion_calidad')
-                .select('id, lote_producto, codigo_producto, sucursal, familia_producto, categoria_producto, fecha_fabricacion, nombre_preparador, ph, solidos_medicion_1, solidos_medicion_2, apariencia, tamano_lote, created_at, user_id')
+                .select('*')
 
             if (isPreparador) {
                 query = query.eq('user_id', user?.id)
