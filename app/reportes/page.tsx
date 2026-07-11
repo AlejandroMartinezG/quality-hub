@@ -41,7 +41,8 @@ import {
 } from "recharts"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SUCURSALES, PRODUCT_STANDARDS, PH_STANDARDS, CATEGORY_PRODUCTS, PRODUCT_GROUPS, PRODUCT_CATEGORIES } from "@/lib/production-constants"
-import SPYReportPage from "./spy/SPYReportPage"
+import dynamic from "next/dynamic"
+const SPYReportPage = dynamic(() => import("./spy/SPYReportPage"), { ssr: false })
 
 // --- Helper functions ---
 
@@ -161,7 +162,7 @@ export default function ReportesPage() {
         try {
             let query = supabase
                 .from('bitacora_produccion_calidad')
-                .select('*')
+                .select('id, lote_producto, codigo_producto, sucursal, familia_producto, categoria_producto, fecha_fabricacion, nombre_preparador, ph, solidos_medicion_1, solidos_medicion_2, apariencia, tamano_lote, created_at, user_id')
 
             if (isPreparador) {
                 query = query.eq('user_id', user?.id)
