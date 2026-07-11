@@ -328,25 +328,38 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
             { param: "Apariencia", count: finishedRecords.filter(r => r.analysis?.appearanceStatus === 'no-conforme').length },
         ]
 
-        // Sucursal breakdown
-        const groupedSucursal: Record<string, { name: string, conformes: number, semiConformes: number, noConformes: number }> = {}
+        // Sucursal breakdown — conteo para gráfica + volumen para FTQ/FY de tabla
+        const groupedSucursal: Record<string, {
+            name: string
+            conformes: number, semiConformes: number, noConformes: number
+            ftqVol: number, fyVol: number, noConformeVol: number, totalVol: number
+        }> = {}
         finishedRecords.forEach(r => {
             const suc = r.sucursal || "Sin Sucursal"
             if (!groupedSucursal[suc]) {
-                groupedSucursal[suc] = { name: suc, conformes: 0, semiConformes: 0, noConformes: 0 }
+                groupedSucursal[suc] = { name: suc, conformes: 0, semiConformes: 0, noConformes: 0, ftqVol: 0, fyVol: 0, noConformeVol: 0, totalVol: 0 }
             }
+            const isPiece = PIECE_FAMILIES.includes(r.familia_producto || '')
+            const vol = isPiece ? (Number(r.tamano_lote) || 0) * 20 : (Number(r.tamano_lote) || 0)
 
             const overall = r.analysis?.overallStatus || 'na'
             if (overall === 'conforme') {
                 groupedSucursal[suc].conformes++
+                groupedSucursal[suc].ftqVol += vol
+                groupedSucursal[suc].fyVol += vol
+                groupedSucursal[suc].totalVol += vol
             } else if (overall === 'semi-conforme') {
                 groupedSucursal[suc].semiConformes++
+                groupedSucursal[suc].fyVol += vol
+                groupedSucursal[suc].totalVol += vol
             } else if (overall === 'no-conforme') {
                 groupedSucursal[suc].noConformes++
+                groupedSucursal[suc].noConformeVol += vol
+                groupedSucursal[suc].totalVol += vol
             }
         })
 
-        const sucursalData = Object.values(groupedSucursal).sort((a, b) => 
+        const sucursalData = Object.values(groupedSucursal).sort((a, b) =>
             (b.conformes + b.semiConformes + b.noConformes) - (a.conformes + a.semiConformes + a.noConformes)
         )
 
@@ -866,8 +879,9 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                                         })
                                         .map((s, i) => {
                                             const total = s.conformes + s.semiConformes + s.noConformes
-                                            const ftq = total > 0 ? (s.conformes / total) * 100 : 0
-                                            const fy = total > 0 ? ((s.conformes + s.semiConformes) / total) * 100 : 0
+                                            // FTQ y FY basados en volumen — igual que las cards superiores
+                                            const ftq = s.totalVol > 0 ? (s.ftqVol / s.totalVol) * 100 : 0
+                                            const fy = s.totalVol > 0 ? (s.fyVol / s.totalVol) * 100 : 0
                                             const ftqColor = ftq >= 90 ? 'text-green-600 dark:text-green-400' : ftq >= 75 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'
                                             const fyColor = fy >= 95 ? 'text-green-600 dark:text-green-400' : fy >= 85 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'
                                             return (
