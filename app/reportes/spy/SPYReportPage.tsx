@@ -363,10 +363,32 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
             (b.conformes + b.semiConformes + b.noConformes) - (a.conformes + a.semiConformes + a.noConformes)
         )
 
+        // Pareto por código de producto (top 10 con más no-conformes)
+        const productStats: Record<string, { nc: number, total: number, familia: string }> = {}
+        finishedRecords.forEach(r => {
+            const code = r.codigo_producto || 'Sin código'
+            if (!productStats[code]) productStats[code] = { nc: 0, total: 0, familia: r.familia_producto || '' }
+            productStats[code].total++
+            if (r.analysis?.overallStatus === 'no-conforme') productStats[code].nc++
+        })
+        const paretoProductRaw = Object.entries(productStats)
+            .filter(([, s]) => s.nc > 0)
+            .map(([code, s]) => ({ name: code, count: s.nc, total: s.total, familia: s.familia, pctNc: s.total > 0 ? (s.nc / s.total) * 100 : 0 }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 10)
+        let accumProd = 0
+        const totalNcProd = paretoProductRaw.reduce((s, d) => s + d.count, 0)
+        const paretoProductData = paretoProductRaw.map(item => {
+            accumProd += item.count
+            return { ...item, accumulatedPercent: totalNcProd > 0 ? Math.round((accumProd / totalNcProd) * 100) : 0, pctAporta: totalNcProd > 0 ? (item.count / totalNcProd) * 100 : 0 }
+        })
+
         return {
             paretoData,
             radarData,
-            sucursalData
+            sucursalData,
+            paretoProductData,
+            totalNcProd
         }
     }, [spyRecords])
 
@@ -904,6 +926,84 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                     )}
                 </CardContent>
             </Card>
+
+            {/* ─── PARETO POR CÓDIGO DE PRODUCTO ───────────────────────────────── */}
+            {chartsData.paretoProductData.length > 0 && (
+                <Card className="border-none shadow-sm rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                    <CardHeader>
+                        <CardTitle className="text-slate-700 dark:text-slate-200 text-lg font-bold">Top 10 Productos con Más No Conformes</CardTitle>
+                        <CardDescription className="text-xs">Diagrama de Pareto por código de producto — identifica dónde se concentran las desviaciones</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-5">
+                        {/* Gráfica Pareto */}
+                        <div className="h-[300px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <ComposedChart data={chartsData.paretoProductData} margin={{ top: 20, right: 40, left: 10, bottom: 20 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.2} />
+                                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748b', fontWeight: 700 }} axisLine={false} tickLine={false} />
+                                    <YAxis yAxisId="cnt" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} width={35} allowDecimals={false} />
+                                    <YAxis yAxisId="pct" orientation="right" domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fill: '#9c2c7a', fontSize: 11 }} axisLine={false} tickLine={false} ticks={[0, 20, 40, 60, 80, 100]} width={38} />
+                                    <Tooltip
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+                                        formatter={((value: any, name: string) => {
+                                            if (name === 'accumulatedPercent') return [`${value}%`, '% Acumulado']
+                                            return [`${value} lotes`, 'No Conformes']
+                                        }) as any}
+                                    />
+                                    <Bar yAxisId="cnt" dataKey="count" name="No Conformes" fill="#c41f1a" radius={[6, 6, 0, 0]} maxBarSize={50} />
+                                    <Line yAxisId="pct" dataKey="accumulatedPercent" type="monotone" stroke="#9c2c7a" strokeWidth={2.5} dot={{ r: 4, fill: '#9c2c7a', stroke: '#fff', strokeWidth: 2 }} />
+                                    <ReferenceLine yAxisId="pct" y={80} stroke="#9c2c7a" strokeWidth={1.5} strokeDasharray="6 4"
+                                        label={{ value: '— 80%', position: 'insideTopLeft', fill: '#9c2c7a', fontSize: 10, fontWeight: 700, dy: -8 }}
+                                    />
+                                </ComposedChart>
+                            </ResponsiveContainer>
+                        </div>
+
+                        {/* Tabla de datos */}
+                        <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800">
+                                        <th className="text-left py-2.5 px-4 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Código</th>
+                                        <th className="text-left py-2.5 px-4 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Categoría</th>
+                                        <th className="text-center py-2.5 px-4 text-[10px] font-bold text-red-500 dark:text-red-400 uppercase tracking-wider">NC</th>
+                                        <th className="text-center py-2.5 px-4 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total lotes</th>
+                                        <th className="text-center py-2.5 px-4 text-[10px] font-bold text-orange-500 dark:text-orange-400 uppercase tracking-wider">% NC del prod.</th>
+                                        <th className="text-center py-2.5 px-4 text-[10px] font-bold text-purple-500 dark:text-purple-400 uppercase tracking-wider">% Aporta</th>
+                                        <th className="text-center py-2.5 px-4 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">% Acum.</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {chartsData.paretoProductData.map((row, i) => {
+                                        const prioridad = row.count >= 5 ? 'Crítico' : 'Alto'
+                                        const prioColor = row.count >= 5 ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20' : 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20'
+                                        return (
+                                            <tr key={row.name} className={`border-b border-slate-50 dark:border-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors ${i % 2 === 0 ? '' : 'bg-slate-50/40 dark:bg-slate-800/20'}`}>
+                                                <td className="py-2.5 px-4 font-bold text-slate-800 dark:text-slate-100 text-xs font-mono">{row.name}</td>
+                                                <td className="py-2.5 px-4 text-xs text-slate-500 dark:text-slate-400 truncate max-w-[140px]">{row.familia || '—'}</td>
+                                                <td className="py-2.5 px-4 text-center">
+                                                    <span className="font-bold text-red-600 dark:text-red-400 tabular-nums">{row.count}</span>
+                                                </td>
+                                                <td className="py-2.5 px-4 text-center text-xs text-slate-400 tabular-nums">{row.total}</td>
+                                                <td className="py-2.5 px-4 text-center text-xs font-semibold text-orange-600 dark:text-orange-400 tabular-nums">{row.pctNc.toFixed(1)}%</td>
+                                                <td className="py-2.5 px-4 text-center text-xs font-semibold text-purple-600 dark:text-purple-400 tabular-nums">{row.pctAporta.toFixed(1)}%</td>
+                                                <td className="py-2.5 px-4 text-center">
+                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${row.accumulatedPercent <= 80 ? 'text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/20' : 'text-slate-500 bg-slate-100 dark:bg-slate-800'}`}>
+                                                        {row.accumulatedPercent}%
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed">
+                            <span className="font-semibold text-purple-500">% Aporta</span> = proporción de ese producto en el total de NCs. <span className="font-semibold text-orange-500">% NC del prod.</span> = tasa de no conformidad interna del producto (NC ÷ lotes totales). Los productos antes del corte del <span className="font-semibold text-purple-500">80% acumulado</span> concentran la mayoría de los problemas.
+                        </p>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* ─── FILTROS RÁPIDOS ──────────────────────────────────────────────── */}
             <Card className="border-none shadow-sm rounded-[1.5rem] bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800">
