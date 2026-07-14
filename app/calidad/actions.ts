@@ -11,6 +11,8 @@ interface UpdateBitacoraPayload {
     color: string
     aroma: string
     tamano_lote: number | null
+    fecha_fabricacion: string
+    lote_producto: string
 }
 
 export async function updateBitacoraRecord(payload: UpdateBitacoraPayload) {

@@ -202,6 +202,8 @@ export default function CalidadPage() {
                 color: editingRecord.color,
                 aroma: editingRecord.aroma,
                 tamano_lote: editingRecord.tamano_lote ?? null,
+                fecha_fabricacion: editingRecord.fecha_fabricacion ?? '',
+                lote_producto: editingRecord.lote_producto ?? '',
             })
             if (!result.success) throw new Error(result.message)
             toast.success("Registro actualizado")
@@ -1474,6 +1476,31 @@ export default function CalidadPage() {
                     </DialogHeader>
                     {editingRecord && (
                         <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <UILabel htmlFor="fecha_fabricacion" className="text-right text-xs">Fecha fab.</UILabel>
+                                <Input
+                                    id="fecha_fabricacion"
+                                    type="date"
+                                    value={editingRecord.fecha_fabricacion?.split('T')[0] ?? ''}
+                                    onChange={e => {
+                                        const newDate = e.target.value
+                                        if (!newDate) return
+                                        const newDatePart = newDate.replace(/-/g, '').slice(2)
+                                        const parts = (editingRecord.lote_producto || '').split('-')
+                                        const newLote = parts.length >= 4 ? [newDatePart, ...parts.slice(1)].join('-') : editingRecord.lote_producto
+                                        setEditingRecord({ ...editingRecord, fecha_fabricacion: newDate, lote_producto: newLote })
+                                    }}
+                                    className="col-span-3"
+                                />
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <UILabel className="text-right text-xs">No. Lote</UILabel>
+                                <Input
+                                    value={editingRecord.lote_producto ?? ''}
+                                    readOnly
+                                    className="col-span-3 bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 cursor-default"
+                                />
+                            </div>
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <UILabel htmlFor="ph" className="text-right text-xs">pH</UILabel>
                                 <Input id="ph" type="number" step="0.1" value={editingRecord.ph ?? ""} onChange={e => setEditingRecord({ ...editingRecord, ph: parseFloat(e.target.value) || null })} className="col-span-3" />
