@@ -60,8 +60,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )
     }
 
-    const NavItem = ({ href, icon: Icon, label, disabled = false }: { href: string, icon: any, label: string, disabled?: boolean }) => {
-        const isActive = pathname === href || (href !== "/" && pathname?.startsWith(href + '/'))
+    const NavItem = ({ href, icon: Icon, label, disabled = false, exact = false }: { href: string, icon: any, label: string, disabled?: boolean, exact?: boolean }) => {
+        const isActive = exact
+            ? pathname === href
+            : (pathname === href || (href !== "/" && pathname?.startsWith(href + '/')))
 
         if (disabled) {
             return (
@@ -94,12 +96,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )
     }
 
-    const MobileNavItem = ({ href, icon: Icon, label }: { href: string, icon: any, label: string }) => (
+    const MobileNavItem = ({ href, icon: Icon, label, exact = false }: { href: string, icon: any, label: string, exact?: boolean }) => (
         <Link
             href={`${basePath}${href}`}
             className={cn(
                 "flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-md transition-colors",
-                (pathname === href || (href !== "/" && pathname?.startsWith(href + '/')))
+                (exact ? pathname === href : (pathname === href || (href !== "/" && pathname?.startsWith(href + '/'))))
                     ? "bg-blue-50 text-blue-900"
                     : "text-slate-600 hover:bg-slate-50"
             )}
@@ -169,7 +171,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
                         {/* Análisis de Operación: solo roles gerenciales/admin */}
                         {['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras'].includes(profile?.role?.toLowerCase() || '') && (
-                            <NavItem href="/reportes" icon={BarChart3} label="Análisis de Operación" />
+                            <NavItem href="/reportes" icon={BarChart3} label="Análisis de Operación" exact />
                         )}
 
                         {/* Control de Calidad FTQ/FY: todos los que producen o supervisan */}
@@ -267,7 +269,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
                         {/* Análisis de Operación en Mobile */}
                         {['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras'].includes(profile?.role?.toLowerCase() || '') && (
-                            <MobileNavItem href="/reportes" icon={BarChart3} label="Análisis de Operación" />
+                            <MobileNavItem href="/reportes" icon={BarChart3} label="Análisis de Operación" exact />
                         )}
 
                         {/* Control de Calidad FTQ/FY en Mobile */}

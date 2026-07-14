@@ -8,9 +8,7 @@ import { analyzeRecord } from "@/lib/analysis-utils"
 import { Loader2, XCircle, Activity } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import dynamic from "next/dynamic"
-
-const SPYReportPage = dynamic(() => import("../spy/SPYReportPage"), { ssr: false })
+import SPYReportPage from "../spy/SPYReportPage"
 
 const ALLOWED_ROLES = [
     'admin', 'gerente_calidad', 'coordinador',
