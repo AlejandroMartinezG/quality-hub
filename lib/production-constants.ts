@@ -78,7 +78,7 @@ export const PRODUCT_CATEGORIES = [
 export const CATEGORY_PRODUCTS: Record<string, string[]> = {
     "Aromatizante Ambiental": ["AROANII", "AROCAN", "AROCAR", "AROCHIC", "AROCHIF", "ARODRA", "AROEST", "AROETE", "AROFER", "AROGAR", "AROHUG", "AROLUX", "ARONOR", "AROPOL"],
     "Antibacteriales": ["GELANT", "JABMAK", "LIMSAK", "SANBAK", "TRAGRA"],
-    "Bases aromatizante ambiental": ["BAROANII", "BAROCAN", "BAROCAR", "BAROCHIC", "BAROCHIF", "BARODRA", "BAROEST", "BAROETE", "BAROFER", "BAROGAR", "BAROHUG", "BAROLUX", "BARONOR", "BAROPOL", "BAROMANC"],
+    "Bases aromatizante ambiental": ["BAROANI", "BAROBRI", "BAROCAN", "BAROCAR", "BAROCHI", "BAROCHIF", "BARODRA", "BAROEST", "BAROETE", "BAROFER", "BAROGAR", "BAROHUG", "BAROLAV", "BAROLIM", "BAROLUX", "BAROMA2", "BAROMAC", "BAROMAN", "BAROMAR", "BAROMEN", "BAROMEX", "BARONOR", "BAROPEM", "BAROPOL", "BAROSTE", "BAROVIO"],
     "Bases limpiadores liquidos multiusos": ["BLIMALA", "BLIMANI", "BLIMBAB", "BLIMBOS", "BLIMBRI", "BLIMCAN", "BLIMCAR", "BLIMCAS", "BLIMCER", "BLIMCHI", "BLIMCHIC", "BLIMCOC", "BLIMDRAG", "BLIMEST", "BLIMETE", "BLIMFER", "BLIMFLO", "BLIMFRU", "BLIMGAR", "BLIMGPO", "BLIMHUG", "BLIMLAV", "BLIMLIM", "BLIMLIS", "BLIMLUX", "BLIMMAN", "BLIMMAND", "BLIMMANC", "BLIMMAR-1", "BLIMMAR-2", "BLIMMEN", "BLIMNAR", "BLIMNOR", "BLIMPER", "BLIMPOL", "BLIMPRI", "BLIMSTE", "BLIMVIO", "BPINBLA", "BPINCRI", "BPINVER"],
     "Crema corporal": ["CREBAB", "CREDEL", "CRELIM", "CREMIE", "CREROS", "CRESAB", "CREWHI"],
     "Detergente liquido para trastes": ["TRABLU", "TRALIM", "TRAMAN", "TRANAR", "TRATOR", "XPUMAX"],
@@ -255,10 +255,11 @@ export const APPEARANCE_STANDARDS: Record<string, string> = {
     "AROPOL": "OPACO",
 
     // === BASES PARA AROMATIZANTES AMBIENTALES ===
-    "BAROANII": "OPACO",
+    "BAROANI": "OPACO",
+    "BAROBRI": "OPACO",
     "BAROCAN": "OPACO",
     "BAROCAR": "OPACO",
-    "BAROCHIC": "OPACO",
+    "BAROCHI": "OPACO",
     "BAROCHIF": "OPACO",
     "BARODRA": "OPACO",
     "BAROEST": "OPACO",
@@ -266,10 +267,20 @@ export const APPEARANCE_STANDARDS: Record<string, string> = {
     "BAROFER": "OPACO",
     "BAROGAR": "OPACO",
     "BAROHUG": "OPACO",
+    "BAROLAV": "OPACO",
+    "BAROLIM": "OPACO",
     "BAROLUX": "OPACO",
+    "BAROMA2": "OPACO",
+    "BAROMAC": "OPACO",
+    "BAROMAN": "OPACO",
+    "BAROMAR": "OPACO",
+    "BAROMEN": "OPACO",
+    "BAROMEX": "OPACO",
     "BARONOR": "OPACO",
+    "BAROPEM": "OPACO",
     "BAROPOL": "OPACO",
-    "BAROMANC": "OPACO",
+    "BAROSTE": "OPACO",
+    "BAROVIO": "OPACO",
 
     // === LIMPIADORES LÍQUIDOS MULTIUSOS ===
     "LIMLIM": "CRISTALINO",
@@ -481,7 +492,7 @@ export const APPEARANCE_STANDARDS: Record<string, string> = {
 
 export const PARAMETER_APPLICABILITY: Record<string, { solidos: boolean, ph: boolean }> = {
     "AROANII": { solidos: false, ph: false }, "AROCAN": { solidos: false, ph: false }, "AROCAR": { solidos: false, ph: false }, "AROCHIC": { solidos: false, ph: false }, "AROCHIF": { solidos: false, ph: false }, "ARODRA": { solidos: false, ph: false }, "AROEST": { solidos: false, ph: false }, "AROETE": { solidos: false, ph: false }, "AROFER": { solidos: false, ph: false }, "AROGAR": { solidos: false, ph: false }, "AROHUG": { solidos: false, ph: false }, "AROLUX": { solidos: false, ph: false }, "ARONOR": { solidos: false, ph: false }, "AROPOL": { solidos: false, ph: false },
-    "BAROANII": { solidos: false, ph: false }, "BAROCAN": { solidos: false, ph: false }, "BAROCAR": { solidos: false, ph: false }, "BAROCHIC": { solidos: false, ph: false }, "BAROCHIF": { solidos: false, ph: false }, "BARODRA": { solidos: false, ph: false }, "BAROEST": { solidos: false, ph: false }, "BAROETE": { solidos: false, ph: false }, "BAROFER": { solidos: false, ph: false }, "BAROGAR": { solidos: false, ph: false }, "BAROHUG": { solidos: false, ph: false }, "BAROLUX": { solidos: false, ph: false }, "BARONOR": { solidos: false, ph: false }, "BAROPOL": { solidos: false, ph: false }, "BAROMANC": { solidos: false, ph: false },
+    "BAROANI": { solidos: false, ph: false }, "BAROBRI": { solidos: false, ph: false }, "BAROCAN": { solidos: false, ph: false }, "BAROCAR": { solidos: false, ph: false }, "BAROCHI": { solidos: false, ph: false }, "BAROCHIF": { solidos: false, ph: false }, "BARODRA": { solidos: false, ph: false }, "BAROEST": { solidos: false, ph: false }, "BAROETE": { solidos: false, ph: false }, "BAROFER": { solidos: false, ph: false }, "BAROGAR": { solidos: false, ph: false }, "BAROHUG": { solidos: false, ph: false }, "BAROLAV": { solidos: false, ph: false }, "BAROLIM": { solidos: false, ph: false }, "BAROLUX": { solidos: false, ph: false }, "BAROMA2": { solidos: false, ph: false }, "BAROMAC": { solidos: false, ph: false }, "BAROMAN": { solidos: false, ph: false }, "BAROMAR": { solidos: false, ph: false }, "BAROMEN": { solidos: false, ph: false }, "BAROMEX": { solidos: false, ph: false }, "BARONOR": { solidos: false, ph: false }, "BAROPEM": { solidos: false, ph: false }, "BAROPOL": { solidos: false, ph: false }, "BAROSTE": { solidos: false, ph: false }, "BAROVIO": { solidos: false, ph: false },
     "LIMLIM": { solidos: true, ph: false }, "LIMVIO": { solidos: true, ph: false }, "LIMMAR": { solidos: true, ph: false }, "LIMCAS": { solidos: true, ph: false }, "LIMBRI": { solidos: true, ph: false }, "LIMCAN": { solidos: true, ph: false }, "LIMCHI": { solidos: true, ph: false }, "LIMBOS": { solidos: true, ph: false }, "LIMLAV": { solidos: true, ph: false }, "LIMPERM": { solidos: true, ph: false }, "LIMMEN": { solidos: true, ph: false }, "LIMSTE": { solidos: true, ph: false }, "LIMFRU": { solidos: true, ph: false }, "LIMPOET": { solidos: true, ph: false }, "LIMMANC": { solidos: true, ph: false }, "LIMLIS": { solidos: true, ph: false }, "LIMALA": { solidos: true, ph: false }, "PINO": { solidos: true, ph: false }, "PINBLA": { solidos: false, ph: false }, "PINVER": { solidos: false, ph: false },
     "TRALIM": { solidos: true, ph: true }, "TRAMAN": { solidos: true, ph: true }, "TRANAR": { solidos: true, ph: true }, "TRATOR": { solidos: true, ph: true }, "TRABLU": { solidos: true, ph: true }, "XPUMAX": { solidos: true, ph: true },
     "CLOGEL": { solidos: true, ph: true }, "CLO": { solidos: true, ph: false }, "QUIPAS": { solidos: false, ph: false }, "DETNEU": { solidos: true, ph: true }, "INS": { solidos: true, ph: false }, "DETER": { solidos: true, ph: true }, "LIMVID": { solidos: true, ph: false }, "DETAMO": { solidos: true, ph: true }, "TEFLIQ": { solidos: true, ph: false }, "TEFESP": { solidos: true, ph: true }, "SHAMAS": { solidos: true, ph: true }, "ACEROJ": { solidos: false, ph: false }, "LIMREP": { solidos: true, ph: false }, "MOP": { solidos: false, ph: false }, "QUILIQ": { solidos: true, ph: true }, "QUISAR": { solidos: false, ph: false }, "SARRIGEL": { solidos: false, ph: false },
