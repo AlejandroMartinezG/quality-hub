@@ -94,3 +94,18 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ── Recharts tooltip dark mode fix ───────────────────────────────────────── */
+.dark .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f1f5f9 !important;
+}
+
+.dark .recharts-tooltip-wrapper .recharts-default-tooltip .recharts-tooltip-label {
+  color: #cbd5e1 !important;
+}
+
+.dark .recharts-tooltip-wrapper .recharts-default-tooltip .recharts-tooltip-item {
+  color: #f1f5f9 !important;
+}
