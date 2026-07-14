@@ -61,7 +61,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
 
     const NavItem = ({ href, icon: Icon, label, disabled = false }: { href: string, icon: any, label: string, disabled?: boolean }) => {
-        const isActive = pathname === href || (href !== "/" && pathname?.startsWith(href))
+        const isActive = pathname === href || (href !== "/" && pathname?.startsWith(href + '/'))
 
         if (disabled) {
             return (
@@ -99,7 +99,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             href={`${basePath}${href}`}
             className={cn(
                 "flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-md transition-colors",
-                (pathname === href || (href !== "/" && pathname?.startsWith(href)))
+                (pathname === href || (href !== "/" && pathname?.startsWith(href + '/')))
                     ? "bg-blue-50 text-blue-900"
                     : "text-slate-600 hover:bg-slate-50"
             )}

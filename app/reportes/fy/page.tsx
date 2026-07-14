@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/AuthProvider"
 import { supabase } from "@/lib/supabase"
-import { analyzeRecord, type EnrichedRecord } from "@/lib/analysis-utils"
+import { analyzeRecord } from "@/lib/analysis-utils"
 import { Loader2, XCircle, Activity } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -21,10 +21,10 @@ const ALLOWED_ROLES = [
 export default function FTQPage() {
     const { user, profile, loading: authLoading } = useAuth()
     const router = useRouter()
-    const [records, setRecords] = useState<EnrichedRecord[]>([])
+    const [records, setRecords] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
 
-    const role = profile?.role?.toLowerCase() || ''
+    const role = (profile?.role || '').toLowerCase()
     const isPreparador = role === 'preparador'
     const isGerente = role === 'gerente_sucursal' || role === 'gerente'
 
@@ -35,6 +35,7 @@ export default function FTQPage() {
     })
     const [filterDateTo, setFilterDateTo] = useState(() => new Date().toISOString().split('T')[0])
 
+    // Access control
     useEffect(() => {
         if (!authLoading && profile) {
             if (!profile.is_admin && !ALLOWED_ROLES.includes(role)) {
@@ -44,13 +45,12 @@ export default function FTQPage() {
         }
     }, [profile, authLoading, role, router])
 
-    const fetchData = useCallback(async (from?: string, to?: string) => {
-        if (!user) return
+    const fetchData = async (from?: string, to?: string) => {
         setLoading(true)
         try {
             let query = supabase.from('bitacora_produccion_calidad').select('*')
             if (isPreparador) {
-                query = query.eq('user_id', user.id)
+                query = query.eq('user_id', user?.id)
             } else if (isGerente && profile?.sucursal) {
                 query = query.eq('sucursal', profile.sucursal)
             }
@@ -59,25 +59,25 @@ export default function FTQPage() {
             const { data, error } = await query.order('created_at', { ascending: true })
             if (error) throw error
             setRecords((data || []).map(analyzeRecord))
-        } catch {
-            toast.error("Error al cargar datos")
+        } catch (err: any) {
+            toast.error("Error al cargar datos", { description: err.message })
         } finally {
             setLoading(false)
         }
-    }, [user, isPreparador, isGerente, profile?.sucursal])
+    }
 
+    // Initial load
     useEffect(() => {
-        if (user && !authLoading) {
-            fetchData(filterDateFrom, filterDateTo)
+        if (user && profile) {
+            fetchData(filterDateFrom || undefined, filterDateTo || undefined)
+        } else if (!authLoading) {
+            setLoading(false)
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user?.id, profile?.role, authLoading])
+    }, [user, profile?.role, authLoading])
 
+    // Re-fetch when dates change
     useEffect(() => {
-        if (user && !authLoading) {
-            fetchData(filterDateFrom, filterDateTo)
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        if (user && profile) fetchData(filterDateFrom || undefined, filterDateTo || undefined)
     }, [filterDateFrom, filterDateTo])
 
     const today = new Date().toISOString().split('T')[0]
@@ -87,14 +87,6 @@ export default function FTQPage() {
     const is30Days = filterDateFrom === thirtyDaysAgo && filterDateTo === today
     const is90Days = filterDateFrom === ninetyDaysAgo && filterDateTo === today
     const isCustom = !is30Days && !is90Days && (filterDateFrom || filterDateTo)
-
-    if (authLoading) {
-        return (
-            <div className="h-screen flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-            </div>
-        )
-    }
 
     return (
         <div className="space-y-6 pb-12">
