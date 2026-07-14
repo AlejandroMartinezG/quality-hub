@@ -76,7 +76,10 @@ export default function CalidadPage() {
     const [searchTerm, setSearchTerm] = useState("")
     const [sucursalFilter, setSucursalFilter] = useState("all")
     const [statusFilter, setStatusFilter] = useState("all")
-    const [timeRangeFilter, setTimeRangeFilter] = useState("all")
+    const [filterDateFrom, setFilterDateFrom] = useState(() => {
+        const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().split('T')[0]
+    })
+    const [filterDateTo, setFilterDateTo] = useState(() => new Date().toISOString().split('T')[0])
     const [categoriaFilter, setCategoriaFilter] = useState("all")
     const [productoFilter, setProductoFilter] = useState("all")
     const [editingRecord, setEditingRecord] = useState<BitacoraRecord | null>(null)
@@ -125,10 +128,14 @@ export default function CalidadPage() {
     }, [profile, authLoading, router])
 
     useEffect(() => {
-        if (user && !authLoading) fetchRecords()
+        if (user && !authLoading) fetchRecords(filterDateFrom || undefined, filterDateTo || undefined)
     }, [user?.id, isAdmin, profile?.role, authLoading])
 
-    const fetchRecords = async () => {
+    useEffect(() => {
+        if (user && !authLoading) fetchRecords(filterDateFrom || undefined, filterDateTo || undefined)
+    }, [filterDateFrom, filterDateTo])
+
+    const fetchRecords = async (from?: string, to?: string) => {
         if (!user) return
         try {
             setLoading(true)
@@ -139,10 +146,11 @@ export default function CalidadPage() {
             } else if ((role === 'gerente_sucursal' || role === 'gerente') && profile?.sucursal) {
                 query = query.eq('sucursal', profile.sucursal)
             }
+            if (from) query = query.gte('fecha_fabricacion', from)
+            if (to)   query = query.lte('fecha_fabricacion', to + 'T23:59:59')
             const { data, error } = await query.order('created_at', { ascending: false })
             if (error) throw error
-            const loaded = data || []
-            setRecords(loaded)
+            setRecords(data || [])
             fetchUnreadChats()
         } catch {
             toast.error("Error al cargar los registros. Intenta de nuevo.")
@@ -368,7 +376,7 @@ export default function CalidadPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [records])
 
-    useEffect(() => { setCurrentPage(0) }, [searchTerm, sucursalFilter, statusFilter, timeRangeFilter, categoriaFilter, productoFilter])
+    useEffect(() => { setCurrentPage(0) }, [searchTerm, sucursalFilter, statusFilter, filterDateFrom, filterDateTo, categoriaFilter, productoFilter])
 
     const getStatusInfo = (record: BitacoraRecord): 'success' | 'warning' | 'error' => {
         const std = PRODUCT_STANDARDS[record.codigo_producto]
@@ -405,12 +413,9 @@ export default function CalidadPage() {
         const matchesCategoria = categoriaFilter === "all" || (r.familia_producto || '') === categoriaFilter
         const matchesProducto = productoFilter === "all" || r.codigo_producto === productoFilter
         let matchesTime = true
-        if (timeRangeFilter !== "all") {
-            const d = new Date(r.fecha_fabricacion)
-            const cutoff = new Date(Date.now() - parseInt(timeRangeFilter) * 86400000)
-            cutoff.setHours(0, 0, 0, 0)
-            matchesTime = d >= cutoff
-        }
+        const fecha = r.fecha_fabricacion?.split('T')[0] ?? ''
+        if (filterDateFrom && fecha && fecha < filterDateFrom) matchesTime = false
+        if (filterDateTo && fecha && fecha > filterDateTo) matchesTime = false
         return matchesSearch && matchesSucursal && matchesStatus && matchesTime && matchesCategoria && matchesProducto
     })
 
@@ -563,7 +568,7 @@ export default function CalidadPage() {
                         <Download className="h-4 w-4" />
                         Exportar datos
                     </Button>
-                    <Button variant="outline" size="sm" onClick={fetchRecords} className="gap-2" disabled={loading}>
+                    <Button variant="outline" size="sm" onClick={() => fetchRecords(filterDateFrom || undefined, filterDateTo || undefined)} className="gap-2" disabled={loading}>
                         <RotateCcw className={cn("h-4 w-4", loading && "animate-spin")} />
                         Actualizar
                     </Button>
@@ -811,21 +816,38 @@ export default function CalidadPage() {
                             </SelectContent>
                         </Select>
                     </div>
-                    <div className="w-full md:w-52">
-                        <Select value={timeRangeFilter} onValueChange={setTimeRangeFilter}>
-                            <SelectTrigger className="h-10">
-                                <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
-                                <SelectValue placeholder="Período" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Todo el historial</SelectItem>
-                                <SelectItem value="7">Últimos 7 días</SelectItem>
-                                <SelectItem value="30">Últimos 30 días</SelectItem>
-                                <SelectItem value="90">Últimos 3 meses</SelectItem>
-                                <SelectItem value="180">Últimos 6 meses</SelectItem>
-                                <SelectItem value="365">Último año</SelectItem>
-                            </SelectContent>
-                        </Select>
+                    <div className="flex items-center gap-1.5">
+                        <div className="relative">
+                            <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                            <input
+                                type="date"
+                                value={filterDateFrom}
+                                onChange={e => setFilterDateFrom(e.target.value)}
+                                className="h-10 pl-8 pr-2 rounded-md border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                placeholder="Desde"
+                                title="Fecha desde"
+                            />
+                        </div>
+                        <span className="text-muted-foreground text-sm">—</span>
+                        <div className="relative">
+                            <input
+                                type="date"
+                                value={filterDateTo}
+                                onChange={e => setFilterDateTo(e.target.value)}
+                                className="h-10 px-2 rounded-md border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                placeholder="Hasta"
+                                title="Fecha hasta"
+                            />
+                        </div>
+                        {(filterDateFrom || filterDateTo) && (
+                            <button
+                                onClick={() => { setFilterDateFrom(""); setFilterDateTo("") }}
+                                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                                title="Limpiar fechas"
+                            >
+                                <XCircle className="h-4 w-4" />
+                            </button>
+                        )}
                     </div>
                     {isAdmin && (
                         <div className="w-full md:w-56">
