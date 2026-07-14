@@ -89,7 +89,7 @@ export default function ReportesPage() {
     const [showAllProducts, setShowAllProducts] = useState(false)
     const [rankingCategoryFilter, setRankingCategoryFilter] = useState<string>("all")
     const [filterDateFrom, setFilterDateFrom] = useState(() => {
-        const d = new Date(); d.setFullYear(d.getFullYear() - 1); return d.toISOString().split('T')[0]
+        const d = new Date(); d.setMonth(d.getMonth() - 3); return d.toISOString().split('T')[0]
     })
     const [filterDateTo, setFilterDateTo] = useState(() => new Date().toISOString().split('T')[0])
 
@@ -107,7 +107,7 @@ export default function ReportesPage() {
 
     // Production analysis state
     const [prodDateFrom, setProdDateFrom] = useState(() => {
-        const d = new Date(); d.setFullYear(d.getFullYear() - 1); return d.toISOString().split('T')[0]
+        const d = new Date(); d.setMonth(d.getMonth() - 3); return d.toISOString().split('T')[0]
     })
     const [prodDateTo, setProdDateTo] = useState(() => new Date().toISOString().split('T')[0])
     const [sucursalHeatmapTab, setSucursalHeatmapTab] = useState<'total' | 'productos' | 'bases'>('total')
@@ -154,7 +154,7 @@ export default function ReportesPage() {
         try {
             let query = supabase
                 .from('bitacora_produccion_calidad')
-                .select('*')
+                .select('id, lote_producto, codigo_producto, nombre_preparador, sucursal, familia_producto, categoria_producto, nombre_producto, fecha_fabricacion, tamano_lote, created_at, user_id, ph, solidos_medicion_1, solidos_medicion_2, apariencia')
 
             if (isPreparador) {
                 query = query.eq('user_id', user?.id)
