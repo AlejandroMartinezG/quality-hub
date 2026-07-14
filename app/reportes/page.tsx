@@ -39,10 +39,7 @@ import {
     Area,
     AreaChart
 } from "recharts"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SUCURSALES, PRODUCT_STANDARDS, PH_STANDARDS, CATEGORY_PRODUCTS, PRODUCT_GROUPS, PRODUCT_CATEGORIES } from "@/lib/production-constants"
-import dynamic from "next/dynamic"
-const SPYReportPage = dynamic(() => import("./spy/SPYReportPage"), { ssr: false })
 
 // --- Helper functions ---
 
@@ -91,8 +88,10 @@ export default function ReportesPage() {
     const [selectedPreparer, setSelectedPreparer] = useState<string>("all")
     const [showAllProducts, setShowAllProducts] = useState(false)
     const [rankingCategoryFilter, setRankingCategoryFilter] = useState<string>("all")
-    const [filterDateFrom, setFilterDateFrom] = useState("")
-    const [filterDateTo, setFilterDateTo] = useState("")
+    const [filterDateFrom, setFilterDateFrom] = useState(() => {
+        const d = new Date(); d.setFullYear(d.getFullYear() - 1); return d.toISOString().split('T')[0]
+    })
+    const [filterDateTo, setFilterDateTo] = useState(() => new Date().toISOString().split('T')[0])
 
     // Drill-down modal state
     const [drillDownFamily, setDrillDownFamily] = useState<string | null>(null)
@@ -127,7 +126,7 @@ export default function ReportesPage() {
     // Permissions check
     useEffect(() => {
         if (!authLoading && profile) {
-            const allowedRoles = ['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras', 'preparador']
+            const allowedRoles = ['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras']
             const isAllowed = profile.is_admin || allowedRoles.includes(role)
             if (!isAllowed) {
                 toast.error("Acceso restringido", {
@@ -140,26 +139,18 @@ export default function ReportesPage() {
 
     useEffect(() => {
         if (user && profile) {
-            console.log("ReportesPage: User authenticated, fetching data...")
-            fetchData()
+            fetchData(filterDateFrom || undefined, filterDateTo || undefined)
         } else if (!authLoading) {
-            console.log("ReportesPage: No user found and auth finished.")
             setLoading(false)
-        } else {
-            console.log("ReportesPage: Waiting for auth...")
         }
     }, [user, profile?.role, authLoading])
 
-    // Enforce sucursal filter for branch managers
     useEffect(() => {
-        if (isGerente && profile?.sucursal) {
-            setSelectedSucursal(profile.sucursal)
-        }
-    }, [isGerente, profile?.sucursal])
+        if (user && profile) fetchData(filterDateFrom || undefined, filterDateTo || undefined)
+    }, [filterDateFrom, filterDateTo])
 
-    const fetchData = async () => {
+    const fetchData = async (from?: string, to?: string) => {
         setLoading(true)
-        console.log("ReportesPage: fetchData started")
         try {
             let query = supabase
                 .from('bitacora_produccion_calidad')
@@ -171,30 +162,23 @@ export default function ReportesPage() {
                 query = query.eq('sucursal', profile.sucursal)
             }
 
-            const { data, error } = await query
-                .order('created_at', { ascending: true }) // Ascending for charts
+            if (from) query = query.gte('fecha_fabricacion', from)
+            if (to)   query = query.lte('fecha_fabricacion', to + 'T23:59:59')
 
-            if (error) {
-                console.error("ReportesPage: Supabase error", error)
-                throw error
-            }
+            const { data, error } = await query.order('created_at', { ascending: true })
+
+            if (error) throw error
 
             if (data) {
-                console.log(`ReportesPage: Fetched ${data.length} records`)
-                // Analyze all records
                 const analyzed = data.map(analyzeRecord)
                 setRecords(analyzed)
-            } else {
-                console.log("ReportesPage: No data returned")
             }
         } catch (error: any) {
-            console.error("ReportesPage: Fetch error", error)
             toast.error("Error al cargar datos", {
                 description: error.message || "Verifica tu conexión o contacta a soporte."
             })
         } finally {
             setLoading(false)
-            console.log("ReportesPage: Loading set to false")
         }
     }
 
@@ -773,7 +757,7 @@ export default function ReportesPage() {
                         )}
                     </div>
 
-                    <Button variant="outline" size="icon" onClick={fetchData} title="Actualizar datos">
+                    <Button variant="outline" size="icon" onClick={() => fetchData(filterDateFrom || undefined, filterDateTo || undefined)} title="Actualizar datos">
                         <RefreshCcw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                     </Button>
                 </div>
@@ -784,21 +768,7 @@ export default function ReportesPage() {
                     <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
                 </div>
             ) : (
-                <Tabs defaultValue={(isPreparador || isGerente) ? "calidad" : "comercial"} className="space-y-6">
-                    <TabsList className={`grid w-full ${
-                        (isPreparador || isGerente) ? 'grid-cols-1 max-w-[260px]'
-                        : 'grid-cols-2 max-w-[640px]'
-                    }`}>
-                        {(!isPreparador && !isGerente) && <TabsTrigger value="comercial">Análisis de Operación</TabsTrigger>}
-                        <TabsTrigger value="calidad">Calidad y Rendimiento (FTQ / FY)</TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="calidad" className="space-y-6">
-                        <SPYReportPage records={filteredRecords} profile={profile} />
-                    </TabsContent>
-
-                    {(!isPreparador && !isGerente) && (
-                        <TabsContent value="comercial" className="space-y-6 animate-in fade-in-50 duration-500">
+                <div className="space-y-6">
                             {/* Print Button */}
                             <div className="flex justify-end">
                                 <Button
@@ -1749,9 +1719,7 @@ export default function ReportesPage() {
                                     })()}
                                 </CardContent>
                             </Card>
-                        </TabsContent>
-                    )}
-                </Tabs>
+                </div>
             )}
 
             {/* Drill-Down Modal for Category Breakdowns */}

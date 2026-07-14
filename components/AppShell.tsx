@@ -19,7 +19,8 @@ import {
     Sun,
     ChevronRight,
     Package,
-    LineChart
+    LineChart,
+    Activity
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
@@ -166,9 +167,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             <NavItem href="/calidad" icon={Microscope} label="Control Calidad" />
                         )}
 
-                        {/* Reportes: For management roles and preparers (internal tab filtering handles specific views) */}
-                        {['admin', 'gerente_calidad', 'coordinador', 'gerente_sucursal', 'gerente', 'preparador', 'director_operaciones', 'director_compras'].includes(profile?.role?.toLowerCase() || '') && (
-                            <NavItem href="/reportes" icon={BarChart3} label="Reportes y KPIs" />
+                        {/* Análisis de Operación: solo roles gerenciales/admin */}
+                        {['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras'].includes(profile?.role?.toLowerCase() || '') && (
+                            <NavItem href="/reportes" icon={BarChart3} label="Análisis de Operación" />
+                        )}
+
+                        {/* Control de Calidad FTQ/FY: todos los que producen o supervisan */}
+                        {['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras', 'preparador', 'gerente_sucursal', 'gerente'].includes(profile?.role?.toLowerCase() || '') && (
+                            <NavItem href="/reportes/fy" icon={Activity} label="Control de Calidad (FTQ/FY)" />
                         )}
                     </div>
 
@@ -259,9 +265,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             <MobileNavItem href="/calidad" icon={Microscope} label="Control Calidad" />
                         )}
 
-                        {/* Reportes en Mobile */}
-                        {['admin', 'gerente_calidad', 'coordinador', 'gerente_sucursal', 'gerente', 'preparador', 'director_operaciones', 'director_compras'].includes(profile?.role?.toLowerCase() || '') && (
-                            <MobileNavItem href="/reportes" icon={BarChart3} label="Reportes y KPIs" />
+                        {/* Análisis de Operación en Mobile */}
+                        {['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras'].includes(profile?.role?.toLowerCase() || '') && (
+                            <MobileNavItem href="/reportes" icon={BarChart3} label="Análisis de Operación" />
+                        )}
+
+                        {/* Control de Calidad FTQ/FY en Mobile */}
+                        {['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras', 'preparador', 'gerente_sucursal', 'gerente'].includes(profile?.role?.toLowerCase() || '') && (
+                            <MobileNavItem href="/reportes/fy" icon={Activity} label="Control de Calidad (FTQ/FY)" />
                         )}
 
                         {/* Soporte Mobile Section */}
