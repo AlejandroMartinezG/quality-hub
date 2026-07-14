@@ -195,6 +195,7 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
         const totalVolumeBases = totalPiecesBases * 20
         const totalVolumeUnified = totalVolumeProducts + totalVolumeBases
 
+        const onlyIntermediates = totalVolumeUnified === 0 && totalVolumeIntermediates > 0
         const ftqPercent = totalVolumeUnified > 0 ? (ftqVolume / totalVolumeUnified) * 100 : 100
         const finalYieldPercent = totalVolumeUnified > 0 ? ((totalVolumeUnified - noConformeVolume) / totalVolumeUnified) * 100 : 100
 
@@ -210,6 +211,7 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
             totalNCRs,
             ftqPercent,
             finalYieldPercent,
+            onlyIntermediates,
             conformesPH,
             noConformesPH,
             conformesPHLiters,
@@ -329,12 +331,13 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
         ]
 
         // Sucursal breakdown — conteo para gráfica + volumen para FTQ/FY de tabla
+        // Usa spyRecords (incluye intermedios) para que productos como DETALC aparezcan en la tabla
         const groupedSucursal: Record<string, {
             name: string
             conformes: number, semiConformes: number, noConformes: number
             ftqVol: number, fyVol: number, noConformeVol: number, totalVol: number
         }> = {}
-        finishedRecords.forEach(r => {
+        spyRecords.forEach(r => {
             const suc = r.sucursal || "Sin Sucursal"
             if (!groupedSucursal[suc]) {
                 groupedSucursal[suc] = { name: suc, conformes: 0, semiConformes: 0, noConformes: 0, ftqVol: 0, fyVol: 0, noConformeVol: 0, totalVol: 0 }
@@ -363,13 +366,15 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
             (b.conformes + b.semiConformes + b.noConformes) - (a.conformes + a.semiConformes + a.noConformes)
         )
 
-        // Pareto por código de producto (top 10 con más no-conformes)
+        // Pareto por código de producto (top 10 con más no-conformes + semi-conformes)
+        // Usa spyRecords para incluir también productos intermedios como DETALC
         const productStats: Record<string, { nc: number, total: number, familia: string }> = {}
-        finishedRecords.forEach(r => {
+        spyRecords.forEach(r => {
             const code = r.codigo_producto || 'Sin código'
             if (!productStats[code]) productStats[code] = { nc: 0, total: 0, familia: r.familia_producto || '' }
             productStats[code].total++
-            if (r.analysis?.overallStatus === 'no-conforme') productStats[code].nc++
+            const st = r.analysis?.overallStatus
+            if (st === 'no-conforme' || st === 'semi-conforme') productStats[code].nc++
         })
         const paretoProductRaw = Object.entries(productStats)
             .filter(([, s]) => s.nc > 0)
@@ -395,7 +400,7 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
     const printInsights = useMemo(() => {
         type InsightLevel = 'ok' | 'warn' | 'critical'
         const insights: { level: InsightLevel; text: string }[] = []
-        if (spyRecords.length === 0) return insights
+        if (spyRecords.length === 0 || stats.onlyIntermediates) return insights
 
         const ftq = stats.ftqPercent
         const yld = stats.finalYieldPercent
@@ -569,12 +574,16 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                                     First Time Quality (FTQ)
                                 </p>
                                 <div className="text-5xl font-black text-slate-900 dark:text-white mt-3 tracking-tight">
-                                    {stats.ftqPercent.toFixed(1)}%
+                                    {stats.onlyIntermediates ? '—' : `${stats.ftqPercent.toFixed(1)}%`}
                                 </div>
-                                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">del total producido</p>
+                                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+                                    {stats.onlyIntermediates ? 'Producto intermedio — excluido de FTQ/FY' : 'del total producido'}
+                                </p>
                                 <p className="text-xs font-bold text-green-600 dark:text-green-400 mt-2.5 flex items-center gap-1">
                                     <CheckCircle2 className="h-3.5 w-3.5" />
-                                    {stats.ftqVolume.toLocaleString()} L bien a la primera
+                                    {stats.onlyIntermediates
+                                        ? `${stats.totalVolumeIntermediates.toLocaleString()} L producidos`
+                                        : `${stats.ftqVolume.toLocaleString()} L bien a la primera`}
                                 </p>
                             </div>
                             <div className="absolute -top-3 -right-3 p-4 bg-green-100 dark:bg-green-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
@@ -591,12 +600,14 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                                     Final Yield (Rendimiento)
                                 </p>
                                 <div className="text-5xl font-black text-slate-900 dark:text-white mt-3 tracking-tight">
-                                    {stats.finalYieldPercent.toFixed(2)}%
+                                    {stats.onlyIntermediates ? '—' : `${stats.finalYieldPercent.toFixed(2)}%`}
                                 </div>
-                                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">del total producido</p>
+                                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+                                    {stats.onlyIntermediates ? 'Producto intermedio — excluido de FTQ/FY' : 'del total producido'}
+                                </p>
                                 <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 mt-2.5 flex items-center gap-1">
                                     <AlertCircle className="h-3.5 w-3.5" />
-                                    {stats.noConformeVolume.toLocaleString()} L descontados del Yield
+                                    {stats.onlyIntermediates ? 'Sin cálculo de Yield para intermedios' : `${stats.noConformeVolume.toLocaleString()} L descontados del Yield`}
                                 </p>
                             </div>
                             <div className="absolute -top-3 -right-3 p-4 bg-indigo-100 dark:bg-indigo-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
@@ -613,12 +624,14 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                                     No Conforme Final
                                 </p>
                                 <div className="text-5xl font-black text-slate-900 dark:text-white mt-3 tracking-tight">
-                                    {(100 - stats.finalYieldPercent).toFixed(2)}%
+                                    {stats.onlyIntermediates ? '—' : `${(100 - stats.finalYieldPercent).toFixed(2)}%`}
                                 </div>
-                                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">del total producido</p>
+                                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+                                    {stats.onlyIntermediates ? 'Producto intermedio — excluido de FTQ/FY' : 'del total producido'}
+                                </p>
                                 <p className="text-xs font-bold text-rose-600 dark:text-rose-400 mt-2.5 flex items-center gap-1">
                                     <XCircle className="h-3.5 w-3.5" />
-                                    {stats.noConformeVolume.toLocaleString()} L no liberables
+                                    {stats.onlyIntermediates ? 'Sin cálculo de NC Final para intermedios' : `${stats.noConformeVolume.toLocaleString()} L no liberables`}
                                 </p>
                             </div>
                             <div className="absolute -top-3 -right-3 p-4 bg-rose-100 dark:bg-rose-900/50 rounded-2xl shadow-lg border-4 border-white dark:border-slate-800">
