@@ -331,13 +331,13 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
         ]
 
         // Sucursal breakdown — conteo para gráfica + volumen para FTQ/FY de tabla
-        // Usa spyRecords (incluye intermedios) para que productos como DETALC aparezcan en la tabla
+        // Usa finishedRecords (igual que las cards) para que FTQ%/FY% sean consistentes
         const groupedSucursal: Record<string, {
             name: string
             conformes: number, semiConformes: number, noConformes: number
             ftqVol: number, fyVol: number, noConformeVol: number, totalVol: number
         }> = {}
-        spyRecords.forEach(r => {
+        finishedRecords.forEach(r => {
             const suc = r.sucursal || "Sin Sucursal"
             if (!groupedSucursal[suc]) {
                 groupedSucursal[suc] = { name: suc, conformes: 0, semiConformes: 0, noConformes: 0, ftqVol: 0, fyVol: 0, noConformeVol: 0, totalVol: 0 }
@@ -379,7 +379,7 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
         const paretoProductRaw = Object.entries(productStats)
             .filter(([, s]) => s.nc > 0)
             .map(([code, s]) => ({ name: code, count: s.nc, total: s.total, familia: s.familia, pctNc: s.total > 0 ? (s.nc / s.total) * 100 : 0 }))
-            .sort((a, b) => b.count - a.count)
+            .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
             .slice(0, 10)
         let accumProd = 0
         const totalNcProd = paretoProductRaw.reduce((s, d) => s + d.count, 0)
