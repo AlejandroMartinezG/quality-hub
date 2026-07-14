@@ -546,6 +546,14 @@ export default function CalidadPage() {
         finally { setExporting(false) }
     }
 
+    const today = new Date().toISOString().split('T')[0]
+    const sevenDaysAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().split('T')[0] })()
+    const isDefault7Days = filterDateFrom === sevenDaysAgo && filterDateTo === today
+    const isAllHistory = !filterDateFrom && !filterDateTo
+
+    const resetTo7Days = () => { setFilterDateFrom(sevenDaysAgo); setFilterDateTo(today) }
+    const clearDateRange = () => { setFilterDateFrom(""); setFilterDateTo("") }
+
     return (
         <div className="space-y-6 max-w-7xl mx-auto pb-12">
             <Breadcrumbs items={[{ label: "Control de Calidad" }]} />
@@ -573,6 +581,58 @@ export default function CalidadPage() {
                         Actualizar
                     </Button>
                 </div>
+            </div>
+
+            {/* ── Selector de período ── */}
+            <div className="flex flex-wrap items-center gap-3 px-1">
+                <span className="text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5 shrink-0">
+                    <Calendar className="h-4 w-4" />
+                    Período:
+                </span>
+                <div className="flex items-center gap-1.5">
+                    <input
+                        type="date"
+                        value={filterDateFrom}
+                        onChange={e => setFilterDateFrom(e.target.value)}
+                        className="h-9 px-3 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                        title="Fecha desde"
+                    />
+                    <span className="text-slate-400 text-sm">—</span>
+                    <input
+                        type="date"
+                        value={filterDateTo}
+                        onChange={e => setFilterDateTo(e.target.value)}
+                        className="h-9 px-3 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                        title="Fecha hasta"
+                    />
+                </div>
+                <div className="flex gap-2">
+                    <Button
+                        size="sm"
+                        variant={isDefault7Days ? "default" : "outline"}
+                        onClick={resetTo7Days}
+                        className="h-9 text-xs"
+                    >
+                        Últimos 7 días
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant={isAllHistory ? "default" : "outline"}
+                        onClick={clearDateRange}
+                        className="h-9 text-xs"
+                    >
+                        Todo el historial
+                    </Button>
+                </div>
+                {!isAllHistory && !isDefault7Days && (
+                    <button
+                        onClick={clearDateRange}
+                        className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                        title="Limpiar rango"
+                    >
+                        <XCircle className="h-4 w-4" />
+                    </button>
+                )}
             </div>
 
             {/* ── Stats Grid ── */}
@@ -815,39 +875,6 @@ export default function CalidadPage() {
                                 ).map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                             </SelectContent>
                         </Select>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                        <div className="relative">
-                            <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                            <input
-                                type="date"
-                                value={filterDateFrom}
-                                onChange={e => setFilterDateFrom(e.target.value)}
-                                className="h-10 pl-8 pr-2 rounded-md border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                                placeholder="Desde"
-                                title="Fecha desde"
-                            />
-                        </div>
-                        <span className="text-muted-foreground text-sm">—</span>
-                        <div className="relative">
-                            <input
-                                type="date"
-                                value={filterDateTo}
-                                onChange={e => setFilterDateTo(e.target.value)}
-                                className="h-10 px-2 rounded-md border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                                placeholder="Hasta"
-                                title="Fecha hasta"
-                            />
-                        </div>
-                        {(filterDateFrom || filterDateTo) && (
-                            <button
-                                onClick={() => { setFilterDateFrom(""); setFilterDateTo("") }}
-                                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                                title="Limpiar fechas"
-                            >
-                                <XCircle className="h-4 w-4" />
-                            </button>
-                        )}
                     </div>
                     {isAdmin && (
                         <div className="w-full md:w-56">
