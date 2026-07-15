@@ -1453,14 +1453,14 @@ export default function CalidadPage() {
                                 </DialogDescription>
                             </div>
                             <Button asChild variant="outline" size="sm" className="gap-2 shrink-0">
-                                <a href={`${getBasePath()}/CATALOGO_PARAMETROS.pdf`} target="_blank" rel="noopener noreferrer">
+                                <a href={`${getBasePath()}/CATALOGO_PARAMETROS-comprimido.pdf`} target="_blank" rel="noopener noreferrer">
                                     Abrir en pestaña nueva
                                 </a>
                             </Button>
                         </div>
                     </DialogHeader>
                     <div className="flex-1 overflow-hidden">
-                        {catalogOpen && <PdfViewer url={`${getBasePath()}/CATALOGO_PARAMETROS.pdf`} />}
+                        {catalogOpen && <PdfViewer url={`${getBasePath()}/CATALOGO_PARAMETROS-comprimido.pdf`} />}
                     </div>
                 </DialogContent>
             </Dialog>
