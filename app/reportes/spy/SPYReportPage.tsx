@@ -345,20 +345,29 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
             const isPiece = PIECE_FAMILIES.includes(r.familia_producto || '')
             const vol = isPiece ? (Number(r.tamano_lote) || 0) * 20 : (Number(r.tamano_lote) || 0)
 
-            const overall = r.analysis?.overallStatus || 'na'
-            if (overall === 'conforme') {
+            // Mismo criterio que las cards: los tres parámetros individualmente
+            const phStat = r.analysis?.phStatus || 'na'
+            const solidsStat = r.analysis?.solidsStatus || 'na'
+            const appStat = r.analysis?.appearanceStatus || 'na'
+
+            const isFTQ = (solidsStat === 'conforme' || solidsStat === 'na') &&
+                          (phStat === 'conforme' || phStat === 'na') &&
+                          (appStat === 'conforme' || appStat === 'na')
+            const isNoConformeTotal = solidsStat === 'no-conforme' || phStat === 'no-conforme' || appStat === 'no-conforme'
+
+            groupedSucursal[suc].totalVol += vol
+
+            if (isFTQ) {
                 groupedSucursal[suc].conformes++
                 groupedSucursal[suc].ftqVol += vol
                 groupedSucursal[suc].fyVol += vol
-                groupedSucursal[suc].totalVol += vol
-            } else if (overall === 'semi-conforme') {
-                groupedSucursal[suc].semiConformes++
-                groupedSucursal[suc].fyVol += vol
-                groupedSucursal[suc].totalVol += vol
-            } else if (overall === 'no-conforme') {
+            } else if (isNoConformeTotal) {
                 groupedSucursal[suc].noConformes++
                 groupedSucursal[suc].noConformeVol += vol
-                groupedSucursal[suc].totalVol += vol
+            } else {
+                // semi-conforme: fuera de FTQ pero liberado (no descuenta del Yield)
+                groupedSucursal[suc].semiConformes++
+                groupedSucursal[suc].fyVol += vol
             }
         })
 
