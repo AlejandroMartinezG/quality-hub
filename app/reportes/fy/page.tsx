@@ -8,6 +8,8 @@ import { analyzeRecord } from "@/lib/analysis-utils"
 import { Loader2, XCircle, Activity } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { SUCURSALES } from "@/lib/production-constants"
 import SPYReportPage from "../spy/SPYReportPage"
 
 const ALLOWED_ROLES = [
@@ -25,6 +27,8 @@ export default function FTQPage() {
     const role = (profile?.role || '').toLowerCase()
     const isPreparador = role === 'preparador'
     const isGerente = role === 'gerente_sucursal' || role === 'gerente'
+
+    const [selectedSucursal, setSelectedSucursal] = useState("all")
 
     const [filterDateFrom, setFilterDateFrom] = useState(() => {
         const d = new Date()
@@ -98,6 +102,20 @@ export default function FTQPage() {
 
             {/* Date Range Selector */}
             <div className="flex flex-wrap items-center gap-3 p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700">
+                {!isPreparador && !isGerente && (
+                    <Select value={selectedSucursal} onValueChange={setSelectedSucursal}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Todas las sucursales" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Todas las sucursales</SelectItem>
+                            {SUCURSALES.map((s: string) => (
+                                <SelectItem key={s} value={s}>{s}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                )}
+
                 <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Período:</span>
 
                 <div className="flex items-center gap-2">
@@ -159,7 +177,10 @@ export default function FTQPage() {
                     <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
                 </div>
             ) : (
-                <SPYReportPage records={records} profile={profile} />
+                <SPYReportPage
+                    records={selectedSucursal === 'all' ? records : records.filter(r => r.sucursal === selectedSucursal)}
+                    profile={profile}
+                />
             )}
         </div>
     )
