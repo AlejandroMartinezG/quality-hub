@@ -50,7 +50,7 @@ export default function FTQPage() {
     const fetchData = async (from?: string, to?: string) => {
         setLoading(true)
         try {
-            let query = supabase.from('bitacora_produccion_calidad').select('*')
+            let query = supabase.from('bitacora_produccion_calidad').select('id, lote_producto, codigo_producto, nombre_preparador, sucursal, familia_producto, fecha_fabricacion, tamano_lote, created_at, user_id, ph, solidos_medicion_1, solidos_medicion_2, apariencia')
             if (isPreparador) {
                 query = query.eq('user_id', user?.id)
             } else if (isGerente && profile?.sucursal) {

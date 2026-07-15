@@ -285,27 +285,69 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
 
     // ─── C. DATOS PARA GRÁFICOS (PARETO, RADIAL, SUCURSAL) ───────────
     const chartsData = useMemo(() => {
+        // Una sola pasada acumula todo: defects, radar, sucursal y productStats
         const defects = { ph: 0, solidos: 0, apariencia: 0 }
+        const radarCounts = { ph: 0, solidos: 0, apariencia: 0 }
+        const groupedSucursal: Record<string, {
+            name: string
+            conformes: number, semiConformes: number, noConformes: number
+            ftqVol: number, fyVol: number, noConformeVol: number, totalVol: number
+        }> = {}
+        const productStats: Record<string, { nc: number, total: number, familia: string }> = {}
 
-        spyRecords.forEach(r => {
-            if (INTERMEDIATE_FAMILIES.includes(r.familia_producto || '')) return
+        for (const r of spyRecords) {
+            const isIntermediate = INTERMEDIATE_FAMILIES.includes(r.familia_producto || '')
+            const isPiece = !isIntermediate && PIECE_FAMILIES.includes(r.familia_producto || '')
+            const vol = isPiece ? (Number(r.tamano_lote) || 0) * 20 : (Number(r.tamano_lote) || 0)
 
-            const isPiece = PIECE_FAMILIES.includes(r.familia_producto || '')
-            const val = Number(r.tamano_lote) || 0
-            const vol = isPiece ? (val * 20) : val
-            const weight = vol
+            const phStat = r.analysis?.phStatus || 'na'
+            const solidsStat = r.analysis?.solidsStatus || 'na'
+            const appStat = r.analysis?.appearanceStatus || 'na'
 
-            if (r.analysis?.phStatus === 'no-conforme') {
-                defects.ph += weight
+            // Pareto por producto (todos los registros)
+            const code = r.codigo_producto || 'Sin código'
+            if (!productStats[code]) productStats[code] = { nc: 0, total: 0, familia: r.familia_producto || '' }
+            productStats[code].total++
+            const st = r.analysis?.overallStatus
+            if (st === 'no-conforme' || st === 'semi-conforme') productStats[code].nc++
+
+            if (!isIntermediate) {
+                // Defects para Pareto de parámetros
+                if (phStat === 'no-conforme') defects.ph += vol
+                if (solidsStat === 'semi-conforme' || solidsStat === 'no-conforme') defects.solidos += vol
+                if (appStat === 'no-conforme') defects.apariencia += vol
+
+                // Radar counts
+                if (phStat === 'no-conforme') radarCounts.ph++
+                if (solidsStat === 'semi-conforme' || solidsStat === 'no-conforme') radarCounts.solidos++
+                if (appStat === 'no-conforme') radarCounts.apariencia++
+
+                // Sucursal breakdown (mismo criterio que las cards: 3 parámetros)
+                const suc = r.sucursal || "Sin Sucursal"
+                if (!groupedSucursal[suc]) {
+                    groupedSucursal[suc] = { name: suc, conformes: 0, semiConformes: 0, noConformes: 0, ftqVol: 0, fyVol: 0, noConformeVol: 0, totalVol: 0 }
+                }
+                const isFTQ = (solidsStat === 'conforme' || solidsStat === 'na') &&
+                              (phStat === 'conforme' || phStat === 'na') &&
+                              (appStat === 'conforme' || appStat === 'na')
+                const isNoConformeTotal = solidsStat === 'no-conforme' || phStat === 'no-conforme' || appStat === 'no-conforme'
+
+                groupedSucursal[suc].totalVol += vol
+                if (isFTQ) {
+                    groupedSucursal[suc].conformes++
+                    groupedSucursal[suc].ftqVol += vol
+                    groupedSucursal[suc].fyVol += vol
+                } else if (isNoConformeTotal) {
+                    groupedSucursal[suc].noConformes++
+                    groupedSucursal[suc].noConformeVol += vol
+                } else {
+                    groupedSucursal[suc].semiConformes++
+                    groupedSucursal[suc].fyVol += vol
+                }
             }
-            if (r.analysis?.solidsStatus === 'semi-conforme' || r.analysis?.solidsStatus === 'no-conforme') {
-                defects.solidos += weight
-            }
-            if (r.analysis?.appearanceStatus === 'no-conforme') {
-                defects.apariencia += weight
-            }
-        })
+        }
 
+        // Derivar estructuras de salida desde los acumuladores
         const paretoRaw = [
             { name: "Sólidos", count: defects.solidos },
             { name: "pH", count: defects.ph },
@@ -316,75 +358,19 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
         const totalDef = paretoRaw.reduce((sum, item) => sum + item.count, 0)
         const paretoData = paretoRaw.map(item => {
             accum += item.count
-            return {
-                ...item,
-                accumulatedPercent: totalDef > 0 ? Math.round((accum / totalDef) * 100) : 0
-            }
+            return { ...item, accumulatedPercent: totalDef > 0 ? Math.round((accum / totalDef) * 100) : 0 }
         })
 
-        // Radar chart
-        const finishedRecords = spyRecords.filter(r => !INTERMEDIATE_FAMILIES.includes(r.familia_producto || ''))
         const radarData = [
-            { param: "pH", count: finishedRecords.filter(r => r.analysis?.phStatus === 'no-conforme').length },
-            { param: "Sólidos", count: finishedRecords.filter(r => r.analysis?.solidsStatus === 'semi-conforme' || r.analysis?.solidsStatus === 'no-conforme').length },
-            { param: "Apariencia", count: finishedRecords.filter(r => r.analysis?.appearanceStatus === 'no-conforme').length },
+            { param: "pH", count: radarCounts.ph },
+            { param: "Sólidos", count: radarCounts.solidos },
+            { param: "Apariencia", count: radarCounts.apariencia },
         ]
-
-        // Sucursal breakdown — conteo para gráfica + volumen para FTQ/FY de tabla
-        // Usa finishedRecords (igual que las cards) para que FTQ%/FY% sean consistentes
-        const groupedSucursal: Record<string, {
-            name: string
-            conformes: number, semiConformes: number, noConformes: number
-            ftqVol: number, fyVol: number, noConformeVol: number, totalVol: number
-        }> = {}
-        finishedRecords.forEach(r => {
-            const suc = r.sucursal || "Sin Sucursal"
-            if (!groupedSucursal[suc]) {
-                groupedSucursal[suc] = { name: suc, conformes: 0, semiConformes: 0, noConformes: 0, ftqVol: 0, fyVol: 0, noConformeVol: 0, totalVol: 0 }
-            }
-            const isPiece = PIECE_FAMILIES.includes(r.familia_producto || '')
-            const vol = isPiece ? (Number(r.tamano_lote) || 0) * 20 : (Number(r.tamano_lote) || 0)
-
-            // Mismo criterio que las cards: los tres parámetros individualmente
-            const phStat = r.analysis?.phStatus || 'na'
-            const solidsStat = r.analysis?.solidsStatus || 'na'
-            const appStat = r.analysis?.appearanceStatus || 'na'
-
-            const isFTQ = (solidsStat === 'conforme' || solidsStat === 'na') &&
-                          (phStat === 'conforme' || phStat === 'na') &&
-                          (appStat === 'conforme' || appStat === 'na')
-            const isNoConformeTotal = solidsStat === 'no-conforme' || phStat === 'no-conforme' || appStat === 'no-conforme'
-
-            groupedSucursal[suc].totalVol += vol
-
-            if (isFTQ) {
-                groupedSucursal[suc].conformes++
-                groupedSucursal[suc].ftqVol += vol
-                groupedSucursal[suc].fyVol += vol
-            } else if (isNoConformeTotal) {
-                groupedSucursal[suc].noConformes++
-                groupedSucursal[suc].noConformeVol += vol
-            } else {
-                // semi-conforme: fuera de FTQ pero liberado (no descuenta del Yield)
-                groupedSucursal[suc].semiConformes++
-                groupedSucursal[suc].fyVol += vol
-            }
-        })
 
         const sucursalData = Object.values(groupedSucursal).sort((a, b) =>
             (b.conformes + b.semiConformes + b.noConformes) - (a.conformes + a.semiConformes + a.noConformes)
         )
 
-        // Pareto por código de producto (top 10 con más no-conformes + semi-conformes)
-        // Usa spyRecords para incluir también productos intermedios como DETALC
-        const productStats: Record<string, { nc: number, total: number, familia: string }> = {}
-        spyRecords.forEach(r => {
-            const code = r.codigo_producto || 'Sin código'
-            if (!productStats[code]) productStats[code] = { nc: 0, total: 0, familia: r.familia_producto || '' }
-            productStats[code].total++
-            const st = r.analysis?.overallStatus
-            if (st === 'no-conforme' || st === 'semi-conforme') productStats[code].nc++
-        })
         const paretoProductRaw = Object.entries(productStats)
             .filter(([, s]) => s.nc > 0)
             .map(([code, s]) => ({ name: code, count: s.nc, total: s.total, familia: s.familia, pctNc: s.total > 0 ? (s.nc / s.total) * 100 : 0 }))

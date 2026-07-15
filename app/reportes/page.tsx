@@ -227,77 +227,53 @@ export default function ReportesPage() {
     // 2. KPIs
     const kpis = useMemo(() => {
         const total = filteredRecords.length
-
-        // Families that are counted in Pieces instead of Volume
-        // Matching exact strings from CATEGORY_PRODUCTS keys or likely DB values
         const PIECE_FAMILIES = ["Bases aromatizante ambiental", "Bases limpiadores liquidos multiusos", "Bases Aromatizantes"]
         const INTERMEDIATE_FAMILIES = ["Producto intermedio", "Disoluciones de control"]
 
-        const totalVolume = filteredRecords.reduce((sum, r) => {
-            if (!PIECE_FAMILIES.includes(r.familia_producto) && !INTERMEDIATE_FAMILIES.includes(r.familia_producto)) {
-                return sum + (r.tamano_lote || 0)
-            }
-            return sum
-        }, 0)
+        let totalVolume = 0, totalPieces = 0, totalIntermediates = 0
+        let conformes = 0, semiConformes = 0, noConformes = 0
+        let conformesPH = 0, noConformesPH = 0
 
-        const totalPieces = filteredRecords.reduce((sum, r) => {
-            if (PIECE_FAMILIES.includes(r.familia_producto)) {
-                return sum + (r.tamano_lote || 0)
-            }
-            return sum
-        }, 0)
+        for (const r of filteredRecords) {
+            const fam = r.familia_producto
+            if (INTERMEDIATE_FAMILIES.includes(fam)) totalIntermediates += r.tamano_lote || 0
+            else if (PIECE_FAMILIES.includes(fam)) totalPieces += r.tamano_lote || 0
+            else totalVolume += r.tamano_lote || 0
 
-        const totalIntermediates = filteredRecords.reduce((sum, r) => {
-            if (INTERMEDIATE_FAMILIES.includes(r.familia_producto)) {
-                return sum + (r.tamano_lote || 0)
-            }
-            return sum
-        }, 0)
+            const os = r.analysis.overallStatus
+            if (os === 'conforme') conformes++
+            else if (os === 'semi-conforme') semiConformes++
+            else if (os === 'no-conforme') noConformes++
 
-        // Classify records using new control chart-based conformity levels
-        const conformes = filteredRecords.filter(r => r.analysis.overallStatus === 'conforme').length
-        const semiConformes = filteredRecords.filter(r => r.analysis.overallStatus === 'semi-conforme').length
-        const noConformes = filteredRecords.filter(r => r.analysis.overallStatus === 'no-conforme').length
+            const ph = r.analysis.phStatus
+            if (ph === 'conforme') conformesPH++
+            else if (ph === 'no-conforme') noConformesPH++
+        }
 
         const percentConformidad = total > 0 ? ((conformes / total) * 100).toFixed(1) : "0.0"
         const percentSemiConformidad = total > 0 ? ((semiConformes / total) * 100).toFixed(1) : "0.0"
         const percentNoConformidad = total > 0 ? ((noConformes / total) * 100).toFixed(1) : "0.0"
-
-        // pH KPIs
-        const conformesPH = filteredRecords.filter(r => r.analysis.phStatus === 'conforme').length
-        const noConformesPH = filteredRecords.filter(r => r.analysis.phStatus === 'no-conforme').length
-
         const percentConformidadPH = total > 0 ? ((conformesPH / total) * 100).toFixed(1) : "0.0"
         const percentNoConformidadPH = total > 0 ? ((noConformesPH / total) * 100).toFixed(1) : "0.0"
-
         const totalLitrosUnificado = totalVolume + totalPieces * 20
 
         return {
-            total,
-            conformes,
-            semiConformes,
-            noConformes,
-            percentConformidad,
-            percentSemiConformidad,
-            percentNoConformidad,
-            totalVolume,
-            totalPieces,
-            totalIntermediates,
-            totalLitrosUnificado,
-            conformesPH,
-            noConformesPH,
-            percentConformidadPH,
-            percentNoConformidadPH
+            total, conformes, semiConformes, noConformes,
+            percentConformidad, percentSemiConformidad, percentNoConformidad,
+            totalVolume, totalPieces, totalIntermediates, totalLitrosUnificado,
+            conformesPH, noConformesPH, percentConformidadPH, percentNoConformidadPH
         }
     }, [filteredRecords])
 
     // Production analysis records (only date-filtered, ignores conformity/product filters)
     const prodAnalysisRecords = useMemo(() => {
+        const from = prodDateFrom ? new Date(prodDateFrom) : null
+        const to = prodDateTo ? new Date(prodDateTo + 'T23:59:59') : null
         return records.filter(r => {
             const raw = r as any
             const d = new Date(r.fecha_fabricacion || raw.created_at)
-            if (prodDateFrom && d < new Date(prodDateFrom)) return false
-            if (prodDateTo && d > new Date(prodDateTo + 'T23:59:59')) return false
+            if (from && d < from) return false
+            if (to && d > to) return false
             return true
         })
     }, [records, prodDateFrom, prodDateTo])
@@ -331,14 +307,16 @@ export default function ReportesPage() {
             const year = date.getFullYear()
             const monthNum = date.getMonth() + 1
             const monthKey = `${year}-${String(monthNum).padStart(2, '0')}`
-            const monthLabel = date.toLocaleDateString('es-MX', { month: 'short', year: '2-digit' }).replace('. ', ' \'')
             const suc = (raw.sucursal || 'Sin Sucursal') as string
             const fam = (raw.familia_producto || 'Otros') as string
             const isBase = PIECE_FAM.includes(fam)
             const val = raw.tamano_lote ? parseFloat(raw.tamano_lote) : 0
             const litros = isBase ? val * 20 : val
 
-            if (!byMonth[monthKey]) byMonth[monthKey] = { label: monthLabel, productos: 0, bases: 0 }
+            if (!byMonth[monthKey]) {
+                const monthLabel = date.toLocaleDateString('es-MX', { month: 'short', year: '2-digit' }).replace('. ', ' \'')
+                byMonth[monthKey] = { label: monthLabel, productos: 0, bases: 0 }
+            }
             if (isBase) byMonth[monthKey].bases += litros
             else byMonth[monthKey].productos += litros
 
