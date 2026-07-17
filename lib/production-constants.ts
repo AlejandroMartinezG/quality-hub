@@ -234,7 +234,7 @@ export const PH_STANDARDS: Record<string, { min: number, max: number }> = {
     "SHADUR": { min: 6, max: 7 }, "SHAPLU": { min: 6, max: 7 }, "SHAHIE": { min: 6, max: 7 },
     // Detergentes de trastes
     "TRABLU": { min: 7, max: 9 },
-    "DETALC": { min: 9, max: 12 },
+    "DETALC": { min: 7, max: 10 },
 };
 
 export const APPEARANCE_STANDARDS: Record<string, string> = {
