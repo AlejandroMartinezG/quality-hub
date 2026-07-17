@@ -71,6 +71,7 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
     const [filterSucursal, setFilterSucursal] = useState("all")
     const [filterProduct, setFilterProduct] = useState("all")
     const [filterPeriod, setFilterPeriod] = useState("all")
+    const [filterParam, setFilterParam] = useState<"all" | "ph" | "solidos" | "apariencia">("all")
 
     const role = (profile?.role || '').toLowerCase()
     const showSucursalFilter = role === 'admin' || role === 'gerente_calidad'
@@ -93,9 +94,12 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
             if (filterSucursal !== 'all' && r.sucursal !== filterSucursal) return false
             if (filterProduct !== 'all' && r.codigo_producto !== filterProduct) return false
             if (dateThreshold && r.fecha_fabricacion && new Date(r.fecha_fabricacion) < dateThreshold) return false
+            if (filterParam === 'ph' && r.analysis?.phStatus !== 'no-conforme') return false
+            if (filterParam === 'solidos' && r.analysis?.solidsStatus !== 'semi-conforme' && r.analysis?.solidsStatus !== 'no-conforme') return false
+            if (filterParam === 'apariencia' && r.analysis?.appearanceStatus !== 'no-conforme') return false
             return true
         })
-    }, [records, filterSucursal, filterProduct, filterPeriod])
+    }, [records, filterSucursal, filterProduct, filterPeriod, filterParam])
 
     // ─── A. CÁLCULO DE VOLÚMENES Y REGISTROS ─────────────────────────
     const stats = useMemo(() => {
@@ -473,7 +477,31 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                     <span className="text-sm font-bold text-slate-800 dark:text-slate-200">Visualización Unificada</span>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                        <Filter className="h-3.5 w-3.5" /> Parámetro:
+                    </span>
+                    {([
+                        { key: 'all',       label: 'Todos',      color: 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200' },
+                        { key: 'ph',        label: 'pH',         color: 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' },
+                        { key: 'solidos',   label: 'Sólidos',    color: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300' },
+                        { key: 'apariencia',label: 'Apariencia', color: 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300' },
+                    ] as const).map(({ key, label, color }) => (
+                        <button
+                            key={key}
+                            onClick={() => setFilterParam(key)}
+                            className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                                filterParam === key
+                                    ? color + ' ring-2 ring-offset-1 ring-current'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                            }`}
+                        >
+                            {label}
+                        </button>
+                    ))}
+
+                    <div className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-1" />
+
                     <Button
                         variant="outline"
                         size="sm"
