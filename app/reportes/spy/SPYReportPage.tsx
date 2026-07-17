@@ -94,12 +94,9 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
             if (filterSucursal !== 'all' && r.sucursal !== filterSucursal) return false
             if (filterProduct !== 'all' && r.codigo_producto !== filterProduct) return false
             if (dateThreshold && r.fecha_fabricacion && new Date(r.fecha_fabricacion) < dateThreshold) return false
-            if (filterParam === 'ph' && r.analysis?.phStatus !== 'no-conforme') return false
-            if (filterParam === 'solidos' && r.analysis?.solidsStatus !== 'semi-conforme' && r.analysis?.solidsStatus !== 'no-conforme') return false
-            if (filterParam === 'apariencia' && r.analysis?.appearanceStatus !== 'no-conforme') return false
             return true
         })
-    }, [records, filterSucursal, filterProduct, filterPeriod, filterParam])
+    }, [records, filterSucursal, filterProduct, filterPeriod])
 
     // ─── A. CÁLCULO DE VOLÚMENES Y REGISTROS ─────────────────────────
     const stats = useMemo(() => {
@@ -154,8 +151,16 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
             const phConforme = phStat === 'conforme' || phStat === 'na'
             const appConforme = appStat === 'conforme' || appStat === 'na'
 
-            // FTQ: Perfecto a la primera
-            const isFTQ = solidsConforme && phConforme && appConforme
+            // FTQ y Yield varían según el parámetro seleccionado
+            const isFTQ = filterParam === 'ph'        ? phConforme
+                        : filterParam === 'solidos'   ? solidsConforme
+                        : filterParam === 'apariencia'? appConforme
+                        : solidsConforme && phConforme && appConforme
+
+            const isNoConformeTotal = filterParam === 'ph'        ? phStat === 'no-conforme'
+                                    : filterParam === 'solidos'   ? solidsStat === 'no-conforme'
+                                    : filterParam === 'apariencia'? appStat === 'no-conforme'
+                                    : solidsStat === 'no-conforme' || phStat === 'no-conforme' || appStat === 'no-conforme'
 
             if (isFTQ) {
                 ftqVolume += vol
@@ -163,12 +168,6 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                 affectedVolume += vol
                 totalNCRs++
             }
-
-            // Final Yield: Descuenta los "no-conforme" totales de cualquiera de los parámetros
-            const isSolidsNoConforme = solidsStat === 'no-conforme'
-            const isPHNoConforme = phStat === 'no-conforme'
-            const isAppearanceNoConforme = appStat === 'no-conforme'
-            const isNoConformeTotal = isSolidsNoConforme || isPHNoConforme || isAppearanceNoConforme
 
             if (isNoConformeTotal) {
                 noConformeVolume += vol
@@ -227,7 +226,7 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
             warningSolidsLiters,
             noConformesSolidsLiters
         }
-    }, [spyRecords])
+    }, [spyRecords, filterParam])
 
     // ─── B. DEDUCCIÓN AUTOMÁTICA DE PRODUCTO Y ESTÁNDARES ──────────
     const { selectedProductCode, currentStandards, canvasSolids, canvasPH, controlChartData } = useMemo(() => {
@@ -308,12 +307,15 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
             const solidsStat = r.analysis?.solidsStatus || 'na'
             const appStat = r.analysis?.appearanceStatus || 'na'
 
-            // Pareto por producto (todos los registros)
+            // Pareto por producto (todos los registros, NC según parámetro seleccionado)
             const code = r.codigo_producto || 'Sin código'
             if (!productStats[code]) productStats[code] = { nc: 0, total: 0, familia: r.familia_producto || '' }
             productStats[code].total++
-            const st = r.analysis?.overallStatus
-            if (st === 'no-conforme' || st === 'semi-conforme') productStats[code].nc++
+            const paramSt = filterParam === 'ph'        ? r.analysis?.phStatus
+                          : filterParam === 'solidos'   ? r.analysis?.solidsStatus
+                          : filterParam === 'apariencia'? r.analysis?.appearanceStatus
+                          : r.analysis?.overallStatus
+            if (paramSt === 'no-conforme' || paramSt === 'semi-conforme') productStats[code].nc++
 
             if (!isIntermediate) {
                 // Defects para Pareto de parámetros
@@ -331,10 +333,14 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                 if (!groupedSucursal[suc]) {
                     groupedSucursal[suc] = { name: suc, conformes: 0, semiConformes: 0, noConformes: 0, ftqVol: 0, fyVol: 0, noConformeVol: 0, totalVol: 0 }
                 }
-                const isFTQ = (solidsStat === 'conforme' || solidsStat === 'na') &&
-                              (phStat === 'conforme' || phStat === 'na') &&
-                              (appStat === 'conforme' || appStat === 'na')
-                const isNoConformeTotal = solidsStat === 'no-conforme' || phStat === 'no-conforme' || appStat === 'no-conforme'
+                const isFTQ = filterParam === 'ph'        ? (phStat === 'conforme' || phStat === 'na')
+                            : filterParam === 'solidos'   ? (solidsStat === 'conforme' || solidsStat === 'na')
+                            : filterParam === 'apariencia'? (appStat === 'conforme' || appStat === 'na')
+                            : (solidsStat === 'conforme' || solidsStat === 'na') && (phStat === 'conforme' || phStat === 'na') && (appStat === 'conforme' || appStat === 'na')
+                const isNoConformeTotal = filterParam === 'ph'        ? phStat === 'no-conforme'
+                                        : filterParam === 'solidos'   ? solidsStat === 'no-conforme'
+                                        : filterParam === 'apariencia'? appStat === 'no-conforme'
+                                        : solidsStat === 'no-conforme' || phStat === 'no-conforme' || appStat === 'no-conforme'
 
                 groupedSucursal[suc].totalVol += vol
                 if (isFTQ) {
@@ -394,7 +400,7 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
             paretoProductData,
             totalNcProd
         }
-    }, [spyRecords])
+    }, [spyRecords, filterParam])
 
     const printInsights = useMemo(() => {
         type InsightLevel = 'ok' | 'warn' | 'critical'
