@@ -122,16 +122,14 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
 
         spyRecords.forEach(r => {
             const fam = r.familia_producto || ''
-            if (INTERMEDIATE_FAMILIES.includes(fam)) {
-                totalVolumeIntermediates += Number(r.tamano_lote) || 0
-                return // los intermedios no entran a FTQ/Yield ni a los totales de producto terminado
-            }
-
-            const isPiece = PIECE_FAMILIES.includes(fam)
+            const isIntermediate = INTERMEDIATE_FAMILIES.includes(fam)
+            const isPiece = !isIntermediate && PIECE_FAMILIES.includes(fam)
             const val = Number(r.tamano_lote) || 0
             const vol = isPiece ? (val * 20) : val
 
-            if (isPiece) {
+            if (isIntermediate) {
+                totalVolumeIntermediates += val
+            } else if (isPiece) {
                 totalPiecesBases += val
             } else {
                 totalVolumeProducts += val
@@ -196,9 +194,9 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
         })
 
         const totalVolumeBases = totalPiecesBases * 20
-        const totalVolumeUnified = totalVolumeProducts + totalVolumeBases
+        const totalVolumeUnified = totalVolumeProducts + totalVolumeBases + totalVolumeIntermediates
 
-        const onlyIntermediates = totalVolumeUnified === 0 && totalVolumeIntermediates > 0
+        const onlyIntermediates = false
         const ftqPercent = totalVolumeUnified > 0 ? (ftqVolume / totalVolumeUnified) * 100 : 100
         const finalYieldPercent = totalVolumeUnified > 0 ? ((totalVolumeUnified - noConformeVolume) / totalVolumeUnified) * 100 : 100
 
@@ -317,43 +315,41 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                           : r.analysis?.overallStatus
             if (paramSt === 'no-conforme' || paramSt === 'semi-conforme') productStats[code].nc++
 
-            if (!isIntermediate) {
-                // Defects para Pareto de parámetros
-                if (phStat === 'no-conforme') defects.ph += vol
-                if (solidsStat === 'semi-conforme' || solidsStat === 'no-conforme') defects.solidos += vol
-                if (appStat === 'no-conforme') defects.apariencia += vol
+            // Defects para Pareto de parámetros
+            if (phStat === 'no-conforme') defects.ph += vol
+            if (solidsStat === 'semi-conforme' || solidsStat === 'no-conforme') defects.solidos += vol
+            if (appStat === 'no-conforme') defects.apariencia += vol
 
-                // Radar counts
-                if (phStat === 'no-conforme') radarCounts.ph++
-                if (solidsStat === 'semi-conforme' || solidsStat === 'no-conforme') radarCounts.solidos++
-                if (appStat === 'no-conforme') radarCounts.apariencia++
+            // Radar counts
+            if (phStat === 'no-conforme') radarCounts.ph++
+            if (solidsStat === 'semi-conforme' || solidsStat === 'no-conforme') radarCounts.solidos++
+            if (appStat === 'no-conforme') radarCounts.apariencia++
 
-                // Sucursal breakdown (mismo criterio que las cards: 3 parámetros)
-                const suc = r.sucursal || "Sin Sucursal"
-                if (!groupedSucursal[suc]) {
-                    groupedSucursal[suc] = { name: suc, conformes: 0, semiConformes: 0, noConformes: 0, ftqVol: 0, fyVol: 0, noConformeVol: 0, totalVol: 0 }
-                }
-                const isFTQ = filterParam === 'ph'        ? (phStat === 'conforme' || phStat === 'na')
-                            : filterParam === 'solidos'   ? (solidsStat === 'conforme' || solidsStat === 'na')
-                            : filterParam === 'apariencia'? (appStat === 'conforme' || appStat === 'na')
-                            : (solidsStat === 'conforme' || solidsStat === 'na') && (phStat === 'conforme' || phStat === 'na') && (appStat === 'conforme' || appStat === 'na')
-                const isNoConformeTotal = filterParam === 'ph'        ? phStat === 'no-conforme'
-                                        : filterParam === 'solidos'   ? solidsStat === 'no-conforme'
-                                        : filterParam === 'apariencia'? appStat === 'no-conforme'
-                                        : solidsStat === 'no-conforme' || phStat === 'no-conforme' || appStat === 'no-conforme'
+            // Sucursal breakdown (mismo criterio que las cards: 3 parámetros)
+            const suc = r.sucursal || "Sin Sucursal"
+            if (!groupedSucursal[suc]) {
+                groupedSucursal[suc] = { name: suc, conformes: 0, semiConformes: 0, noConformes: 0, ftqVol: 0, fyVol: 0, noConformeVol: 0, totalVol: 0 }
+            }
+            const isFTQ = filterParam === 'ph'        ? (phStat === 'conforme' || phStat === 'na')
+                        : filterParam === 'solidos'   ? (solidsStat === 'conforme' || solidsStat === 'na')
+                        : filterParam === 'apariencia'? (appStat === 'conforme' || appStat === 'na')
+                        : (solidsStat === 'conforme' || solidsStat === 'na') && (phStat === 'conforme' || phStat === 'na') && (appStat === 'conforme' || appStat === 'na')
+            const isNoConformeTotal = filterParam === 'ph'        ? phStat === 'no-conforme'
+                                    : filterParam === 'solidos'   ? solidsStat === 'no-conforme'
+                                    : filterParam === 'apariencia'? appStat === 'no-conforme'
+                                    : solidsStat === 'no-conforme' || phStat === 'no-conforme' || appStat === 'no-conforme'
 
-                groupedSucursal[suc].totalVol += vol
-                if (isFTQ) {
-                    groupedSucursal[suc].conformes++
-                    groupedSucursal[suc].ftqVol += vol
-                    groupedSucursal[suc].fyVol += vol
-                } else if (isNoConformeTotal) {
-                    groupedSucursal[suc].noConformes++
-                    groupedSucursal[suc].noConformeVol += vol
-                } else {
-                    groupedSucursal[suc].semiConformes++
-                    groupedSucursal[suc].fyVol += vol
-                }
+            groupedSucursal[suc].totalVol += vol
+            if (isFTQ) {
+                groupedSucursal[suc].conformes++
+                groupedSucursal[suc].ftqVol += vol
+                groupedSucursal[suc].fyVol += vol
+            } else if (isNoConformeTotal) {
+                groupedSucursal[suc].noConformes++
+                groupedSucursal[suc].noConformeVol += vol
+            } else {
+                groupedSucursal[suc].semiConformes++
+                groupedSucursal[suc].fyVol += vol
             }
         }
 
@@ -542,7 +538,7 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                                         <span className="text-lg font-bold text-indigo-500 dark:text-indigo-400 ml-1.5">L</span>
                                     </div>
                                     <p className="text-[10px] text-slate-400 mt-0.5">
-                                        Consolidado PT + Bases unificadas (×20)
+                                        Consolidado PT + Bases (×20) + Intermedios
                                     </p>
                                 </div>
                             </div>
