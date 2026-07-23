@@ -146,7 +146,7 @@ export const PRODUCT_STANDARDS: Record<string, { min?: number, max?: number }> =
     "ZOTROS": { min: 10.0, max: 13.5 },
     "ZOTBLA": { min: 10.0, max: 13.5 },
     "ZOTAZU": { min: 10.0, max: 13.5 },
-    "AQUA": { min: 10.0, max: 13.5 },
+    "AQUA": { min: 10.5, max: 13.5 },
     "DETDON": { min: 10.5, max: 13.5 },
     "PERLA": { min: 10.0, max: 13.5 },
     "ENCANTO": { min: 10.0, max: 13.5 },
