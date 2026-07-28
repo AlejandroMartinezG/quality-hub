@@ -112,7 +112,7 @@ export const PRODUCT_STANDARDS: Record<string, { min?: number, max?: number }> =
     "LIMFRU": { min: 1.1, max: 2.0 },
     "LIMPOET": { min: 1.1, max: 2.1 },
     "LIMMANC": { min: 1.5, max: 2.5 },
-    "LIMLIS": { min: 1.1, max: 1.3 },
+    "LIMLIS": { min: 1.0, max: 1.6 },
     "LIMALA": { min: 1.1, max: 2.2 },
     "TRALIM": { min: 15.0, max: 17.5 },
     "TRAMAN": { min: 15.0, max: 17.5 },
