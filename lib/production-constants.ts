@@ -119,7 +119,7 @@ export const PRODUCT_STANDARDS: Record<string, { min?: number, max?: number }> =
     "TRANAR": { min: 15.0, max: 17.5 },
     "TRATOR": { min: 14.5, max: 17.0 },
     "XPUMAX": { min: 15.0, max: 17.5 },
-    "CLOGEL": { min: 6.2, max: 8.0 },
+    "CLOGEL": { min: 15.0, max: 17.5 },
     "CLO": { min: 6.0, max: 8.0 },
     "PINO": { min: 3.5, max: 4.5 },
     "DETNEU": { min: 10.5, max: 12.5 },
