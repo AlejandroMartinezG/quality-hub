@@ -20,18 +20,13 @@ export function DashboardBanner() {
     const slides = [
         {
             id: 1,
-            image: "/banners/slide_1_mundial.webp",
+            image: "/banners/slide_1.webp",
             alt: "Bitácora de Producción - Calidad en Acción",
         },
         {
             id: 2,
             image: "/banners/slide_2.webp",
             alt: "Ambientadores Ginez",
-        },
-        {
-            id: 3,
-            image: "/banners/slide_3.webp",
-            alt: "Productos de Limpieza Ginez",
         },
         {
             id: 4,
