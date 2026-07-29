@@ -128,18 +128,14 @@ export default function CalidadPage() {
     }, [profile, authLoading, router])
 
     useEffect(() => {
-        if (user && !authLoading) fetchRecords(filterDateFrom || undefined, filterDateTo || undefined)
-    }, [user?.id, isAdmin, profile?.role, authLoading])
-
-    useEffect(() => {
-        if (user && !authLoading) fetchRecords(filterDateFrom || undefined, filterDateTo || undefined)
-    }, [filterDateFrom, filterDateTo])
+        if (user && !authLoading && profile) fetchRecords(filterDateFrom || undefined, filterDateTo || undefined)
+    }, [user?.id, isAdmin, profile?.role, profile?.sucursal, authLoading, filterDateFrom, filterDateTo])
 
     const fetchRecords = async (from?: string, to?: string) => {
         if (!user) return
         try {
             setLoading(true)
-            let query = supabase.from('bitacora_produccion_calidad').select('*')
+            let query = supabase.from('bitacora_produccion_calidad').select('id, created_at, lote_producto, codigo_producto, sucursal, fecha_fabricacion, ph, solidos_medicion_1, solidos_medicion_2, temp_med1, temp_med2, temperatura, apariencia, color, aroma, nombre_preparador, familia_producto, tamano_lote, observaciones, user_id')
             const role = profile?.role?.toLowerCase()
             if (role === 'preparador') {
                 query = query.eq('user_id', user.id)
@@ -193,6 +189,7 @@ export default function CalidadPage() {
         if (!editingRecord) return
         try {
             setIsUpdating(true)
+            const { data: { session: editSession } } = await supabase.auth.getSession()
             const result = await updateBitacoraRecord({
                 id: editingRecord.id,
                 ph: editingRecord.ph,
@@ -204,7 +201,7 @@ export default function CalidadPage() {
                 tamano_lote: editingRecord.tamano_lote ?? null,
                 fecha_fabricacion: editingRecord.fecha_fabricacion ?? '',
                 lote_producto: editingRecord.lote_producto ?? '',
-            })
+            }, editSession?.access_token ?? '')
             if (!result.success) throw new Error(result.message)
             toast.success("Registro actualizado")
             setIsEditDialogOpen(false)
@@ -232,9 +229,10 @@ export default function CalidadPage() {
         let nameMap: Record<string, string> = {}
         let avatarMap: Record<string, string | null> = {}
         if (needsLookup || authorIds.length > 0) {
+            const { data: { session: chatSess } } = await supabase.auth.getSession()
             const profilesRes = await fetch('/api/profiles', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${chatSess?.access_token ?? ''}` },
                 body: JSON.stringify({ ids: authorIds }),
             })
             const profilesData = profilesRes.ok ? await profilesRes.json() : []
@@ -273,9 +271,10 @@ export default function CalidadPage() {
             const nameMap: Record<string, string> = {}
             const avatarMap: Record<string, string | null> = {}
             try {
+                const { data: { session: expandSess } } = await supabase.auth.getSession()
                 const profilesRes = await fetch('/api/profiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${expandSess?.access_token ?? ''}` },
                     body: JSON.stringify({ ids: authorIds }),
                 })
                 const profilesData = profilesRes.ok ? await profilesRes.json() : []
@@ -488,7 +487,7 @@ export default function CalidadPage() {
     })
 
     const fetchExportData = async (): Promise<BitacoraRecord[]> => {
-        let query = supabase.from('bitacora_produccion_calidad').select('*')
+        let query = supabase.from('bitacora_produccion_calidad').select('id, created_at, lote_producto, codigo_producto, sucursal, fecha_fabricacion, ph, solidos_medicion_1, solidos_medicion_2, temp_med1, temp_med2, temperatura, apariencia, color, aroma, nombre_preparador, familia_producto, tamano_lote, observaciones, user_id')
         const role = profile?.role?.toLowerCase()
         if (role === 'preparador') query = query.eq('user_id', user!.id)
         else if ((role === 'gerente_sucursal' || role === 'gerente') && profile?.sucursal)
@@ -1459,14 +1458,27 @@ export default function CalidadPage() {
                             </Button>
                         </div>
                     </DialogHeader>
-                    <div className="flex-1 overflow-hidden">
-                        {catalogOpen && (
-                            <iframe
-                                src="https://drive.google.com/file/d/1mQdxhr-IJ0qWiX8dakbUHkSJsEu6X0gQ/preview"
-                                className="w-full h-full rounded-xl border-0"
-                                allow="autoplay"
-                            />
-                        )}
+                    <div className="flex-1 flex flex-col items-center justify-center gap-6 py-12">
+                        <div className="p-6 bg-slate-100 dark:bg-slate-800 rounded-2xl">
+                            <svg className="h-16 w-16 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </div>
+                        <div className="text-center space-y-2">
+                            <p className="font-semibold text-slate-700 dark:text-slate-200">Catálogo de Parámetros — Productos Terminados</p>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">El catálogo se abre en Google Drive para visualización en alta calidad.</p>
+                        </div>
+                        <a
+                            href="https://drive.google.com/file/d/1mQdxhr-IJ0qWiX8dakbUHkSJsEu6X0gQ/view"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-6 py-3 bg-[#0e0c9b] hover:bg-[#0b0a7a] text-white font-semibold rounded-xl transition-colors"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                            Abrir catálogo completo
+                        </a>
                     </div>
                 </DialogContent>
             </Dialog>

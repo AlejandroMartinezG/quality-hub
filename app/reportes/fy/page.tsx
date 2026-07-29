@@ -68,19 +68,13 @@ export default function FTQPage() {
         }
     }
 
-    // Initial load
     useEffect(() => {
         if (user && profile) {
             fetchData(filterDateFrom || undefined, filterDateTo || undefined)
         } else if (!authLoading) {
             setLoading(false)
         }
-    }, [user, profile?.role, authLoading])
-
-    // Re-fetch when dates change
-    useEffect(() => {
-        if (user && profile) fetchData(filterDateFrom || undefined, filterDateTo || undefined)
-    }, [filterDateFrom, filterDateTo])
+    }, [user?.id, profile?.role, authLoading, filterDateFrom, filterDateTo])
 
     const today = new Date().toISOString().split('T')[0]
     const thirtyDaysAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().split('T')[0] })()

@@ -20,28 +20,38 @@ export interface Notification {
     created_at: string
 }
 
-export function NotificationBell() {
+export function NotificationBell({ userId }: { userId: string | null }) {
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [unreadCount, setUnreadCount] = useState(0)
     const [open, setOpen] = useState(false)
-    const [userId, setUserId] = useState<string | null>(null)
     const router = useRouter()
 
     useEffect(() => {
+        if (!userId) return
         loadNotifications()
-        const interval = setInterval(loadNotifications, 30_000)
-        return () => clearInterval(interval)
-    }, [])
+
+        const interval = setInterval(() => {
+            if (!document.hidden) loadNotifications()
+        }, 30_000)
+
+        const handleVisibility = () => {
+            if (!document.hidden) loadNotifications()
+        }
+        document.addEventListener('visibilitychange', handleVisibility)
+
+        return () => {
+            clearInterval(interval)
+            document.removeEventListener('visibilitychange', handleVisibility)
+        }
+    }, [userId])
 
     async function loadNotifications() {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-        setUserId(user.id)
+        if (!userId) return
 
         const { data } = await supabase
             .from('notifications')
-            .select('*')
-            .eq('user_id', user.id)
+            .select('id, user_id, type, title, message, link, metadata, read, created_at')
+            .eq('user_id', userId)
             .not('type', 'in', '(NCR_CREATED,NCR_STATUS_CHANGE,DISPOSICION_REGISTRADA)')
             .order('created_at', { ascending: false })
             .limit(20)
@@ -105,7 +115,6 @@ export function NotificationBell() {
         if (isMessageType) {
             const mid = notif.metadata?.measurement_id
             if (mid && window.location.pathname === '/calidad') {
-                // Ya estamos en calidad: custom event para abrir el chat sin navegar
                 window.dispatchEvent(new CustomEvent('openChatMeasurement', { detail: { mid } }))
             } else {
                 router.push(mid ? `/calidad?chat=${mid}` : '/calidad')

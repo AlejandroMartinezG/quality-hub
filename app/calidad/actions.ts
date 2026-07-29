@@ -15,7 +15,12 @@ interface UpdateBitacoraPayload {
     lote_producto: string
 }
 
-export async function updateBitacoraRecord(payload: UpdateBitacoraPayload) {
+export async function updateBitacoraRecord(payload: UpdateBitacoraPayload, accessToken: string) {
+    if (!accessToken) return { success: false, message: 'No autorizado' }
+
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(accessToken)
+    if (authError || !user) return { success: false, message: 'No autorizado' }
+
     const { id, ...fields } = payload
     const { error } = await supabaseAdmin
         .from('bitacora_produccion_calidad')

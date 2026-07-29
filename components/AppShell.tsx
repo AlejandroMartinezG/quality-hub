@@ -243,7 +243,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     />
                 </Link>
                 <div className="flex items-center gap-2">
-                    <NotificationBell />
+                    <NotificationBell userId={user?.id ?? null} />
                     <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-slate-600">
                         {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
                     </button>
@@ -313,7 +313,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         <div className="h-10 w-32 bg-slate-100 animate-pulse rounded-full" />
                     ) : (
                         <div className="flex items-center gap-4">
-                            <NotificationBell />
+                            <NotificationBell userId={user?.id ?? null} />
                             <Link
                                 href={`${basePath}/configuracion`}
                                 className="flex items-center gap-4 pl-6 py-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer group"

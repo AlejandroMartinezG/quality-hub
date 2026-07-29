@@ -143,11 +143,7 @@ export default function ReportesPage() {
         } else if (!authLoading) {
             setLoading(false)
         }
-    }, [user, profile?.role, authLoading])
-
-    useEffect(() => {
-        if (user && profile) fetchData(filterDateFrom || undefined, filterDateTo || undefined)
-    }, [filterDateFrom, filterDateTo])
+    }, [user?.id, profile?.role, authLoading, filterDateFrom, filterDateTo])
 
     const fetchData = async (from?: string, to?: string) => {
         setLoading(true)
