@@ -1460,7 +1460,13 @@ export default function CalidadPage() {
                         </div>
                     </DialogHeader>
                     <div className="flex-1 overflow-hidden">
-                        {catalogOpen && <PdfViewer url={`https://drive.google.com/file/d/1mQdxhr-IJ0qWiX8dakbUHkSJsEu6X0gQ/view`} />}
+                        {catalogOpen && (
+                            <iframe
+                                src="https://drive.google.com/file/d/1mQdxhr-IJ0qWiX8dakbUHkSJsEu6X0gQ/preview"
+                                className="w-full h-full rounded-xl border-0"
+                                allow="autoplay"
+                            />
+                        )}
                     </div>
                 </DialogContent>
             </Dialog>
