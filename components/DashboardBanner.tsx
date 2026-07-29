@@ -29,6 +29,11 @@ export function DashboardBanner() {
             alt: "Ambientadores Ginez",
         },
         {
+            id: 3,
+            image: "/banners/recordatorio_calibracion.webp",
+            alt: "Recordatorio de Calibración",
+        },
+        {
             id: 4,
             image: "/banners/slide_4.webp",
             alt: "Calidad Garantizada",
