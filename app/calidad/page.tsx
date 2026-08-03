@@ -986,7 +986,7 @@ export default function CalidadPage() {
                                                             )}>
                                                                 {record.ph ?? "N/A"}
                                                             </span>
-                                                            {stdPH && <span className="text-[10px] text-muted-foreground">Ref: {stdPH.min}–{stdPH.max}</span>}
+                                                            {stdPH && <span className="text-[10px] text-muted-foreground">Ref: {stdPH.min === stdPH.max ? stdPH.min : `${stdPH.min}–${stdPH.max}`}</span>}
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="text-center">
@@ -1297,7 +1297,7 @@ export default function CalidadPage() {
                                                     <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl flex flex-col items-center">
                                                         <span className="text-[9px] font-bold text-slate-400 uppercase mb-1">pH</span>
                                                         <span className="font-bold text-sm">{record.ph ?? "N/A"}</span>
-                                                        {stdPH && <span className="text-[8px] text-muted-foreground">Ref: {stdPH.min}–{stdPH.max}</span>}
+                                                        {stdPH && <span className="text-[8px] text-muted-foreground">Ref: {stdPH.min === stdPH.max ? stdPH.min : `${stdPH.min}–${stdPH.max}`}</span>}
                                                     </div>
                                                     <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl flex flex-col items-center">
                                                         <span className="text-[9px] font-bold text-slate-400 uppercase mb-1">% Sólidos</span>
