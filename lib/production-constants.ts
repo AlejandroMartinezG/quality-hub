@@ -224,7 +224,7 @@ export const PH_STANDARDS: Record<string, { min: number, max: number }> = {
     "PERGIN": { min: 7, max: 9 }, "VIVGIN": { min: 7, max: 9 }, "GIRIELOXI": { min: 7, max: 9 }, "SUNSET": { min: 7, max: 9 }, "SHAGIN": { min: 7, max: 9 },
     "ZOTROS": { min: 7, max: 9 }, "ZOTBLA": { min: 7, max: 9 }, "ZOTAZU": { min: 7, max: 9 }, "AQUA": { min: 7, max: 9 }, "DETDON": { min: 7, max: 9 },
     "PERLA": { min: 7, max: 9 }, "ENCANTO": { min: 7, max: 9 }, "VELGIN": { min: 7, max: 9 },
-    "DES": { min: 8, max: 10 }, "DETPIN": { min: 7, max: 9 }, "GINESH": { min: 3, max: 4 },
+    "DES": { min: 9, max: 9 }, "DETPIN": { min: 7, max: 9 }, "GINESH": { min: 3, max: 4 },
     "SHACER": { min: 6, max: 7 }, "SHACLA": { min: 6, max: 7 }, "BRIGEL": { min: 6, max: 7 }, "GINESP": { min: 6, max: 7 }, "BRILIQ": { min: 7, max: 7 }, "CREMEC": { min: 7, max: 7 },
     "GELANT": { min: 6, max: 7 }, "JABMAK": { min: 6, max: 7 }, "TRAGRA": { min: 7, max: 9 },
     "JABPM": { min: 5, max: 6 }, "JABNEU": { min: 7, max: 7 }, "JABCER": { min: 5, max: 6 }, "JABUVA": { min: 5, max: 6 }, "JABHIE": { min: 5, max: 6 }, "JABCOC": { min: 5, max: 6 }, "JABDUR": { min: 5, max: 6 },
