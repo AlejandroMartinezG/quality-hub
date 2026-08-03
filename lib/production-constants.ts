@@ -223,7 +223,7 @@ export const PH_STANDARDS: Record<string, { min: number, max: number }> = {
     "COLGIN": { min: 7, max: 9 }, "COLBLA": { min: 7, max: 9 }, "COLNEG": { min: 7, max: 9 }, "GIRIEL": { min: 7, max: 9 }, "GIRIEL2": { min: 7, max: 9 }, "GIRDOW": { min: 7, max: 9 },
     "PERGIN": { min: 7, max: 9 }, "VIVGIN": { min: 7, max: 9 }, "GIRIELOXI": { min: 7, max: 9 }, "SUNSET": { min: 7, max: 9 }, "SHAGIN": { min: 7, max: 9 },
     "ZOTROS": { min: 7, max: 9 }, "ZOTBLA": { min: 7, max: 9 }, "ZOTAZU": { min: 7, max: 9 }, "AQUA": { min: 7, max: 9 }, "DETDON": { min: 7, max: 9 },
-    "PERLA": { min: 7, max: 9 }, "ENCANTO": { min: 7, max: 9 }, "VELGIN": { min: 7, max: 9 },
+    "PERLA": { min: 7, max: 9 }, "ENCANTO": { min: 7, max: 9 }, "VELGIN": { min: 7, max: 7 },
     "DES": { min: 9, max: 9 }, "DETPIN": { min: 7, max: 9 }, "GINESH": { min: 3, max: 4 },
     "SHACER": { min: 6, max: 7 }, "SHACLA": { min: 6, max: 7 }, "BRIGEL": { min: 6, max: 7 }, "GINESP": { min: 6, max: 7 }, "BRILIQ": { min: 7, max: 7 }, "CREMEC": { min: 7, max: 7 },
     "GELANT": { min: 6, max: 7 }, "JABMAK": { min: 6, max: 7 }, "TRAGRA": { min: 7, max: 9 },
