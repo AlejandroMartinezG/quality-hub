@@ -1020,9 +1020,22 @@ export default function CalidadPage() {
                                                         </Badge>
                                                     </TableCell>
                                                     <TableCell className="text-center">
-                                                        <div className="flex flex-col items-center">
+                                                        <div className="flex flex-col items-center gap-0.5">
                                                             <span className="text-sm font-semibold dark:text-slate-200">{record.apariencia || "N/A"}</span>
-                                                            {stdApp && <span className="text-[10px] text-muted-foreground">Esp: {stdApp}</span>}
+                                                            {stdApp && (() => {
+                                                                const isConformeApp = record.apariencia &&
+                                                                    (record.apariencia.toLowerCase().includes(stdApp.toLowerCase()) ||
+                                                                     stdApp.toLowerCase().includes(record.apariencia.toLowerCase()))
+                                                                return (
+                                                                    <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded",
+                                                                        isConformeApp
+                                                                            ? "text-emerald-700 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/40"
+                                                                            : "text-rose-700 bg-rose-50 dark:text-rose-400 dark:bg-rose-950/40"
+                                                                    )}>
+                                                                        Esp: {stdApp}
+                                                                    </span>
+                                                                )
+                                                            })()}
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="text-center">
