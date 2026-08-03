@@ -1465,7 +1465,7 @@ export default function CalidadPage() {
                                 </DialogDescription>
                             </div>
                             <Button asChild variant="outline" size="sm" className="gap-2 shrink-0">
-                                <a href={`https://drive.google.com/file/d/1mQdxhr-IJ0qWiX8dakbUHkSJsEu6X0gQ/view`} target="_blank" rel="noopener noreferrer">
+                                <a href={`https://drive.google.com/file/d/1wI4g8vPpQ8TXJENBiTnVo-S_kpiE6XYn/view?usp=sharing`} target="_blank" rel="noopener noreferrer">
                                     Abrir en pestaña nueva
                                 </a>
                             </Button>
@@ -1482,7 +1482,7 @@ export default function CalidadPage() {
                             <p className="text-sm text-slate-500 dark:text-slate-400">El catálogo se abre en Google Drive para visualización en alta calidad.</p>
                         </div>
                         <a
-                            href="https://drive.google.com/file/d/1mQdxhr-IJ0qWiX8dakbUHkSJsEu6X0gQ/view"
+                            href="https://drive.google.com/file/d/1wI4g8vPpQ8TXJENBiTnVo-S_kpiE6XYn/view?usp=sharing"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-2 px-6 py-3 bg-[#0e0c9b] hover:bg-[#0b0a7a] text-white font-semibold rounded-xl transition-colors"
