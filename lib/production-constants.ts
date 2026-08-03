@@ -217,7 +217,7 @@ export const PRODUCT_STANDARDS: Record<string, { min?: number, max?: number }> =
 };
 
 export const PH_STANDARDS: Record<string, { min: number, max: number }> = {
-    "TRALIM": { min: 7, max: 9 }, "TRAMAN": { min: 7, max: 9 }, "TRANAR": { min: 7, max: 9 }, "TRATOR": { min: 7, max: 9 }, "XPUMAX": { min: 7, max: 9 },
+    "TRALIM": { min: 8, max: 8 }, "TRAMAN": { min: 8, max: 8 }, "TRANAR": { min: 8, max: 8 }, "TRATOR": { min: 7, max: 9 }, "XPUMAX": { min: 8, max: 8 },
     "CLOGEL": { min: 12, max: 14 }, "QUIPAS": { min: 7, max: 9 }, "DETNEU": { min: 7, max: 8 }, "DETAMO": { min: 9, max: 13 }, "QUILIQ": { min: 7, max: 9 }, "DETER": { min: 2, max: 4 },
     "TEFESP": { min: 7, max: 8 }, "SHAMAS": { min: 7, max: 7 },
     "COLGIN": { min: 7, max: 9 }, "COLBLA": { min: 7, max: 9 }, "COLNEG": { min: 7, max: 9 }, "GIRIEL": { min: 7, max: 9 }, "GIRIEL2": { min: 7, max: 9 }, "GIRDOW": { min: 7, max: 9 },
@@ -234,7 +234,7 @@ export const PH_STANDARDS: Record<string, { min: number, max: number }> = {
     // Shampoos (usar rangos similares a SHAPAN/SHAHEA)
     "SHADUR": { min: 6, max: 7 }, "SHAPLU": { min: 6, max: 7 }, "SHAHIE": { min: 6, max: 7 },
     // Detergentes de trastes
-    "TRABLU": { min: 7, max: 9 },
+    "TRABLU": { min: 8, max: 8 },
     "DETALC": { min: 7, max: 10 },
 };
 
