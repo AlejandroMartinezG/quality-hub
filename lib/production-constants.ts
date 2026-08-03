@@ -125,6 +125,7 @@ export const PRODUCT_STANDARDS: Record<string, { min?: number, max?: number }> =
     "DETNEU": { min: 10.5, max: 12.5 },
     "INS": { min: 1.5, max: 2.5 },
     "DETER": { min: 16.0, max: 18.0 },
+    "LIMREP": { min: 4.0, max: 5.5 },
     "LIMVID": { min: 1.0, max: 1.9 },
     "DETAMO": { min: 12.5, max: 14.0 },
     "DESIND": { min: 23.0, max: 26.0 },
