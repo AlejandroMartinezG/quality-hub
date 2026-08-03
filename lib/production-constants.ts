@@ -175,7 +175,7 @@ export const PRODUCT_STANDARDS: Record<string, { min?: number, max?: number }> =
     "GINLIQ": { min: 10.5, max: 11.5 },
     "DESMOT": { min: 21.0, max: 23.5 },
     "CERLIQ": { min: 7.5, max: 9.0 },
-    "CREMEC": { min: 37.0, max: 40.5 },
+    "CREMEC": { min: 36.0, max: 40.5 },
     "GELANT": { min: 19.5, max: 23.5 },
     "SANBAK": { min: 1.0, max: 1.5 },
     "LIMSAK": { min: 1.5, max: 2.0 },
