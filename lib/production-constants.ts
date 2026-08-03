@@ -440,7 +440,7 @@ export const APPEARANCE_STANDARDS: Record<string, string> = {
     "JABCER": "CRISTALINO",
     "JABUVA": "CRISTALINO",
     "JABHIE": "CRISTALINO",
-    "JABCOC": "CRISTALINO",
+    "JABCOC": "APERLADO",
     "JABDUR": "CRISTALINO",
 
     "SHAPAN": "APERLADO",
