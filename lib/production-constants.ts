@@ -182,7 +182,7 @@ export const PRODUCT_STANDARDS: Record<string, { min?: number, max?: number }> =
     "JABMAK": { min: 12.0, max: 13.5 },
     "TRAGRA": { min: 20.0, max: 22.5 },
     "JABPM": { min: 10.5, max: 14.0 },
-    "JABNEU": { min: 10.5, max: 14.0 },
+    "JABNEU": { min: 9.0, max: 10.5 },
     "JABCER": { min: 10.5, max: 14.0 },
     "JABUVA": { min: 10.5, max: 14.0 },
     "JABHIE": { min: 10.5, max: 14.0 },
