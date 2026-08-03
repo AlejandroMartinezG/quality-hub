@@ -227,7 +227,7 @@ export const PH_STANDARDS: Record<string, { min: number, max: number }> = {
     "DES": { min: 8, max: 10 }, "DETPIN": { min: 7, max: 9 }, "GINESH": { min: 3, max: 4 },
     "SHACER": { min: 6, max: 7 }, "SHACLA": { min: 6, max: 7 }, "BRIGEL": { min: 6, max: 7 }, "GINESP": { min: 6, max: 7 }, "BRILIQ": { min: 7, max: 7 }, "CREMEC": { min: 7, max: 7 },
     "GELANT": { min: 6, max: 7 }, "JABMAK": { min: 6, max: 7 }, "TRAGRA": { min: 7, max: 9 },
-    "JABPM": { min: 5, max: 6 }, "JABNEU": { min: 5, max: 6 }, "JABCER": { min: 5, max: 6 }, "JABUVA": { min: 5, max: 6 }, "JABHIE": { min: 5, max: 6 }, "JABCOC": { min: 5, max: 6 }, "JABDUR": { min: 5, max: 6 },
+    "JABPM": { min: 5, max: 6 }, "JABNEU": { min: 7, max: 7 }, "JABCER": { min: 5, max: 6 }, "JABUVA": { min: 5, max: 6 }, "JABHIE": { min: 5, max: 6 }, "JABCOC": { min: 5, max: 6 }, "JABDUR": { min: 5, max: 6 },
     "SHAPAN": { min: 6, max: 7 }, "SHAHEA": { min: 6, max: 7 }, "CREDEL": { min: 6, max: 7 },
     // Cremas (usar rangos de CREDEL)
     "CREBAB": { min: 6, max: 7 }, "CRELIM": { min: 6, max: 7 }, "CREMIE": { min: 6, max: 7 }, "CREROS": { min: 6, max: 7 }, "CRESAB": { min: 6, max: 7 }, "CREWHI": { min: 6, max: 7 },
