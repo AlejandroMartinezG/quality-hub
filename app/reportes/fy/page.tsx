@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/AuthProvider"
 import { supabase } from "@/lib/supabase"
@@ -10,7 +11,15 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { SUCURSALES } from "@/lib/production-constants"
-import SPYReportPage from "../spy/SPYReportPage"
+// Carga diferida: saca Recharts del bundle inicial y lo descarga en paralelo al fetch de datos
+const SPYReportPage = dynamic(() => import("../spy/SPYReportPage"), {
+    ssr: false,
+    loading: () => (
+        <div className="h-64 flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        </div>
+    ),
+})
 
 const ALLOWED_ROLES = [
     'admin', 'gerente_calidad', 'coordinador',

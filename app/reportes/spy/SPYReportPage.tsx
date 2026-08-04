@@ -66,6 +66,8 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
     const [printView, setPrintView] = useState<{ dateFrom: string, dateTo: string } | null>(null)
     const [chartModal, setChartModal] = useState<'solids' | 'ph' | null>(null)
     const [chartLimit, setChartLimit] = useState<number>(60)
+    // Las cartas de control son lo más pesado de renderizar — se montan solo si el usuario las pide
+    const [showControlCharts, setShowControlCharts] = useState(false)
 
     // ─── FILTROS INTERNOS ────────────────────────────────────────────
     const [filterSucursal, setFilterSucursal] = useState("all")
@@ -284,6 +286,13 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
         }
     }, [spyRecords])
 
+    // Solo los últimos N registros para las cartas de control inline.
+    // Renderizar miles de puntos con interval={0} bloquea el hilo principal.
+    const visibleControlData = useMemo(
+        () => chartLimit === 0 ? controlChartData : controlChartData.slice(-chartLimit),
+        [controlChartData, chartLimit]
+    )
+
     // ─── C. DATOS PARA GRÁFICOS (PARETO, RADIAL, SUCURSAL) ───────────
     const chartsData = useMemo(() => {
         // Una sola pasada acumula todo: defects, radar, sucursal y productStats
@@ -401,6 +410,8 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
     const printInsights = useMemo(() => {
         type InsightLevel = 'ok' | 'warn' | 'critical'
         const insights: { level: InsightLevel; text: string }[] = []
+        // Solo se usa dentro del reporte impreso — no vale recorrer los registros en cada render
+        if (!printView) return insights
         if (spyRecords.length === 0 || stats.onlyIntermediates) return insights
 
         const ftq = stats.ftqPercent
@@ -467,7 +478,7 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
         }
 
         return insights
-    }, [stats, chartsData, spyRecords])
+    }, [printView, stats, chartsData, spyRecords])
 
     return (
         <div className="space-y-6">
@@ -1099,6 +1110,33 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                 </CardContent>
             </Card>
 
+            {/* ─── TOGGLE DE CARTAS DE CONTROL ─────────────────────────────────── */}
+            <div className="border-t border-slate-200/60 dark:border-slate-800 pt-6">
+                <button
+                    onClick={() => setShowControlCharts(v => !v)}
+                    className="w-full flex items-center justify-between gap-3 p-4 rounded-[1.5rem] bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                    <div className="flex items-center gap-3 text-left">
+                        <FlaskConical className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0" />
+                        <div>
+                            <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                                Cartas de Control (% Sólidos y pH)
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                {showControlCharts
+                                    ? 'Ocultar el historial analítico detallado'
+                                    : 'Ver el historial analítico detallado por lote'}
+                            </p>
+                        </div>
+                    </div>
+                    <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 shrink-0">
+                        {showControlCharts ? 'Ocultar' : 'Mostrar'}
+                    </span>
+                </button>
+            </div>
+
+            {showControlCharts && (<>
+
             {/* ─── FILA 4: GRÁFICOS DE CONTROL Y CONFORMIDAD DE SÓLIDOS ────────── */}
             <div className="space-y-6">
                 
@@ -1194,9 +1232,9 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                     <CardContent>
                         <div className="h-[300px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={controlChartData} margin={{ top: 20, right: 35, left: 10, bottom: 20 }}>
+                                <LineChart data={visibleControlData} margin={{ top: 20, right: 35, left: 10, bottom: 20 }}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.2} />
-                                    <XAxis dataKey="lote" fontSize={9} angle={-45} textAnchor="end" height={60} interval={0} tick={{ fill: '#64748b' }} />
+                                    <XAxis dataKey="lote" fontSize={9} angle={-45} textAnchor="end" height={60} interval="preserveStartEnd" tick={{ fill: '#64748b' }} />
                                     <YAxis domain={canvasSolids as any} fontSize={11} tickLine={false} axisLine={false} unit="%" tick={{ fill: '#64748b' }} />
                                     <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} />
                                     <Legend verticalAlign="top" height={36} />
@@ -1296,9 +1334,9 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                     <CardContent>
                         <div className="h-[300px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={controlChartData} margin={{ top: 20, right: 35, left: 10, bottom: 20 }}>
+                                <LineChart data={visibleControlData} margin={{ top: 20, right: 35, left: 10, bottom: 20 }}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.2} />
-                                    <XAxis dataKey="lote" fontSize={9} angle={-45} textAnchor="end" height={60} interval={0} tick={{ fill: '#64748b' }} />
+                                    <XAxis dataKey="lote" fontSize={9} angle={-45} textAnchor="end" height={60} interval="preserveStartEnd" tick={{ fill: '#64748b' }} />
                                     <YAxis domain={canvasPH as [number, number]} fontSize={11} tickLine={false} axisLine={false} tick={{ fill: '#64748b' }} />
                                     <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} />
                                     <Legend verticalAlign="top" height={36} />
@@ -1316,6 +1354,8 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                     </CardContent>
                 </Card>
             </div>
+
+            </>)}
 
             {/* Modal: Gráfico de Control en pantalla completa */}
             <Dialog open={chartModal !== null} onOpenChange={(open) => !open && setChartModal(null)}>
