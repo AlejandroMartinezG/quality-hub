@@ -964,6 +964,9 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                                                         <span className={`font-bold ${s.noConformes > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-400'}`}>
                                                             {s.noConformes}
                                                         </span>
+                                                        <span className={`ml-1.5 text-[11px] font-semibold ${s.noConformes > 0 ? 'text-red-500/70 dark:text-red-400/60' : 'text-slate-400/60'}`}>
+                                                            ({total > 0 ? ((s.noConformes / total) * 100).toFixed(1) : '0.0'}%)
+                                                        </span>
                                                     </td>
                                                     <td className="py-2.5 px-4 text-center text-xs text-slate-400 dark:text-slate-500 tabular-nums">{total}</td>
                                                 </tr>
