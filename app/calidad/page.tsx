@@ -30,6 +30,7 @@ import { toast } from "sonner"
 import {
     PRODUCT_STANDARDS, PH_STANDARDS, APPEARANCE_STANDARDS, SUCURSALES
 } from "@/lib/production-constants"
+import { analyzeRecord } from "@/lib/analysis-utils"
 import { cn, getBasePath } from "@/lib/utils"
 
 const PdfViewer = dynamic(() => import("@/components/PdfViewer").then(mod => mod.PdfViewer), { ssr: false })
@@ -462,6 +463,8 @@ export default function CalidadPage() {
     const buildExportRows = (data: BitacoraRecord[]) => data.map(r => {
         const solidsSt = getStatusInfo(r)
         const phSt = getPhStatus(r)
+        // Reutiliza la lógica canónica para que el Excel coincida con los tableros FTQ/FY
+        const appSt = analyzeRecord(r).analysis.appearanceStatus
         const avg = r.solidos_medicion_1 !== null && r.solidos_medicion_2 !== null
             ? ((r.solidos_medicion_1 + r.solidos_medicion_2) / 2).toFixed(2)
             : ''
@@ -481,6 +484,8 @@ export default function CalidadPage() {
             'Estado Sólidos': solidsSt === 'success' ? 'Conforme' : solidsSt === 'warning' ? 'Semi-Conforme' : 'No Conforme',
             'Estado pH': phSt === 'none' ? 'N/A' : phSt === 'success' ? 'Conforme' : phSt === 'warning' ? 'Semi-Conforme' : 'No Conforme',
             'Apariencia': r.apariencia || '',
+            'Apariencia Referencia': APPEARANCE_STANDARDS[r.codigo_producto] || '',
+            'Estado Apariencia': appSt === 'na' ? 'N/A' : appSt === 'conforme' ? 'Conforme' : 'No Conforme',
             'Color': r.color || '',
             'Aroma': r.aroma || '',
         }
