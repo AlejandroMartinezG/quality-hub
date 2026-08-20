@@ -40,3 +40,7 @@ Thumbs.db
 
 # Testing
 /coverage
+
+# Catalogo de parametros (fuente externa, PDF pesado)
+CATALOGO_PARAMETROS.pdf
+catalogo-extraido.txt
