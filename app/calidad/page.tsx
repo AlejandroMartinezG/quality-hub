@@ -1563,7 +1563,18 @@ export default function CalidadPage() {
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <UILabel htmlFor="tamano_lote" className="text-right text-xs">Tamaño lote</UILabel>
-                                <Input id="tamano_lote" type="number" step="1" min="0" value={editingRecord.tamano_lote ?? ""} onChange={e => setEditingRecord({ ...editingRecord, tamano_lote: parseFloat(e.target.value) || undefined })} className="col-span-3" placeholder="ej. 500" />
+                                <Input id="tamano_lote" type="number" step="1" min="0" value={editingRecord.tamano_lote ?? ""}
+                                    onChange={e => {
+                                        const newSize = parseFloat(e.target.value) || undefined
+                                        // El lote es fecha-acrónimo-CÓDIGO+TAMAÑO-secuencia (ver calculateLotNumber en bitacora).
+                                        // Se reconstruye desde codigo_producto porque hay códigos con guion (ej. BLIMMAR-1).
+                                        const parts = (editingRecord.lote_producto || '').split('-')
+                                        const newLote = parts.length >= 4 && newSize
+                                            ? [parts[0], parts[1], `${editingRecord.codigo_producto}${Math.round(newSize)}`, parts[parts.length - 1]].join('-')
+                                            : editingRecord.lote_producto
+                                        setEditingRecord({ ...editingRecord, tamano_lote: newSize, lote_producto: newLote })
+                                    }}
+                                    className="col-span-3" placeholder="ej. 500" />
                             </div>
                         </div>
                     )}
