@@ -169,7 +169,7 @@ export const PRODUCT_STANDARDS: Record<string, { min?: number, max?: number }> =
     "GINESH": { min: 5.0, max: 6.2 },
     "SHACER": { min: 8.5, max: 9.5 },
     "SHACLA": { min: 12.0, max: 13.5 },
-    "ALTBRI": { min: 38.0, max: 38.6 },
+    "ALTBRI": { min: 31.5, max: 33.5 },
     "BRILIQ": { min: 18.5, max: 20.5 },
     "BRIGEL": { min: 21.5, max: 24.5 },
     "GINLIQ": { min: 10.5, max: 11.5 },
