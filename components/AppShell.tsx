@@ -20,7 +20,8 @@ import {
     ChevronRight,
     Package,
     LineChart,
-    Activity
+    Activity,
+    Clock
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
@@ -178,6 +179,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         {['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras', 'preparador', 'gerente_sucursal', 'gerente'].includes(profile?.role?.toLowerCase() || '') && (
                             <NavItem href="/reportes/fy" icon={Activity} label="Control de Calidad (FTQ/FY)" />
                         )}
+
+                        {/* Rezago de Captura: métrica de supervisión, sin preparadores */}
+                        {['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras', 'gerente_sucursal', 'gerente'].includes(profile?.role?.toLowerCase() || '') && (
+                            <NavItem href="/reportes/rezago" icon={Clock} label="Rezago de Captura" />
+                        )}
                     </div>
 
                     <div className="space-y-1">
@@ -275,6 +281,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         {/* Control de Calidad FTQ/FY en Mobile */}
                         {['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras', 'preparador', 'gerente_sucursal', 'gerente'].includes(profile?.role?.toLowerCase() || '') && (
                             <MobileNavItem href="/reportes/fy" icon={Activity} label="Control de Calidad (FTQ/FY)" />
+                        )}
+
+                        {/* Rezago de Captura en Mobile */}
+                        {['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras', 'gerente_sucursal', 'gerente'].includes(profile?.role?.toLowerCase() || '') && (
+                            <MobileNavItem href="/reportes/rezago" icon={Clock} label="Rezago de Captura" />
                         )}
 
                         {/* Soporte Mobile Section */}
