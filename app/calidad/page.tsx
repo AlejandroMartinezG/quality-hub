@@ -77,8 +77,10 @@ export default function CalidadPage() {
     const [searchTerm, setSearchTerm] = useState("")
     const [sucursalFilter, setSucursalFilter] = useState("all")
     const [statusFilter, setStatusFilter] = useState("all")
+    // 30 días: los preparadores capturan rezago de semanas atrás y con 7 días
+    // esos registros quedaban invisibles y se daban por perdidos.
     const [filterDateFrom, setFilterDateFrom] = useState(() => {
-        const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().split('T')[0]
+        const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().split('T')[0]
     })
     const [filterDateTo, setFilterDateTo] = useState(() => new Date().toISOString().split('T')[0])
     const [categoriaFilter, setCategoriaFilter] = useState("all")

@@ -44,6 +44,15 @@ type SessionRecord = {
     categoria: string
 }
 
+// Fecha local en formato YYYY-MM-DD. No usar toISOString(): devuelve UTC y en México
+// (UTC-6) a partir de las 18:00 ya reporta el día siguiente.
+const todayISO = () => {
+    const d = new Date()
+    const mes = String(d.getMonth() + 1).padStart(2, '0')
+    const dia = String(d.getDate()).padStart(2, '0')
+    return `${d.getFullYear()}-${mes}-${dia}`
+}
+
 const EMPTY_FORM = {
     codigo_producto: "",
     tamano_lote: "",
@@ -81,7 +90,7 @@ export default function BitacoraPage() {
     const [generalInfo, setGeneralInfo] = useState({
         sucursal: "",
         nombre_preparador: "",
-        fecha_fabricacion: new Date().toISOString().split('T')[0],
+        fecha_fabricacion: todayISO(),
     })
 
     useEffect(() => {
@@ -93,6 +102,31 @@ export default function BitacoraPage() {
             }))
         }
     }, [profile])
+
+    // Marca si el preparador eligió la fecha a mano (para capturar un lote de un día anterior).
+    // Si la eligió él, no se le pisa con la fecha de hoy.
+    const [fechaEditadaManualmente, setFechaEditadaManualmente] = useState(false)
+    // Fecha vieja ya confirmada. Evita repetir el aviso en cada lote al vaciar rezago.
+    const [fechaConfirmada, setFechaConfirmada] = useState<string | null>(null)
+
+    // La fecha se calcula al montar. Si la pestaña queda abierta varios días —común en
+    // celular— se congela y todos los registros se guardan con la fecha original.
+    // Al recuperar el foco se recalcula.
+    useEffect(() => {
+        const refrescarFecha = () => {
+            if (document.hidden || fechaEditadaManualmente) return
+            const hoy = todayISO()
+            setGeneralInfo(prev =>
+                prev.fecha_fabricacion === hoy ? prev : { ...prev, fecha_fabricacion: hoy }
+            )
+        }
+        document.addEventListener('visibilitychange', refrescarFecha)
+        window.addEventListener('focus', refrescarFecha)
+        return () => {
+            document.removeEventListener('visibilitychange', refrescarFecha)
+            window.removeEventListener('focus', refrescarFecha)
+        }
+    }, [fechaEditadaManualmente])
 
     const [sessionLog, setSessionLog] = useState<SessionRecord[]>([])
     const [hasOpenRecord, setHasOpenRecord] = useState(false)
@@ -180,6 +214,16 @@ export default function BitacoraPage() {
         if (applicability.ph && !formData.ph) {
             toast.error("Falta medición de pH", { description: "Para este producto, el pH es obligatorio." })
             return
+        }
+
+        // Guardar con una fecha vieja suele ser un descuido (pestaña abierta desde hace días),
+        // no una decisión. Se confirma antes de escribir.
+        const hoy = todayISO()
+        if (generalInfo.fecha_fabricacion < hoy && generalInfo.fecha_fabricacion !== fechaConfirmada) {
+            const fechaLegible = new Date(generalInfo.fecha_fabricacion + 'T12:00:00')
+                .toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })
+            if (!confirm(`Vas a registrar con fecha del ${fechaLegible}, que no es hoy.\n\n¿Es correcto?\n\nSi vas a capturar varios lotes de ese día, solo se te preguntará esta vez.`)) return
+            setFechaConfirmada(generalInfo.fecha_fabricacion)
         }
 
         setLoading(true)
@@ -280,6 +324,8 @@ export default function BitacoraPage() {
 
             resetRecord()
             setHasOpenRecord(false)
+            // La fecha elegida a mano NO se libera: capturar rezago de un día anterior
+            // implica guardar varios lotes seguidos con esa misma fecha.
 
         } catch (error: any) {
             console.error("Submission error:", error)
@@ -381,8 +427,18 @@ export default function BitacoraPage() {
                             name="fecha_fabricacion"
                             type="date"
                             value={generalInfo.fecha_fabricacion}
-                            onChange={handleGeneralInputChange}
+                            onChange={e => { setFechaEditadaManualmente(true); handleGeneralInputChange(e) }}
                         />
+                        {generalInfo.fecha_fabricacion !== todayISO() && (
+                            <div className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 p-2.5 dark:border-amber-700/50 dark:bg-amber-950/30">
+                                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                                <p className="text-xs text-amber-800 dark:text-amber-300">
+                                    Estás registrando con fecha del{' '}
+                                    <strong>{new Date(generalInfo.fecha_fabricacion + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long' })}</strong>,
+                                    no la de hoy. Verifica que sea correcto.
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </CardContent>
             </Card>
