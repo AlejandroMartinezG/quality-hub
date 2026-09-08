@@ -44,3 +44,7 @@ Thumbs.db
 # Catalogo de parametros (fuente externa, PDF pesado)
 CATALOGO_PARAMETROS.pdf
 catalogo-extraido.txt
+
+# Formulas de producto (secreto comercial, no versionar)
+Cantidades a elaborar de productos.xlsx
+plantilla_formulas.xlsx
