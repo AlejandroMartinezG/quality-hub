@@ -56,6 +56,10 @@ const PIECE_FAMILIES = ["Bases aromatizante ambiental", "Bases limpiadores liqui
 // Familias de producto intermedio — se excluyen de FTQ/Yield y de los totales de producto terminado
 const INTERMEDIATE_FAMILIES = ["Producto intermedio", "Disoluciones de control"];
 
+// CEDIS y CORPORATIVO no fabrican: no cuentan como sucursales "sin registros"
+const NO_PRODUCTIVAS = ["CEDIS", "CORPORATIVO"];
+const SUCURSALES_PRODUCTIVAS = SUCURSALES.filter(s => !NO_PRODUCTIVAS.includes(s));
+
 interface SPYReportPageProps {
     records: any[];
     profile?: any;
@@ -406,6 +410,21 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
             totalNcProd
         }
     }, [spyRecords, filterParam])
+
+    // Sucursales productivas que no capturaron nada en el período seleccionado.
+    // Sin esto no se distingue "no produjo" de "no ha subido sus registros".
+    const sucursalesSinRegistros = useMemo(() => {
+        const conDatos = new Set(chartsData.sucursalData.map((s: any) => s.name))
+        return SUCURSALES_PRODUCTIVAS.filter(s => !conDatos.has(s)).sort()
+    }, [chartsData.sucursalData])
+
+    // Solo tiene sentido al ver todas: si se filtró una sucursal, o si es gerente
+    // de sucursal (recibe los datos ya acotados), listar las demás sería ruido.
+    const mostrarFaltantes =
+        filterSucursal === 'all' &&
+        role !== 'gerente_sucursal' &&
+        role !== 'gerente' &&
+        sucursalesSinRegistros.length > 0
 
     const printInsights = useMemo(() => {
         type InsightLevel = 'ok' | 'warn' | 'critical'
@@ -974,6 +993,27 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                                                 </tr>
                                             )
                                         })}
+
+                                    {mostrarFaltantes && (
+                                        <>
+                                            <tr className="bg-slate-50 dark:bg-slate-800/60 border-y border-slate-200 dark:border-slate-700">
+                                                <td colSpan={6} className="py-2 px-4 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                                    {sucursalesSinRegistros.length} sucursales sin registros en el período
+                                                </td>
+                                            </tr>
+                                            {sucursalesSinRegistros.map(nombre => (
+                                                <tr key={`sin-${nombre}`} className="border-b border-slate-50 dark:border-slate-800/40">
+                                                    <td className="py-2.5 px-3 text-center text-xs text-slate-300 dark:text-slate-600">—</td>
+                                                    <td className="py-2.5 px-4 font-semibold text-slate-400 dark:text-slate-500 text-xs">{nombre}</td>
+                                                    {/* Guion y no 0.0%: un cero se leería como desempeño pésimo, no como ausencia de dato */}
+                                                    <td className="py-2.5 px-4 text-center text-sm text-slate-300 dark:text-slate-600">—</td>
+                                                    <td className="py-2.5 px-4 text-center text-sm text-slate-300 dark:text-slate-600">—</td>
+                                                    <td className="py-2.5 px-4 text-center text-sm text-slate-300 dark:text-slate-600">—</td>
+                                                    <td className="py-2.5 px-4 text-center text-xs text-slate-300 dark:text-slate-600">—</td>
+                                                </tr>
+                                            ))}
+                                        </>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
