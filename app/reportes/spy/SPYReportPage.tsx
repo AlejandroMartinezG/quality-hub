@@ -932,6 +932,7 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800">
+                                        <th className="text-center py-2.5 px-3 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider w-12">#</th>
                                         <th className="text-left py-2.5 px-4 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Sucursal</th>
                                         <th className="text-center py-2.5 px-4 text-[10px] font-bold text-green-600 dark:text-green-400 uppercase tracking-wider">FTQ %</th>
                                         <th className="text-center py-2.5 px-4 text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">FY %</th>
@@ -941,11 +942,11 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                                 </thead>
                                 <tbody>
                                     {[...chartsData.sucursalData]
+                                        // Se ordena por el mismo FTQ por volumen que se muestra abajo.
+                                        // Antes ordenaba por conteo de lotes y la numeración salía desordenada.
                                         .sort((a, b) => {
-                                            const totalA = a.conformes + a.semiConformes + a.noConformes
-                                            const totalB = b.conformes + b.semiConformes + b.noConformes
-                                            const ftqA = totalA > 0 ? a.conformes / totalA : 0
-                                            const ftqB = totalB > 0 ? b.conformes / totalB : 0
+                                            const ftqA = a.totalVol > 0 ? a.ftqVol / a.totalVol : 0
+                                            const ftqB = b.totalVol > 0 ? b.ftqVol / b.totalVol : 0
                                             return ftqB - ftqA
                                         })
                                         .map((s, i) => {
@@ -957,6 +958,7 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                                             const fyColor = fy >= 95 ? 'text-green-600 dark:text-green-400' : fy >= 85 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'
                                             return (
                                                 <tr key={s.name} className={`border-b border-slate-50 dark:border-slate-800/40 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 ${i % 2 === 0 ? '' : 'bg-slate-50/40 dark:bg-slate-800/20'}`}>
+                                                    <td className="py-2.5 px-3 text-center text-xs font-bold text-slate-400 dark:text-slate-500 tabular-nums">{i + 1}</td>
                                                     <td className="py-2.5 px-4 font-semibold text-slate-700 dark:text-slate-200 text-xs">{s.name}</td>
                                                     <td className={`py-2.5 px-4 text-center font-bold text-sm tabular-nums ${ftqColor}`}>{ftq.toFixed(1)}%</td>
                                                     <td className={`py-2.5 px-4 text-center font-bold text-sm tabular-nums ${fyColor}`}>{fy.toFixed(1)}%</td>
