@@ -35,8 +35,8 @@ Mensaje automatico, no responder.`
 function buildEmail(nombre: string, sucursal: string, dias: number | null, src: string): string {
     const primerNombre = nombre ? nombre.split(' ')[0] : ''
     // Paleta de alerta industrial: amarillo/negro para advertencia, rojo para crítico.
-    // El dorado anterior se leía como distinción, no como aviso.
-    const critico = dias === null || dias >= 14
+    // Umbral en 7 días: coincide con la ventana de captura esperada.
+    const critico = dias === null || dias >= 7
     const bandaBg = critico ? '#c2170f' : '#ffc400'
     const bandaTexto = critico ? '#ffffff' : '#141414'
     const numBg = critico ? '#fdecea' : '#fff8dc'
