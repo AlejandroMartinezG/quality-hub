@@ -34,11 +34,15 @@ Mensaje automatico, no responder.`
 
 function buildEmail(nombre: string, sucursal: string, dias: number | null, src: string): string {
     const primerNombre = nombre ? nombre.split(' ')[0] : ''
-    // A mayor rezago, más carga visual: ámbar hasta 14 días, rojo de ahí en adelante
+    // Paleta de alerta industrial: amarillo/negro para advertencia, rojo para crítico.
+    // El dorado anterior se leía como distinción, no como aviso.
     const critico = dias === null || dias >= 14
-    const acento = critico ? '#c2170f' : '#b1730a'
-    const acentoSuave = critico ? '#fdeceb' : '#fdf4e3'
-    const etiqueta = critico ? 'Registro pendiente · Atención' : 'Registro pendiente'
+    const bandaBg = critico ? '#c2170f' : '#ffc400'
+    const bandaTexto = critico ? '#ffffff' : '#141414'
+    const numBg = critico ? '#fdecea' : '#fff8dc'
+    const numBorde = critico ? '#c2170f' : '#141414'
+    const numTexto = critico ? '#c2170f' : '#141414'
+    const etiqueta = critico ? '⚠ Atención · Registro pendiente' : '⚠ Registro pendiente'
 
     return `<!DOCTYPE html>
 <html lang="es">
@@ -48,13 +52,14 @@ function buildEmail(nombre: string, sucursal: string, dias: number | null, src: 
     <tr><td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #dfe3f0;">
 
-        <tr><td style="background:#0b109f;padding:20px 30px;">
-          <img src="${src}" alt="GINEZ" height="30" style="display:block;border:0;outline:none;">
+        <!-- Logo sobre blanco: en azul el rojo del isotipo se pierde -->
+        <tr><td style="background:#ffffff;padding:22px 30px 18px;border-bottom:1px solid #e6e9f4;">
+          <img src="${src}" alt="GINEZ" height="32" style="display:block;border:0;outline:none;">
         </td></tr>
 
-        <!-- Franja de estado: lo primero que se ve -->
-        <tr><td style="background:${acento};padding:12px 30px;">
-          <p style="margin:0;font-size:12px;font-weight:bold;letter-spacing:.12em;text-transform:uppercase;color:#ffffff;">
+        <!-- Franja de alerta: lo primero que se ve -->
+        <tr><td style="background:${bandaBg};padding:13px 30px;">
+          <p style="margin:0;font-size:13px;font-weight:bold;letter-spacing:.1em;text-transform:uppercase;color:${bandaTexto};">
             ${etiqueta}
           </p>
         </td></tr>
@@ -70,12 +75,12 @@ function buildEmail(nombre: string, sucursal: string, dias: number | null, src: 
 
         <!-- El dato duro, en grande -->
         <tr><td style="padding:20px 30px 0;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${acentoSuave};border-radius:10px;border-left:4px solid ${acento};">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${numBg};border-radius:8px;border-left:6px solid ${numBorde};">
             <tr><td style="padding:18px 22px;">
-              <p style="margin:0;font-size:44px;line-height:1;font-weight:800;color:${acento};">
+              <p style="margin:0;font-size:46px;line-height:1;font-weight:800;color:${numTexto};">
                 ${dias === null ? '—' : dias}
               </p>
-              <p style="margin:6px 0 0;font-size:14px;font-weight:600;color:${acento};">
+              <p style="margin:6px 0 0;font-size:14px;font-weight:700;color:${numTexto};">
                 ${dias === null ? 'Sin registros previos de esta sucursal' : `días desde el último registro subido`}
               </p>
             </td></tr>
@@ -102,7 +107,7 @@ function buildEmail(nombre: string, sucursal: string, dias: number | null, src: 
 
         <tr><td style="padding:26px 30px 30px;">
           <table role="presentation" cellpadding="0" cellspacing="0"><tr>
-            <td style="border-radius:9px;background:${acento};">
+            <td style="border-radius:9px;background:#c2170f;">
               <a href="${APP_URL}/bitacora" style="display:inline-block;padding:14px 30px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;">
                 Registrar producción ahora
               </a>
