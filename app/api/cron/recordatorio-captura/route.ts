@@ -14,13 +14,54 @@ const ANTIRREPETICION_DIAS = 3
 
 const ROLES_DESTINO = ['preparador', 'gerente_sucursal', 'gerente']
 
+/**
+ * El recordatorio del lunes abre la semana; el del viernes es el último aviso
+ * antes de que lo pendiente se convierta en rezago. Cambian el tono y el enfoque.
+ */
+type Variante = 'inicio' | 'cierre'
+
+const COPY: Record<Variante, {
+    etiquetaBase: string
+    titulo: (s: string) => string
+    subtitulo: (n: string) => string
+    parrafo: string
+    boton: string
+    asunto: (s: string, d: number | null) => string
+}> = {
+    inicio: {
+        etiquetaBase: 'Registro pendiente',
+        titulo: s => `${s} no ha registrado producción`,
+        subtitulo: n => `${n ? n + ', esto' : 'Esto'} requiere tu atención.`,
+        parrafo: `En la Bitácora de Producción no aparecen lotes capturados en los últimos ${VENTANA_DIAS} días.`,
+        boton: 'Registrar producción ahora',
+        asunto: (s, d) => d === null
+            ? `${s} sin registros de producción`
+            : `${s} lleva ${d} días sin registrar producción`,
+    },
+    cierre: {
+        etiquetaBase: 'Cierre de semana · Registro pendiente',
+        titulo: s => `${s} va a cerrar la semana sin registros`,
+        subtitulo: n => `${n ? n + ', aún' : 'Aún'} estás a tiempo de ponerte al corriente.`,
+        parrafo: `Antes de terminar la jornada, captura los lotes que fabricaste esta semana. Lo que quede pendiente hoy se vuelve rezago el lunes, y entre más tarde se registre, menos sirve para detectar desviaciones.`,
+        boton: 'Registrar antes de cerrar',
+        asunto: (s, d) => d === null
+            ? `Cierre de semana: ${s} sin registros`
+            : `Cierre de semana: ${s} lleva ${d} días sin registrar`,
+    },
+}
+
+/** Viernes = cierre de semana. El cron del viernes corre a las 22:00 UTC, aún viernes en México. */
+function varianteDelDia(): Variante {
+    return new Date().getUTCDay() === 5 ? 'cierre' : 'inicio'
+}
+
 /** Versión en texto plano. Mejora la entregabilidad y evita la carpeta de spam. */
-function buildEmailText(nombre: string, sucursal: string, dias: number | null): string {
+function buildEmailText(nombre: string, sucursal: string, dias: number | null, variante: Variante = 'inicio'): string {
     const primerNombre = nombre ? nombre.split(' ')[0] : ''
     const cuanto = dias === null ? 'sin registros previos' : `${dias} días sin registrar`
     return `${primerNombre ? primerNombre + ', ' : ''}la sucursal ${sucursal} lleva ${cuanto}.
 
-En la Bitácora de Producción no aparecen lotes capturados en los últimos ${VENTANA_DIAS} días.
+${COPY[variante].parrafo}
 
 Por qué importa:
 - Los lotes sin registrar no tienen respaldo documental de calidad
@@ -35,8 +76,9 @@ PCC-GINEZ - Plataforma de Control de Calidad
 Mensaje automatico, no responder.`
 }
 
-function buildEmail(nombre: string, sucursal: string, dias: number | null, src: string): string {
+function buildEmail(nombre: string, sucursal: string, dias: number | null, src: string, variante: Variante = 'inicio'): string {
     const primerNombre = nombre ? nombre.split(' ')[0] : ''
+    const copy = COPY[variante]
     // Paleta de alerta industrial: amarillo/negro para advertencia, rojo para crítico.
     // Umbral en 7 días: coincide con la ventana de captura esperada.
     const critico = dias === null || dias >= 7
@@ -45,7 +87,7 @@ function buildEmail(nombre: string, sucursal: string, dias: number | null, src: 
     const numBg = critico ? '#fdecea' : '#fff8dc'
     const numBorde = critico ? '#c2170f' : '#141414'
     const numTexto = critico ? '#c2170f' : '#141414'
-    const etiqueta = critico ? '⚠ Atención · Registro pendiente' : '⚠ Registro pendiente'
+    const etiqueta = `⚠ ${critico ? 'Atención · ' : ''}${copy.etiquetaBase}`
 
     return `<!DOCTYPE html>
 <html lang="es">
@@ -69,10 +111,10 @@ function buildEmail(nombre: string, sucursal: string, dias: number | null, src: 
 
         <tr><td style="padding:30px 30px 8px;">
           <h1 style="margin:0 0 6px;font-size:23px;line-height:1.25;color:#121420;font-weight:700;">
-            ${sucursal} no ha registrado producción
+            ${copy.titulo(sucursal)}
           </h1>
           <p style="margin:0;font-size:15px;color:#5a6076;">
-            ${primerNombre ? primerNombre + ', esto' : 'Esto'} requiere tu atención.
+            ${copy.subtitulo(primerNombre)}
           </p>
         </td></tr>
 
@@ -92,7 +134,7 @@ function buildEmail(nombre: string, sucursal: string, dias: number | null, src: 
 
         <tr><td style="padding:22px 30px 0;">
           <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3d4358;">
-            En la Bitácora de Producción no aparecen lotes capturados en los últimos <strong>${VENTANA_DIAS} días</strong>.
+            ${copy.parrafo}
           </p>
           <p style="margin:0 0 10px;font-size:14px;font-weight:700;color:#121420;">Por qué importa</p>
           <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
@@ -112,7 +154,7 @@ function buildEmail(nombre: string, sucursal: string, dias: number | null, src: 
           <table role="presentation" cellpadding="0" cellspacing="0"><tr>
             <td style="border-radius:9px;background:#c2170f;">
               <a href="${APP_URL}/bitacora" style="display:inline-block;padding:14px 30px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;">
-                Registrar producción ahora
+                ${copy.boton}
               </a>
             </td>
           </tr></table>
@@ -150,6 +192,13 @@ export async function POST(req: NextRequest) {
     // `prueba=correo@dominio` manda UN correo de muestra a esa dirección
     // y no toca sucursales, destinatarios reales ni notificaciones.
     const correoPrueba = req.nextUrl.searchParams.get('prueba')
+    // `dia=cierre|inicio` fuerza la variante; sin él se deduce del día actual
+    const diaParam = req.nextUrl.searchParams.get('dia')
+    const variante: Variante = diaParam === 'cierre' || diaParam === 'viernes'
+        ? 'cierre'
+        : diaParam === 'inicio' || diaParam === 'lunes'
+            ? 'inicio'
+            : varianteDelDia()
 
     try {
         const supabase = createClient(
@@ -180,9 +229,9 @@ export async function POST(req: NextRequest) {
             const { error: errPrueba } = await new Resend(process.env.RESEND_API_KEY || '').emails.send({
                 from: EMAIL_FROM,
                 to: correoPrueba,
-                subject: `[PRUEBA] ${sucursalMuestra} lleva 12 días sin registrar producción`,
-                html: buildEmail('Alejandro Martínez', sucursalMuestra, 12, logoSrc(logoP)),
-                text: buildEmailText('Alejandro Martínez', sucursalMuestra, 12),
+                subject: `[PRUEBA · ${variante}] ${COPY[variante].asunto(sucursalMuestra, 12)}`,
+                html: buildEmail('Alejandro Martínez', sucursalMuestra, 12, logoSrc(logoP), variante),
+                text: buildEmailText('Alejandro Martínez', sucursalMuestra, 12, variante),
                 attachments: logoAttachments(logoP),
             })
             if (errPrueba) {
@@ -191,6 +240,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({
                 ok: true,
                 modo: 'prueba',
+                variante,
                 enviado_a: correoPrueba,
                 sucursal_de_muestra: sucursalMuestra,
                 nota: 'Correo de muestra. No se creó ninguna notificación ni se avisó a ninguna sucursal.',
@@ -283,11 +333,9 @@ export async function POST(req: NextRequest) {
             const { error: errMail } = await resend.emails.send({
                 from: EMAIL_FROM,
                 to: correo,
-                subject: dias === null
-                    ? `${p.sucursal} sin registros de producción`
-                    : `${p.sucursal} lleva ${dias} días sin registrar producción`,
-                html: buildEmail(p.full_name || '', p.sucursal, dias, src),
-                text: buildEmailText(p.full_name || '', p.sucursal, dias),
+                subject: COPY[variante].asunto(p.sucursal, dias),
+                html: buildEmail(p.full_name || '', p.sucursal, dias, src, variante),
+                text: buildEmailText(p.full_name || '', p.sucursal, dias, variante),
                 attachments: logoAttachments(logo),
             })
             if (errMail) errores.push({ ...detalle, error: errMail.message })
@@ -308,6 +356,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
             ok: true,
             simulacion: simular,
+            variante,
             resumen: {
                 sucursales_pendientes: pendientes.length,
                 correos_enviados: enviados.length,

@@ -23,6 +23,15 @@ on:
         description: 'Enviar UN correo de muestra a esta dirección (no avisa a nadie más)'
         type: string
         required: false
+      variante:
+        description: 'Qué versión del correo probar'
+        type: choice
+        required: false
+        default: 'automatico'
+        options:
+          - automatico
+          - inicio
+          - cierre
       simular:
         description: 'Solo calcular, sin enviar correos ni notificaciones'
         type: boolean
@@ -46,6 +55,16 @@ jobs:
           elif [ "${{ inputs.simular }}" = "true" ]; then
             URL="$URL?simular=1"
             echo "MODO SIMULACIÓN — no se envía nada"
+          fi
+
+          # La variante se deduce del día salvo que se fuerce a mano
+          VAR="${{ inputs.variante }}"
+          if [ -n "$VAR" ] && [ "$VAR" != "automatico" ]; then
+            case "$URL" in
+              *\?*) URL="$URL&dia=$VAR" ;;
+              *)    URL="$URL?dia=$VAR" ;;
+            esac
+            echo "VARIANTE FORZADA — $VAR"
           fi
 
           # -L por si acaso: en un 308 curl conserva el método POST
