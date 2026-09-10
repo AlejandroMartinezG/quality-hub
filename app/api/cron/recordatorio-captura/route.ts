@@ -6,8 +6,11 @@ import { EMAIL_FROM, APP_URL, fetchLogoAttachment, logoAttachments, logoSrc } fr
 
 // Días sin subir registros a partir de los cuales se envía el recordatorio
 const VENTANA_DIAS = 7
-// No repetir el aviso a la misma persona dentro de esta ventana
-const ANTIRREPETICION_DIAS = 5
+// No repetir el aviso a la misma persona dentro de esta ventana.
+// Debe ser menor a 4 días: entre el envío del lunes y el del viernes hay
+// 4 días y 8 horas, y con un umbral mayor el recordatorio del viernes
+// se descartaría por completo.
+const ANTIRREPETICION_DIAS = 3
 
 const ROLES_DESTINO = ['preparador', 'gerente_sucursal', 'gerente']
 

@@ -13,9 +13,10 @@ name: Recordatorio semanal de captura
 
 on:
   schedule:
-    # Lunes 14:00 UTC = 8:00 hora de México.
-    # México no aplica horario de verano desde 2022, así que el desfase es fijo.
-    - cron: '0 14 * * 1'
+    # México no aplica horario de verano desde 2022, así que el desfase
+    # con UTC es fijo en -6 todo el año.
+    - cron: '0 14 * * 1'   # lunes 14:00 UTC  = 8:00 México
+    - cron: '0 22 * * 5'   # viernes 22:00 UTC = 16:00 México
   workflow_dispatch:
     inputs:
       correo_prueba:
