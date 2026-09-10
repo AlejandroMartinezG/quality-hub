@@ -48,3 +48,7 @@ catalogo-extraido.txt
 # Formulas de producto (secreto comercial, no versionar)
 Cantidades a elaborar de productos.xlsx
 plantilla_formulas.xlsx
+
+# Datos de personal (nombres y correos), no versionar
+gerentes_sucursal_correos.xlsx
+insert_gerentes.sql

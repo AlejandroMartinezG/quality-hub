@@ -342,6 +342,50 @@ export async function POST(req: NextRequest) {
             else enviados.push(detalle)
         }
 
+        // 5b. Gerentes sin cuenta en la plataforma, desde la tabla puente.
+        //     Solo reciben correo: sin usuario no hay a quién notificar en la app.
+        const { data: gerentesExternos } = await supabase
+            .from('gerentes_sucursal')
+            .select('sucursal, nombre, email, ultimo_aviso')
+            .in('sucursal', pendientes)
+            .eq('activo', true)
+
+        const gerentesAvisados: string[] = []
+
+        for (const g of gerentesExternos || []) {
+            const dias = diasSinRegistro(g.sucursal)
+            const detalle = { sucursal: g.sucursal, nombre: g.nombre, rol: 'gerente (sin cuenta)', correo: g.email, dias }
+
+            // Antirrepetición propia: no tienen user_id para consultar notifications
+            if (g.ultimo_aviso) {
+                const diasDesdeAviso = (Date.now() - new Date(g.ultimo_aviso).getTime()) / 86_400_000
+                if (diasDesdeAviso < ANTIRREPETICION_DIAS) {
+                    omitidos.push({ ...detalle, motivo: 'avisado recientemente' })
+                    continue
+                }
+            }
+
+            if (simular) { enviados.push(detalle); continue }
+
+            const { error: errMail } = await resend.emails.send({
+                from: EMAIL_FROM,
+                to: g.email,
+                subject: COPY[variante].asunto(g.sucursal, dias),
+                html: buildEmail(g.nombre || '', g.sucursal, dias, src, variante),
+                text: buildEmailText(g.nombre || '', g.sucursal, dias, variante),
+                attachments: logoAttachments(logo),
+            })
+            if (errMail) errores.push({ ...detalle, error: errMail.message })
+            else { enviados.push(detalle); gerentesAvisados.push(g.sucursal) }
+        }
+
+        if (gerentesAvisados.length > 0) {
+            await supabase
+                .from('gerentes_sucursal')
+                .update({ ultimo_aviso: new Date().toISOString() })
+                .in('sucursal', gerentesAvisados)
+        }
+
         // 6. Insertar las notificaciones en app
         if (notificaciones.length > 0 && !simular) {
             const { error: errNotif } = await supabase.from('notifications').insert(notificaciones)
@@ -350,8 +394,18 @@ export async function POST(req: NextRequest) {
 
         // Sucursales pendientes sin ningún perfil asignado: no hay a quién avisar.
         // Se reporta porque es un problema de configuración que conviene ver.
-        const conDestinatario = new Set((perfiles || []).map(p => p.sucursal))
+        const conDestinatario = new Set([
+            ...(perfiles || []).map(p => p.sucursal),
+            ...(gerentesExternos || []).map(g => g.sucursal),
+        ])
         const sinDestinatario = pendientes.filter(s => !conDestinatario.has(s))
+
+        // Sucursales pendientes sin gerente por ninguna vía: ni perfil ni tabla puente
+        const conGerente = new Set([
+            ...(perfiles || []).filter(p => p.role !== 'preparador').map(p => p.sucursal),
+            ...(gerentesExternos || []).map(g => g.sucursal),
+        ])
+        const sinGerente = pendientes.filter(s => !conGerente.has(s))
 
         return NextResponse.json({
             ok: true,
@@ -364,9 +418,11 @@ export async function POST(req: NextRequest) {
                 omitidos: omitidos.length,
                 errores: errores.length,
                 sucursales_sin_destinatario: sinDestinatario.length,
+                sucursales_sin_gerente: sinGerente.length,
             },
             pendientes,
             sin_destinatario: sinDestinatario,
+            sin_gerente: sinGerente,
             enviados,
             omitidos,
             errores,

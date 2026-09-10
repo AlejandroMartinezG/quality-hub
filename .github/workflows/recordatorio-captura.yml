@@ -49,12 +49,14 @@ jobs:
           # y sin ella la app responde 308 en vez de atender la petición.
           URL="https://calidadginez.tech/api/cron/recordatorio-captura/"
 
-          if [ -n "${{ inputs.correo_prueba }}" ]; then
-            URL="$URL?prueba=${{ inputs.correo_prueba }}"
-            echo "MODO PRUEBA — un solo correo a ${{ inputs.correo_prueba }}"
-          elif [ "${{ inputs.simular }}" = "true" ]; then
+          # "Solo calcular" tiene prioridad: si se marcó, la intención es
+          # no enviar nada, aunque también se haya escrito un correo.
+          if [ "${{ inputs.simular }}" = "true" ]; then
             URL="$URL?simular=1"
             echo "MODO SIMULACIÓN — no se envía nada"
+          elif [ -n "${{ inputs.correo_prueba }}" ]; then
+            URL="$URL?prueba=${{ inputs.correo_prueba }}"
+            echo "MODO PRUEBA — un solo correo a ${{ inputs.correo_prueba }}"
           fi
 
           # La variante se deduce del día salvo que se fuerce a mano
