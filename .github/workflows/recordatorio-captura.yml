@@ -35,7 +35,9 @@ jobs:
     steps:
       - name: Llamar al endpoint
         run: |
-          URL="https://calidadginez.tech/api/cron/recordatorio-captura"
+          # La diagonal final es obligatoria: next.config usa trailingSlash: true
+          # y sin ella la app responde 308 en vez de atender la petición.
+          URL="https://calidadginez.tech/api/cron/recordatorio-captura/"
 
           if [ -n "${{ inputs.correo_prueba }}" ]; then
             URL="$URL?prueba=${{ inputs.correo_prueba }}"
@@ -45,7 +47,8 @@ jobs:
             echo "MODO SIMULACIÓN — no se envía nada"
           fi
 
-          RESPUESTA=$(curl -sS -X POST "$URL" \
+          # -L por si acaso: en un 308 curl conserva el método POST
+          RESPUESTA=$(curl -sSL -X POST "$URL" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -w "\n%{http_code}" --max-time 120)
 
