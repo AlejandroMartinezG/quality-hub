@@ -49,16 +49,13 @@ import {
 import { DateRangeModal } from '@/components/DateRangeModal'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { PrintReportWrapper } from '@/components/PrintReportWrapper'
-import { PRODUCT_STANDARDS, PH_STANDARDS, SUCURSALES } from "@/lib/production-constants"
+import { PRODUCT_STANDARDS, PH_STANDARDS, SUCURSALES, SUCURSALES_PRODUCTIVAS } from "@/lib/production-constants"
 
 // Definir constante local para las familias que se tratan como piezas
 const PIECE_FAMILIES = ["Bases aromatizante ambiental", "Bases limpiadores liquidos multiusos", "Bases Aromatizantes"];
 // Familias de producto intermedio — se excluyen de FTQ/Yield y de los totales de producto terminado
 const INTERMEDIATE_FAMILIES = ["Producto intermedio", "Disoluciones de control"];
 
-// CEDIS y CORPORATIVO no fabrican: no cuentan como sucursales "sin registros"
-const NO_PRODUCTIVAS = ["CEDIS", "CORPORATIVO"];
-const SUCURSALES_PRODUCTIVAS = SUCURSALES.filter(s => !NO_PRODUCTIVAS.includes(s));
 
 interface SPYReportPageProps {
     records: any[];

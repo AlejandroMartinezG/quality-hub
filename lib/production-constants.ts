@@ -10,6 +10,11 @@ export const SUCURSALES = [
     "CEDIS", "CORPORATIVO"
 ];
 
+// CEDIS y CORPORATIVO no fabrican: se excluyen de cualquier métrica o
+// recordatorio que asuma producción en la sucursal.
+export const NO_PRODUCTIVAS = ["CEDIS", "CORPORATIVO"];
+export const SUCURSALES_PRODUCTIVAS = SUCURSALES.filter(s => !NO_PRODUCTIVAS.includes(s));
+
 export const SUCURSAL_ACRONYMS: Record<string, string> = {
     "AMOZOC": "AMO",
     "APIZACO": "APZ",

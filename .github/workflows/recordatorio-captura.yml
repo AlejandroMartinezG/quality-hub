@@ -1,0 +1,52 @@
+# Recordatorio semanal a las sucursales que no han subido registros de producción.
+#
+# Llama al endpoint /api/cron/recordatorio-captura, que detecta las sucursales
+# sin actividad en los últimos 7 días y les envía correo + notificación en la app.
+#
+# Requiere el secreto CRON_SECRET, configurado tanto aquí (Settings -> Secrets ->
+# Actions) como en las variables de entorno de la app en Dokploy.
+#
+# NOTA: GitHub deshabilita los workflows programados tras 60 días sin actividad
+# en el repositorio. Avisa por correo antes; basta un commit para reactivarlo.
+
+name: Recordatorio semanal de captura
+
+on:
+  schedule:
+    # Lunes 14:00 UTC = 8:00 hora de México.
+    # México no aplica horario de verano desde 2022, así que el desfase es fijo.
+    - cron: '0 14 * * 1'
+  workflow_dispatch:
+    inputs:
+      simular:
+        description: 'Solo calcular, sin enviar correos ni notificaciones'
+        type: boolean
+        default: false
+
+jobs:
+  recordar:
+    name: Enviar recordatorios
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Llamar al endpoint
+        run: |
+          URL="https://calidadginez.tech/api/cron/recordatorio-captura"
+          if [ "${{ inputs.simular }}" = "true" ]; then
+            URL="$URL?simular=1"
+            echo "MODO SIMULACIÓN — no se envía nada"
+          fi
+
+          RESPUESTA=$(curl -sS -X POST "$URL" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -w "\n%{http_code}" --max-time 120)
+
+          CODIGO=$(echo "$RESPUESTA" | tail -n1)
+          CUERPO=$(echo "$RESPUESTA" | sed '$d')
+
+          echo "$CUERPO"
+
+          if [ "$CODIGO" != "200" ]; then
+            echo "::error::El endpoint respondió $CODIGO"
+            exit 1
+          fi
