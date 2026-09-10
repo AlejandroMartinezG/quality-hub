@@ -80,6 +80,9 @@ export async function POST(req: NextRequest) {
 
     // `simular=1` calcula y devuelve el resumen sin enviar nada
     const simular = req.nextUrl.searchParams.get('simular') === '1'
+    // `prueba=correo@dominio` manda UN correo de muestra a esa dirección
+    // y no toca sucursales, destinatarios reales ni notificaciones.
+    const correoPrueba = req.nextUrl.searchParams.get('prueba')
 
     try {
         const supabase = createClient(
@@ -101,6 +104,30 @@ export async function POST(req: NextRequest) {
 
         const conActividad = new Set((activas || []).map(r => r.sucursal))
         const pendientes = SUCURSALES_PRODUCTIVAS.filter(s => !conActividad.has(s))
+
+        // Modo prueba: un correo de muestra y nada más.
+        // Usa una sucursal pendiente real para que el contenido se vea como el definitivo.
+        if (correoPrueba) {
+            const logoP = await fetchLogoAttachment()
+            const sucursalMuestra = pendientes[0] || 'PUEBLA 2'
+            const { error: errPrueba } = await new Resend(process.env.RESEND_API_KEY || '').emails.send({
+                from: EMAIL_FROM,
+                to: correoPrueba,
+                subject: `[PRUEBA] Faltan registros de producción — ${sucursalMuestra}`,
+                html: buildEmail('Alejandro Martínez', sucursalMuestra, 12, logoSrc(logoP)),
+                attachments: logoAttachments(logoP),
+            })
+            if (errPrueba) {
+                return NextResponse.json({ error: 'Error al enviar la prueba: ' + errPrueba.message }, { status: 500 })
+            }
+            return NextResponse.json({
+                ok: true,
+                modo: 'prueba',
+                enviado_a: correoPrueba,
+                sucursal_de_muestra: sucursalMuestra,
+                nota: 'Correo de muestra. No se creó ninguna notificación ni se avisó a ninguna sucursal.',
+            })
+        }
 
         if (pendientes.length === 0) {
             return NextResponse.json({ ok: true, mensaje: 'Todas las sucursales subieron registros', pendientes: [] })
