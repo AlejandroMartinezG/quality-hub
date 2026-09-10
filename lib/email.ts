@@ -9,21 +9,32 @@ export const APP_URL = 'https://calidadginez.tech'
 export const LOGO_CID = 'logo@ginez'
 
 /**
- * Descarga el logo para adjuntarlo al correo. Se incrusta en vez de enlazarlo
- * porque muchos clientes bloquean imágenes remotas por defecto.
- * Devuelve null si falla: el correo debe enviarse igual, con el logo enlazado.
+ * Obtiene el logo para adjuntarlo al correo, incrustado en vez de enlazado
+ * porque los clientes de correo bloquean imágenes remotas por defecto.
+ *
+ * Se lee del disco: el contenedor tiene `public/` dentro, y pedirlo por HTTP
+ * a su propio dominio implica salir y volver por el proxy, que puede fallar.
+ * El fetch queda solo como respaldo.
  */
 export async function fetchLogoAttachment(): Promise<{ content: string; contentType: string } | null> {
     try {
-        const res = await fetch(`${APP_URL}/logo.png`, { cache: 'no-store' })
-        if (!res.ok) return null
-        const buffer = await res.arrayBuffer()
-        return {
-            content: Buffer.from(buffer).toString('base64'),
-            contentType: res.headers.get('content-type') || 'image/png',
-        }
+        const fs = await import('fs/promises')
+        const path = await import('path')
+        const buffer = await fs.readFile(path.join(process.cwd(), 'public', 'logo.png'))
+        return { content: buffer.toString('base64'), contentType: 'image/png' }
     } catch {
-        return null
+        // Respaldo por red, por si la ruta del disco cambia
+        try {
+            const res = await fetch(`${APP_URL}/logo.png`, { cache: 'no-store' })
+            if (!res.ok) return null
+            const buffer = await res.arrayBuffer()
+            return {
+                content: Buffer.from(buffer).toString('base64'),
+                contentType: res.headers.get('content-type') || 'image/png',
+            }
+        } catch {
+            return null
+        }
     }
 }
 

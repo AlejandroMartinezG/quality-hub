@@ -11,53 +11,112 @@ const ANTIRREPETICION_DIAS = 5
 
 const ROLES_DESTINO = ['preparador', 'gerente_sucursal', 'gerente']
 
+/** Versión en texto plano. Mejora la entregabilidad y evita la carpeta de spam. */
+function buildEmailText(nombre: string, sucursal: string, dias: number | null): string {
+    const primerNombre = nombre ? nombre.split(' ')[0] : ''
+    const cuanto = dias === null ? 'sin registros previos' : `${dias} días sin registrar`
+    return `${primerNombre ? primerNombre + ', ' : ''}la sucursal ${sucursal} lleva ${cuanto}.
+
+En la Bitácora de Producción no aparecen lotes capturados en los últimos ${VENTANA_DIAS} días.
+
+Por qué importa:
+- Los lotes sin registrar no tienen respaldo documental de calidad
+- Una desviación detectada tarde puede llegar al punto de venta
+- El control de calidad depende de que el registro sea oportuno
+
+Registra tu producción aquí: ${APP_URL}/bitacora
+
+Si la sucursal no produjo en este período, puedes ignorar este mensaje.
+
+PCC-GINEZ - Plataforma de Control de Calidad
+Mensaje automatico, no responder.`
+}
+
 function buildEmail(nombre: string, sucursal: string, dias: number | null, src: string): string {
     const primerNombre = nombre ? nombre.split(' ')[0] : ''
-    const cuando = dias === null
-        ? 'No tenemos registros previos de esta sucursal.'
-        : `El último registro se subió hace <strong>${dias} días</strong>.`
+    // A mayor rezago, más carga visual: ámbar hasta 14 días, rojo de ahí en adelante
+    const critico = dias === null || dias >= 14
+    const acento = critico ? '#c2170f' : '#b1730a'
+    const acentoSuave = critico ? '#fdeceb' : '#fdf4e3'
+    const etiqueta = critico ? 'Registro pendiente · Atención' : 'Registro pendiente'
 
     return `<!DOCTYPE html>
 <html lang="es">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f1f3f9;font-family:Arial,Helvetica,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f3f9;padding:32px 16px;">
+<body style="margin:0;padding:0;background:#eef0f7;font-family:'Segoe UI',Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef0f7;padding:28px 14px;">
     <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(16,20,60,.08);">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #dfe3f0;">
 
-        <tr><td style="background:linear-gradient(135deg,#0b109f,#1622a8);padding:28px 32px;">
-          <img src="${src}" alt="GINEZ" height="34" style="display:block;border:0;">
+        <tr><td style="background:#0b109f;padding:20px 30px;">
+          <img src="${src}" alt="GINEZ" height="30" style="display:block;border:0;outline:none;">
         </td></tr>
 
-        <tr><td style="padding:32px;">
-          <p style="margin:0 0 6px;font-size:12px;font-weight:bold;letter-spacing:.1em;text-transform:uppercase;color:#0b109f;">Recordatorio de captura</p>
-          <h1 style="margin:0 0 18px;font-size:22px;line-height:1.25;color:#121420;">
-            ${primerNombre ? primerNombre + ', f' : 'F'}altan registros de ${sucursal}
+        <!-- Franja de estado: lo primero que se ve -->
+        <tr><td style="background:${acento};padding:12px 30px;">
+          <p style="margin:0;font-size:12px;font-weight:bold;letter-spacing:.12em;text-transform:uppercase;color:#ffffff;">
+            ${etiqueta}
+          </p>
+        </td></tr>
+
+        <tr><td style="padding:30px 30px 8px;">
+          <h1 style="margin:0 0 6px;font-size:23px;line-height:1.25;color:#121420;font-weight:700;">
+            ${sucursal} no ha registrado producción
           </h1>
-
-          <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#3d4358;">
-            En la Bitácora de Producción no aparecen registros de <strong>${sucursal}</strong> en los últimos ${VENTANA_DIAS} días. ${cuando}
+          <p style="margin:0;font-size:15px;color:#5a6076;">
+            ${primerNombre ? primerNombre + ', esto' : 'Esto'} requiere tu atención.
           </p>
-          <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#3d4358;">
-            Si ya fabricaste lotes en este período, captúralos para mantener el control de calidad al día. Registrar pronto permite detectar desviaciones a tiempo.
-          </p>
+        </td></tr>
 
+        <!-- El dato duro, en grande -->
+        <tr><td style="padding:20px 30px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${acentoSuave};border-radius:10px;border-left:4px solid ${acento};">
+            <tr><td style="padding:18px 22px;">
+              <p style="margin:0;font-size:44px;line-height:1;font-weight:800;color:${acento};">
+                ${dias === null ? '—' : dias}
+              </p>
+              <p style="margin:6px 0 0;font-size:14px;font-weight:600;color:${acento};">
+                ${dias === null ? 'Sin registros previos de esta sucursal' : `días desde el último registro subido`}
+              </p>
+            </td></tr>
+          </table>
+        </td></tr>
+
+        <tr><td style="padding:22px 30px 0;">
+          <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#3d4358;">
+            En la Bitácora de Producción no aparecen lotes capturados en los últimos <strong>${VENTANA_DIAS} días</strong>.
+          </p>
+          <p style="margin:0 0 10px;font-size:14px;font-weight:700;color:#121420;">Por qué importa</p>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
+            <tr><td style="padding:0 0 7px;font-size:14px;line-height:1.55;color:#3d4358;">
+              &bull;&nbsp; Los lotes sin registrar <strong>no tienen respaldo documental de calidad</strong>
+            </td></tr>
+            <tr><td style="padding:0 0 7px;font-size:14px;line-height:1.55;color:#3d4358;">
+              &bull;&nbsp; Una desviación detectada tarde <strong>puede llegar al punto de venta</strong>
+            </td></tr>
+            <tr><td style="padding:0;font-size:14px;line-height:1.55;color:#3d4358;">
+              &bull;&nbsp; El control de calidad solo funciona si el registro es oportuno
+            </td></tr>
+          </table>
+        </td></tr>
+
+        <tr><td style="padding:26px 30px 30px;">
           <table role="presentation" cellpadding="0" cellspacing="0"><tr>
-            <td style="border-radius:10px;background:#0b109f;">
-              <a href="${APP_URL}/bitacora" style="display:inline-block;padding:13px 26px;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;">
-                Registrar producción
+            <td style="border-radius:9px;background:${acento};">
+              <a href="${APP_URL}/bitacora" style="display:inline-block;padding:14px 30px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;">
+                Registrar producción ahora
               </a>
             </td>
           </tr></table>
-
-          <p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:#767c92;">
+          <p style="margin:18px 0 0;font-size:13px;line-height:1.6;color:#767c92;">
             Si la sucursal no produjo en este período, puedes ignorar este mensaje.
           </p>
         </td></tr>
 
-        <tr><td style="padding:18px 32px;background:#f7f8fc;border-top:1px solid #e6e9f4;">
-          <p style="margin:0;font-size:12px;color:#767c92;">
-            PCC-GINEZ® · Plataforma de Control de Calidad · Mensaje automático, no responder.
+        <tr><td style="padding:16px 30px;background:#f7f8fc;border-top:1px solid #e6e9f4;">
+          <p style="margin:0;font-size:12px;line-height:1.5;color:#767c92;">
+            <strong style="color:#5a6076;">PCC-GINEZ®</strong> · Plataforma de Control de Calidad<br>
+            Mensaje automático generado por el sistema. No responder a este correo.
           </p>
         </td></tr>
 
@@ -113,8 +172,9 @@ export async function POST(req: NextRequest) {
             const { error: errPrueba } = await new Resend(process.env.RESEND_API_KEY || '').emails.send({
                 from: EMAIL_FROM,
                 to: correoPrueba,
-                subject: `[PRUEBA] Faltan registros de producción — ${sucursalMuestra}`,
+                subject: `[PRUEBA] ${sucursalMuestra} lleva 12 días sin registrar producción`,
                 html: buildEmail('Alejandro Martínez', sucursalMuestra, 12, logoSrc(logoP)),
+                text: buildEmailText('Alejandro Martínez', sucursalMuestra, 12),
                 attachments: logoAttachments(logoP),
             })
             if (errPrueba) {
@@ -215,8 +275,11 @@ export async function POST(req: NextRequest) {
             const { error: errMail } = await resend.emails.send({
                 from: EMAIL_FROM,
                 to: correo,
-                subject: `Faltan registros de producción — ${p.sucursal}`,
+                subject: dias === null
+                    ? `${p.sucursal} sin registros de producción`
+                    : `${p.sucursal} lleva ${dias} días sin registrar producción`,
                 html: buildEmail(p.full_name || '', p.sucursal, dias, src),
+                text: buildEmailText(p.full_name || '', p.sucursal, dias),
                 attachments: logoAttachments(logo),
             })
             if (errMail) errores.push({ ...detalle, error: errMail.message })
