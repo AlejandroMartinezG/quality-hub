@@ -138,7 +138,7 @@ export default function CalidadPage() {
         if (!user) return
         try {
             setLoading(true)
-            let query = supabase.from('bitacora_produccion_calidad').select('id, created_at, lote_producto, codigo_producto, sucursal, fecha_fabricacion, ph, solidos_medicion_1, solidos_medicion_2, temp_med1, temp_med2, temperatura, apariencia, color, aroma, nombre_preparador, familia_producto, tamano_lote, observaciones, user_id')
+            let query = supabase.from('bitacora_produccion_calidad').select('id, created_at, lote_producto, codigo_producto, sucursal, fecha_fabricacion, ph, solidos_medicion_1, solidos_medicion_2, temp_med1, temp_med2, temperatura, apariencia, color, aroma, nombre_preparador, familia_producto, tamano_lote, observaciones, user_id, estado_calidad')
             const role = profile?.role?.toLowerCase()
             if (role === 'preparador') {
                 query = query.eq('user_id', user.id)
@@ -494,7 +494,7 @@ export default function CalidadPage() {
     })
 
     const fetchExportData = async (): Promise<BitacoraRecord[]> => {
-        let query = supabase.from('bitacora_produccion_calidad').select('id, created_at, lote_producto, codigo_producto, sucursal, fecha_fabricacion, ph, solidos_medicion_1, solidos_medicion_2, temp_med1, temp_med2, temperatura, apariencia, color, aroma, nombre_preparador, familia_producto, tamano_lote, observaciones, user_id')
+        let query = supabase.from('bitacora_produccion_calidad').select('id, created_at, lote_producto, codigo_producto, sucursal, fecha_fabricacion, ph, solidos_medicion_1, solidos_medicion_2, temp_med1, temp_med2, temperatura, apariencia, color, aroma, nombre_preparador, familia_producto, tamano_lote, observaciones, user_id, estado_calidad')
         const role = profile?.role?.toLowerCase()
         if (role === 'preparador') query = query.eq('user_id', user!.id)
         else if ((role === 'gerente_sucursal' || role === 'gerente') && profile?.sucursal)
@@ -1014,17 +1014,25 @@ export default function CalidadPage() {
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
-                                                        <Badge className={cn(
-                                                            "gap-1.5 shadow-sm px-3 py-1 text-xs font-semibold uppercase tracking-wider rounded-full border-none",
-                                                            status === 'success' && "bg-green-600 text-white hover:bg-green-700",
-                                                            status === 'warning' && "bg-yellow-500 text-white hover:bg-yellow-600",
-                                                            status === 'error' && "bg-[#C1272D] text-white hover:bg-[#A01F25]"
-                                                        )}>
-                                                            {status === 'success' && <CheckCircle2 className="h-3 w-3" />}
-                                                            {status === 'warning' && <AlertCircle className="h-3 w-3" />}
-                                                            {status === 'error' && <XCircle className="h-3 w-3" />}
-                                                            {status === 'success' ? 'CONFORME' : status === 'warning' ? 'SEMI-CONF' : 'NO CONF'}
-                                                        </Badge>
+                                                        {/* Sin mediciones: su calidad es desconocida, no conforme */}
+                                                        {(record as any).estado_calidad === 'SIN MEDICION' ? (
+                                                            <Badge className="gap-1.5 shadow-sm px-3 py-1 text-xs font-semibold uppercase tracking-wider rounded-full border-none bg-slate-400 text-white hover:bg-slate-500" title="Registrado manualmente sin datos de calidad">
+                                                                <AlertCircle className="h-3 w-3" />
+                                                                SIN MEDICIÓN
+                                                            </Badge>
+                                                        ) : (
+                                                            <Badge className={cn(
+                                                                "gap-1.5 shadow-sm px-3 py-1 text-xs font-semibold uppercase tracking-wider rounded-full border-none",
+                                                                status === 'success' && "bg-green-600 text-white hover:bg-green-700",
+                                                                status === 'warning' && "bg-yellow-500 text-white hover:bg-yellow-600",
+                                                                status === 'error' && "bg-[#C1272D] text-white hover:bg-[#A01F25]"
+                                                            )}>
+                                                                {status === 'success' && <CheckCircle2 className="h-3 w-3" />}
+                                                                {status === 'warning' && <AlertCircle className="h-3 w-3" />}
+                                                                {status === 'error' && <XCircle className="h-3 w-3" />}
+                                                                {status === 'success' ? 'CONFORME' : status === 'warning' ? 'SEMI-CONF' : 'NO CONF'}
+                                                            </Badge>
+                                                        )}
                                                     </TableCell>
                                                     <TableCell className="text-center">
                                                         <div className="flex flex-col items-center gap-0.5">

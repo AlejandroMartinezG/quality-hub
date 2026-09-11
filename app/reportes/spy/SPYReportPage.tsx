@@ -110,6 +110,11 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
         let ftqVolume = 0
         let noConformeVolume = 0
         let affectedVolume = 0
+        // Lotes registrados sin mediciones (equipo descompuesto, etc.): suman
+        // volumen pero su calidad es desconocida, no conforme. Se llevan aparte
+        // para excluirlos del FTQ/Yield sin distorsionar el denominador.
+        let volumenSinMedicion = 0
+        let lotesSinMedicion = 0
 
         let conformesPH = 0
         let noConformesPH = 0
@@ -143,6 +148,13 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
             // - FTQ = bien bien en todos los parámetros.
             // - Afectado = cualquier desviación de calidad (incluyendo solidos semi-conforme/ warning y no-conforme, ph no-conforme, apariencia no-conforme).
             // - Yield = descuenta únicamente los lotes calificados analíticamente como "No Conforme" totales (excluye los semi-conformes).
+
+            // Sin mediciones: solo cuenta como volumen producido, nunca como conforme
+            if (r.estado_calidad === 'SIN MEDICION') {
+                volumenSinMedicion += vol
+                lotesSinMedicion++
+                return
+            }
 
             const phStat = r.analysis?.phStatus || 'na'
             const solidsStat = r.analysis?.solidsStatus || 'na'
@@ -200,8 +212,12 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
         const totalVolumeUnified = totalVolumeProducts + totalVolumeBases + totalVolumeIntermediates
 
         const onlyIntermediates = false
-        const ftqPercent = totalVolumeUnified > 0 ? (ftqVolume / totalVolumeUnified) * 100 : 100
-        const finalYieldPercent = totalVolumeUnified > 0 ? ((totalVolumeUnified - noConformeVolume) / totalVolumeUnified) * 100 : 100
+        // Los porcentajes se calculan solo sobre el volumen que sí se midió.
+        // Dejar los lotes sin medición en el denominador haría bajar el FTQ
+        // artificialmente; incluirlos como conformes lo haría subir. Ambos falsean.
+        const volumenEvaluado = totalVolumeUnified - volumenSinMedicion
+        const ftqPercent = volumenEvaluado > 0 ? (ftqVolume / volumenEvaluado) * 100 : 100
+        const finalYieldPercent = volumenEvaluado > 0 ? ((volumenEvaluado - noConformeVolume) / volumenEvaluado) * 100 : 100
 
         return {
             totalVolumeProducts,
@@ -209,6 +225,9 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
             totalPiecesBases,
             totalVolumeBases,
             totalVolumeUnified,
+            volumenSinMedicion,
+            lotesSinMedicion,
+            volumenEvaluado,
             ftqVolume,
             noConformeVolume,
             affectedVolume,
@@ -303,6 +322,7 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
             name: string
             conformes: number, semiConformes: number, noConformes: number
             ftqVol: number, fyVol: number, noConformeVol: number, totalVol: number
+            sinMedicionVol: number, sinMedicion: number
         }> = {}
         const productStats: Record<string, { nc: number, total: number, familia: string }> = {}
 
@@ -310,6 +330,20 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
             const isIntermediate = INTERMEDIATE_FAMILIES.includes(r.familia_producto || '')
             const isPiece = !isIntermediate && PIECE_FAMILIES.includes(r.familia_producto || '')
             const vol = isPiece ? (Number(r.tamano_lote) || 0) * 20 : (Number(r.tamano_lote) || 0)
+
+            // Lotes sin mediciones: solo aportan volumen a su sucursal. Se sacan
+            // antes de cualquier acumulador de calidad (pareto, radar, productos)
+            // para que no diluyan porcentajes ni aparezcan como conformes.
+            if (r.estado_calidad === 'SIN MEDICION') {
+                const sucSM = r.sucursal || "Sin Sucursal"
+                if (!groupedSucursal[sucSM]) {
+                    groupedSucursal[sucSM] = { name: sucSM, conformes: 0, semiConformes: 0, noConformes: 0, ftqVol: 0, fyVol: 0, noConformeVol: 0, totalVol: 0, sinMedicionVol: 0, sinMedicion: 0 }
+                }
+                groupedSucursal[sucSM].totalVol += vol
+                groupedSucursal[sucSM].sinMedicionVol += vol
+                groupedSucursal[sucSM].sinMedicion++
+                continue
+            }
 
             const phStat = r.analysis?.phStatus || 'na'
             const solidsStat = r.analysis?.solidsStatus || 'na'
@@ -338,8 +372,10 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
             // Sucursal breakdown (mismo criterio que las cards: 3 parámetros)
             const suc = r.sucursal || "Sin Sucursal"
             if (!groupedSucursal[suc]) {
-                groupedSucursal[suc] = { name: suc, conformes: 0, semiConformes: 0, noConformes: 0, ftqVol: 0, fyVol: 0, noConformeVol: 0, totalVol: 0 }
+                groupedSucursal[suc] = { name: suc, conformes: 0, semiConformes: 0, noConformes: 0, ftqVol: 0, fyVol: 0, noConformeVol: 0, totalVol: 0, sinMedicionVol: 0, sinMedicion: 0 }
             }
+
+
             const isFTQ = filterParam === 'ph'        ? (phStat === 'conforme' || phStat === 'na')
                         : filterParam === 'solidos'   ? (solidsStat === 'conforme' || solidsStat === 'na')
                         : filterParam === 'apariencia'? (appStat === 'conforme' || appStat === 'na')
@@ -692,6 +728,19 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                         </CardContent>
                     </Card>
                 </div>
+
+                {/* Sin este aviso, los porcentajes se leerían como si cubrieran toda la producción */}
+                {stats.volumenSinMedicion > 0 && (
+                    <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-slate-300 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" />
+                        <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                            <strong>{stats.volumenSinMedicion.toLocaleString()} L</strong> en {stats.lotesSinMedicion}{' '}
+                            {stats.lotesSinMedicion === 1 ? 'lote registrado' : 'lotes registrados'} sin mediciones de calidad.
+                            Cuentan en el volumen producido pero <strong>quedan fuera del cálculo de FTQ y Yield</strong>,
+                            que se calculan sobre los {stats.volumenEvaluado.toLocaleString()} L efectivamente evaluados.
+                        </p>
+                    </div>
+                )}
             </div>
 
             {/* ─── FILA 1B: AFECTADOS + DESCUENTO ────────────────────────────── */}

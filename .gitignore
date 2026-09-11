@@ -52,3 +52,9 @@ plantilla_formulas.xlsx
 # Datos de personal (nombres y correos), no versionar
 gerentes_sucursal_correos.xlsx
 insert_gerentes.sql
+
+plantilla_produccion_manual.xlsx
+insert_produccion_manual.sql
+
+# Archivos temporales de Excel
+~$*
