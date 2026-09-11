@@ -15,8 +15,10 @@ on:
   schedule:
     # México no aplica horario de verano desde 2022, así que el desfase
     # con UTC es fijo en -6 todo el año.
-    - cron: '0 14 * * 1'   # lunes 14:00 UTC  = 8:00 México
-    - cron: '0 22 * * 5'   # viernes 22:00 UTC = 16:00 México
+    # Se evitan las horas en punto: son el momento más congestionado en la
+    # infraestructura de GitHub y los cron se retrasan bastante más ahí.
+    - cron: '20 14 * * 1'   # lunes 14:20 UTC  = 8:20 México
+    - cron: '20 22 * * 5'   # viernes 22:20 UTC = 16:20 México
   workflow_dispatch:
     inputs:
       correo_prueba:
