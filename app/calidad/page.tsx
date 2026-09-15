@@ -31,7 +31,7 @@ import {
     PRODUCT_STANDARDS, PH_STANDARDS, APPEARANCE_STANDARDS, SUCURSALES
 } from "@/lib/production-constants"
 import { analyzeRecord } from "@/lib/analysis-utils"
-import { cn, getBasePath } from "@/lib/utils"
+import { cn, getBasePath, formatFecha } from "@/lib/utils"
 
 const PdfViewer = dynamic(() => import("@/components/PdfViewer").then(mod => mod.PdfViewer), { ssr: false })
 
@@ -1075,7 +1075,7 @@ export default function CalidadPage() {
                                                         )}
                                                     </TableCell>
                                                     <TableCell className="text-right text-sm text-muted-foreground">
-                                                        {new Date(record.fecha_fabricacion).toLocaleDateString()}
+                                                        {formatFecha(record.fecha_fabricacion)}
                                                     </TableCell>
                                                     {isAdmin && (
                                                         <TableCell className="text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -1268,7 +1268,7 @@ export default function CalidadPage() {
                                                         </div>
                                                         <div className="flex flex-col">
                                                             <span className="font-bold text-base leading-tight text-slate-800 dark:text-slate-100">{record.codigo_producto}</span>
-                                                            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{record.sucursal} • {new Date(record.fecha_fabricacion).toLocaleDateString()}</span>
+                                                            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{record.sucursal} • {formatFecha(record.fecha_fabricacion)}</span>
                                                         </div>
                                                     </div>
                                                     <div className="flex flex-col items-end gap-2">

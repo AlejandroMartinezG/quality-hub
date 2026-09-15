@@ -50,6 +50,7 @@ import { DateRangeModal } from '@/components/DateRangeModal'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { PrintReportWrapper } from '@/components/PrintReportWrapper'
 import { PRODUCT_STANDARDS, PH_STANDARDS, SUCURSALES, SUCURSALES_PRODUCTIVAS } from "@/lib/production-constants"
+import { soloFecha } from "@/lib/utils"
 
 // Definir constante local para las familias que se tratan como piezas
 const PIECE_FAMILIES = ["Bases aromatizante ambiental", "Bases limpiadores liquidos multiusos", "Bases Aromatizantes"];
@@ -84,19 +85,19 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
     , [records])
 
     const spyRecords = useMemo(() => {
-        const now = new Date()
-        let dateThreshold: Date | null = null
-        switch (filterPeriod) {
-            case '7d':  dateThreshold = new Date(now.getTime() - 7   * 86400000); break
-            case '30d': dateThreshold = new Date(now.getTime() - 30  * 86400000); break
-            case '3m':  dateThreshold = new Date(now.getTime() - 90  * 86400000); break
-            case '6m':  dateThreshold = new Date(now.getTime() - 180 * 86400000); break
-            case '1y':  dateThreshold = new Date(now.getTime() - 365 * 86400000); break
+        const dias: Record<string, number> = { '7d': 7, '30d': 30, '3m': 90, '6m': 180, '1y': 365 }
+        // Se compara contra una cadena 'YYYY-MM-DD' en fecha local, no contra un
+        // Date: fecha_fabricacion se parsea en UTC y el corte quedaba 6 h corrido.
+        let corte = ''
+        if (dias[filterPeriod]) {
+            const d = new Date()
+            d.setDate(d.getDate() - dias[filterPeriod])
+            corte = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
         }
         return records.filter((r: any) => {
             if (filterSucursal !== 'all' && r.sucursal !== filterSucursal) return false
             if (filterProduct !== 'all' && r.codigo_producto !== filterProduct) return false
-            if (dateThreshold && r.fecha_fabricacion && new Date(r.fecha_fabricacion) < dateThreshold) return false
+            if (corte && r.fecha_fabricacion && soloFecha(r.fecha_fabricacion) < corte) return false
             return true
         })
     }, [records, filterSucursal, filterProduct, filterPeriod])

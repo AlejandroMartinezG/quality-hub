@@ -40,6 +40,7 @@ import {
     AreaChart
 } from "recharts"
 import { SUCURSALES, PRODUCT_STANDARDS, PH_STANDARDS, CATEGORY_PRODUCTS, PRODUCT_GROUPS, PRODUCT_CATEGORIES } from "@/lib/production-constants"
+import { soloFecha } from "@/lib/utils"
 
 // --- Helper functions ---
 
@@ -211,12 +212,14 @@ export default function ReportesPage() {
     // Filter records by print date range
     const printFilteredRecords = useMemo(() => {
         if (!printView) return [] as EnrichedRecord[]
-        const from = new Date(printView.dateFrom + 'T00:00:00')
-        const to = new Date(printView.dateTo + 'T23:59:59')
+        // Se comparan cadenas 'YYYY-MM-DD': mezclar fechas parseadas en UTC con
+        // límites en hora local dejaba fuera los lotes del primer día del rango.
+        const desde = printView.dateFrom
+        const hasta = printView.dateTo
         return filteredRecords.filter(r => {
             if (!r.fecha_fabricacion) return false
-            const d = new Date(r.fecha_fabricacion)
-            return d >= from && d <= to
+            const f = soloFecha(r.fecha_fabricacion)
+            return f >= desde && f <= hasta
         })
     }, [printView, filteredRecords])
 
@@ -263,13 +266,15 @@ export default function ReportesPage() {
 
     // Production analysis records (only date-filtered, ignores conformity/product filters)
     const prodAnalysisRecords = useMemo(() => {
-        const from = prodDateFrom ? new Date(prodDateFrom) : null
-        const to = prodDateTo ? new Date(prodDateTo + 'T23:59:59') : null
+        // Comparación por cadena: antes el límite superior se parseaba en local
+        // y la fecha del registro en UTC, lo que colaba lotes del día siguiente.
+        const desde = prodDateFrom || ''
+        const hasta = prodDateTo || ''
         return records.filter(r => {
             const raw = r as any
-            const d = new Date(r.fecha_fabricacion || raw.created_at)
-            if (from && d < from) return false
-            if (to && d > to) return false
+            const f = soloFecha(r.fecha_fabricacion || raw.created_at)
+            if (desde && f < desde) return false
+            if (hasta && f > hasta) return false
             return true
         })
     }, [records, prodDateFrom, prodDateTo])
