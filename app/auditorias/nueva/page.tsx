@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/AuthProvider"
 import { supabase } from "@/lib/supabase"
-import { Loader2, ShieldCheck, Search } from "lucide-react"
+import { Loader2, ShieldCheck, Search, ChevronDown } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -31,6 +31,10 @@ const todayISO = () => {
 
 const COLUMNAS = 'id, lote_producto, codigo_producto, sucursal, fecha_fabricacion, nombre_preparador, tamano_lote, ph, solidos_medicion_1, solidos_medicion_2, apariencia, color, aroma, estado_calidad'
 
+// Cuántos lotes traer. Se empieza corto y se amplía a mano para alcanzar más
+// atrás en el tiempo sin pedir de más cuando no hace falta.
+const PASOS = [60, 90, 120]
+
 export default function NuevaAuditoriaPage() {
     const { user, profile, loading: authLoading } = useAuth()
     const router = useRouter()
@@ -41,6 +45,7 @@ export default function NuevaAuditoriaPage() {
     // Los ids de la bitácora son UUID, no enteros.
     const [seleccion, setSeleccion] = useState<Set<string>>(new Set())
     const [filtro, setFiltro] = useState("")
+    const [limite, setLimite] = useState(PASOS[0])
     const [cargando, setCargando] = useState(false)
     const [creando, setCreando] = useState(false)
 
@@ -55,10 +60,11 @@ export default function NuevaAuditoriaPage() {
         }
     }, [profile, authLoading, role, router])
 
-    const cargarLotes = async (suc: string) => {
+    // No limpia la selección: al ampliar el tope se vuelve a consultar, y lo que
+    // ya estaba marcado debe seguir marcado.
+    const cargarLotes = async (suc: string, lim: number) => {
         if (!suc) { setLotes([]); return }
         setCargando(true)
-        setSeleccion(new Set())
         try {
             const { data, error } = await supabase
                 .from('bitacora_produccion_calidad')
@@ -66,7 +72,7 @@ export default function NuevaAuditoriaPage() {
                 .eq('sucursal', suc)
                 .order('fecha_fabricacion', { ascending: false })
                 .order('created_at', { ascending: false })
-                .limit(60)
+                .limit(lim)
             if (error) throw error
             setLotes(data || [])
         } catch (err: any) {
@@ -76,7 +82,24 @@ export default function NuevaAuditoriaPage() {
         }
     }
 
-    useEffect(() => { cargarLotes(sucursal) }, [sucursal])
+    useEffect(() => { cargarLotes(sucursal, limite) }, [sucursal, limite])
+
+    // Cambiar de sucursal sí reinicia todo: los lotes marcados eran de la otra.
+    const cambiarSucursal = (s: string) => {
+        setSucursal(s)
+        setLimite(PASOS[0])
+        setSeleccion(new Set())
+        setFiltro("")
+    }
+
+    // Si volvieron menos lotes que el tope, ya no hay nada más atrás.
+    const siguientePaso = PASOS.find(p => p > limite)
+    const hayMas = lotes.length >= limite && siguientePaso !== undefined
+
+    // La fecha más antigua cargada: dice hasta dónde alcanza la ventana.
+    const masAntiguo = lotes.length > 0
+        ? lotes.reduce((min, l) => (l.fecha_fabricacion < min ? l.fecha_fabricacion : min), lotes[0].fecha_fabricacion)
+        : null
 
     const visibles = useMemo(() => {
         const q = filtro.trim().toUpperCase()
@@ -175,7 +198,7 @@ export default function NuevaAuditoriaPage() {
                 <CardContent className="p-6 flex flex-wrap gap-4 items-end">
                     <div className="space-y-1.5 min-w-[14rem]">
                         <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Sucursal</label>
-                        <Select value={sucursal} onValueChange={setSucursal}>
+                        <Select value={sucursal} onValueChange={cambiarSucursal}>
                             <SelectTrigger className="rounded-full">
                                 <SelectValue placeholder="Selecciona sucursal" />
                             </SelectTrigger>
@@ -236,7 +259,10 @@ export default function NuevaAuditoriaPage() {
                         <div className="flex flex-wrap items-center gap-3">
                             <div>
                                 <CardTitle className="text-lg font-bold">Últimos lotes de {sucursal}</CardTitle>
-                                <CardDescription>{visibles.length} lote{visibles.length === 1 ? '' : 's'} · más recientes primero</CardDescription>
+                                <CardDescription>
+                                    {visibles.length} lote{visibles.length === 1 ? '' : 's'} · más recientes primero
+                                    {masAntiguo && <> · alcanza hasta el {formatFecha(masAntiguo)}</>}
+                                </CardDescription>
                             </div>
                             <Button variant="outline" size="sm" className="rounded-full ml-auto" onClick={toggleTodos}>
                                 Seleccionar todos
@@ -297,6 +323,31 @@ export default function NuevaAuditoriaPage() {
                                     })}
                                 </tbody>
                             </table>
+                        </div>
+
+                        <div className="flex flex-col items-center gap-2 pt-4">
+                            {hayMas ? (
+                                <>
+                                    <Button
+                                        variant="outline"
+                                        className="rounded-full gap-2"
+                                        onClick={() => setLimite(siguientePaso!)}
+                                        disabled={cargando}
+                                    >
+                                        {cargando ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronDown className="h-4 w-4" />}
+                                        Cargar {siguientePaso} lotes
+                                    </Button>
+                                    <p className="text-[11px] text-slate-400">
+                                        Lo que ya seleccionaste se conserva.
+                                    </p>
+                                </>
+                            ) : (
+                                <p className="text-[11px] text-slate-400">
+                                    {lotes.length < limite
+                                        ? `Son todos los lotes registrados en ${sucursal}.`
+                                        : `Tope de ${limite} lotes alcanzado.`}
+                                </p>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
