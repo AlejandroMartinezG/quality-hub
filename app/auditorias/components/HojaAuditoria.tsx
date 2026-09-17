@@ -10,8 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select"
-import { Loader2, ShieldCheck, Save, Lock, FileDown, CheckCircle2 } from 'lucide-react'
+import { Loader2, ShieldCheck, Save, Lock, FileDown, CheckCircle2, Eye, PenLine } from 'lucide-react'
 import { formatFecha } from "@/lib/utils"
+import { TextoFormateado, AYUDA_FORMATO } from "@/lib/texto-formato"
 import { PARAMETER_APPLICABILITY, APPEARANCE_STANDARDS, PRODUCT_STANDARDS, PH_STANDARDS } from "@/lib/production-constants"
 import {
     compararMediciones, COLOR_RESULTADO, ETIQUETA_VEREDICTO,
@@ -63,6 +64,7 @@ export default function HojaAuditoria({
     const [guardando, setGuardando] = useState(false)
     const [cerrando, setCerrando] = useState(false)
     const [printView, setPrintView] = useState(false)
+    const [vistaPrevia, setVistaPrevia] = useState(false)
 
     const cerrada = auditoria.estado === 'CERRADA'
     const editable = puedeEditar && !cerrada
@@ -400,7 +402,7 @@ export default function HojaAuditoria({
                                         value={lote.notas || ''}
                                         disabled={!editable}
                                         onChange={e => actualizar(lote.id, 'notas', e.target.value)}
-                                        placeholder="Qué observaste al medir, condiciones del equipo, etc."
+                                        placeholder="Qué observaste al medir, condiciones del equipo, etc. Admite **negritas**."
                                         className="mt-1 rounded-2xl text-sm min-h-[3rem]"
                                     />
                                 </div>
@@ -413,16 +415,41 @@ export default function HojaAuditoria({
             {/* Observaciones generales */}
             <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
                 <CardHeader className="pb-3">
-                    <CardTitle className="text-base font-bold">Observaciones de la visita</CardTitle>
-                    <CardDescription>Conclusiones generales, estado del equipo de medición, acuerdos.</CardDescription>
+                    <div className="flex flex-wrap items-start gap-3">
+                        <div>
+                            <CardTitle className="text-base font-bold">Observaciones de la visita</CardTitle>
+                            <CardDescription>Conclusiones generales, estado del equipo de medición, acuerdos.</CardDescription>
+                        </div>
+                        {observaciones.trim() && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="rounded-full gap-2 ml-auto text-xs"
+                                onClick={() => setVistaPrevia(v => !v)}
+                            >
+                                {vistaPrevia ? <PenLine className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                                {vistaPrevia ? 'Editar' : 'Vista previa'}
+                            </Button>
+                        )}
+                    </div>
                 </CardHeader>
-                <CardContent>
-                    <Textarea
-                        value={observaciones}
-                        disabled={!editable}
-                        onChange={e => setObservaciones(e.target.value)}
-                        className="rounded-2xl min-h-[6rem]"
-                    />
+                <CardContent className="space-y-2">
+                    {vistaPrevia ? (
+                        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 px-4 py-3 min-h-[6rem] text-sm text-slate-800 dark:text-slate-200 leading-relaxed">
+                            <TextoFormateado texto={observaciones} />
+                        </div>
+                    ) : (
+                        <Textarea
+                            value={observaciones}
+                            disabled={!editable}
+                            onChange={e => setObservaciones(e.target.value)}
+                            placeholder={"Al llevar a cabo la auditoría en campo...\n\n- **Apego al manual**: correcto\n- **Control de parámetros**: correcto"}
+                            className="rounded-2xl min-h-[8rem]"
+                        />
+                    )}
+                    <p className="text-[11px] text-slate-400">
+                        Formato: {AYUDA_FORMATO}. Se respeta en el reporte impreso.
+                    </p>
                 </CardContent>
             </Card>
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { formatFecha } from "@/lib/utils"
+import { TextoFormateado } from "@/lib/texto-formato"
 import { APPEARANCE_STANDARDS, PRODUCT_STANDARDS, PH_STANDARDS } from "@/lib/production-constants"
 import {
     COLOR_RESULTADO_PDF, ETIQUETA_VEREDICTO, TOLERANCIAS,
@@ -208,8 +209,9 @@ export default function ReporteAuditoria({ auditoria, lotes, comparaciones }: Pr
                         </table>
 
                         {lote.notas && (
-                            <div style={{ padding: '6px 10px', fontSize: '8pt', color: '#475569', backgroundColor: '#fafafa', borderTop: '1px solid #f1f5f9' }}>
-                                <strong style={{ color: '#64748b' }}>Notas: </strong>{lote.notas}
+                            <div style={{ padding: '6px 10px', fontSize: '8pt', color: '#475569', backgroundColor: '#fafafa', borderTop: '1px solid #f1f5f9', lineHeight: 1.4 }}>
+                                <div style={{ color: '#64748b', fontWeight: 700, marginBottom: '2px' }}>Notas</div>
+                                <TextoFormateado texto={lote.notas} />
                             </div>
                         )}
                     </div>
@@ -251,9 +253,11 @@ export default function ReporteAuditoria({ auditoria, lotes, comparaciones }: Pr
                     minHeight: '40px', padding: '8px 10px', fontSize: '9pt',
                     border: '1px solid #e2e8f0', borderRadius: '8px',
                     color: auditoria.observaciones ? '#1e293b' : '#cbd5e1',
-                    whiteSpace: 'pre-wrap',
+                    lineHeight: 1.45,
                 }}>
-                    {auditoria.observaciones || 'Sin observaciones registradas.'}
+                    {auditoria.observaciones
+                        ? <TextoFormateado texto={auditoria.observaciones} />
+                        : 'Sin observaciones registradas.'}
                 </div>
             </div>
 
