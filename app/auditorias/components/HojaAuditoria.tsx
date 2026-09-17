@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Link from 'next/link'
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -10,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select"
-import { Loader2, ShieldCheck, Save, Lock, FileDown, CheckCircle2, Eye, PenLine } from 'lucide-react'
+import { Loader2, ShieldCheck, Save, Lock, FileDown, CheckCircle2, Eye, PenLine, ListPlus } from 'lucide-react'
 import { formatFecha } from "@/lib/utils"
 import { TextoFormateado, AYUDA_FORMATO } from "@/lib/texto-formato"
 import { PARAMETER_APPLICABILITY, APPEARANCE_STANDARDS, PRODUCT_STANDARDS, PH_STANDARDS } from "@/lib/production-constants"
@@ -206,6 +207,13 @@ export default function HojaAuditoria({
                         </Badge>
                     ) : (
                         <Badge className="bg-amber-500 text-white border-none rounded-full">En proceso</Badge>
+                    )}
+                    {editable && (
+                        <Link href={`/auditorias/${auditoria.id}/lotes`}>
+                            <Button variant="outline" className="rounded-full gap-2">
+                                <ListPlus className="h-4 w-4" /> Ajustar lotes
+                            </Button>
+                        </Link>
                     )}
                     <Button variant="outline" className="rounded-full gap-2" onClick={() => setPrintView(true)}>
                         <FileDown className="h-4 w-4" /> Reporte

@@ -1,22 +1,20 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/AuthProvider"
 import { supabase } from "@/lib/supabase"
-import { Loader2, ShieldCheck, Search, ChevronDown } from "lucide-react"
+import { Loader2, ShieldCheck } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Breadcrumbs } from "@/components/Breadcrumbs"
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select"
 import { SUCURSALES_PRODUCTIVAS } from "@/lib/production-constants"
-import { formatFecha } from "@/lib/utils"
-import { promedioSolidos } from "@/lib/auditoria-utils"
+import { useLotesSucursal, TablaLotes, PASOS } from "../components/selector-lotes"
+import { filasDesdeLotes } from "../components/filas-auditoria"
 
 const ROLES_AUDITORES = ['admin', 'gerente_calidad', 'coordinador']
 
@@ -29,27 +27,19 @@ const todayISO = () => {
     return `${d.getFullYear()}-${mes}-${dia}`
 }
 
-const COLUMNAS = 'id, lote_producto, codigo_producto, sucursal, fecha_fabricacion, nombre_preparador, tamano_lote, ph, solidos_medicion_1, solidos_medicion_2, apariencia, color, aroma, estado_calidad'
-
-// Cuántos lotes traer. Se empieza corto y se amplía a mano para alcanzar más
-// atrás en el tiempo sin pedir de más cuando no hace falta.
-const PASOS = [60, 90, 120]
-
 export default function NuevaAuditoriaPage() {
     const { user, profile, loading: authLoading } = useAuth()
     const router = useRouter()
 
     const [sucursal, setSucursal] = useState("")
     const [fecha, setFecha] = useState(todayISO())
-    const [lotes, setLotes] = useState<any[]>([])
     // Los ids de la bitácora son UUID, no enteros.
     const [seleccion, setSeleccion] = useState<Set<string>>(new Set())
-    const [filtro, setFiltro] = useState("")
-    const [limite, setLimite] = useState(PASOS[0])
-    const [cargando, setCargando] = useState(false)
     const [creando, setCreando] = useState(false)
 
     const role = (profile?.role || '').toLowerCase()
+    const { lotes, cargando, limite, setLimite, hayMas, siguientePaso, masAntiguo, reiniciarVentana } =
+        useLotesSucursal(sucursal)
 
     useEffect(() => {
         if (!authLoading && profile) {
@@ -60,60 +50,12 @@ export default function NuevaAuditoriaPage() {
         }
     }, [profile, authLoading, role, router])
 
-    // No limpia la selección: al ampliar el tope se vuelve a consultar, y lo que
-    // ya estaba marcado debe seguir marcado.
-    const cargarLotes = async (suc: string, lim: number) => {
-        if (!suc) { setLotes([]); return }
-        setCargando(true)
-        try {
-            const { data, error } = await supabase
-                .from('bitacora_produccion_calidad')
-                .select(COLUMNAS)
-                .eq('sucursal', suc)
-                .order('fecha_fabricacion', { ascending: false })
-                .order('created_at', { ascending: false })
-                .limit(lim)
-            if (error) throw error
-            setLotes(data || [])
-        } catch (err: any) {
-            toast.error("Error al cargar lotes", { description: err.message })
-        } finally {
-            setCargando(false)
-        }
-    }
-
-    useEffect(() => { cargarLotes(sucursal, limite) }, [sucursal, limite])
-
-    // Cambiar de sucursal sí reinicia todo: los lotes marcados eran de la otra.
+    // Cambiar de sucursal reinicia todo: los lotes marcados eran de la otra.
     const cambiarSucursal = (s: string) => {
         setSucursal(s)
-        setLimite(PASOS[0])
         setSeleccion(new Set())
-        setFiltro("")
+        reiniciarVentana()
     }
-
-    // Si volvieron menos lotes que el tope, ya no hay nada más atrás.
-    const siguientePaso = PASOS.find(p => p > limite)
-    const hayMas = lotes.length >= limite && siguientePaso !== undefined
-
-    // La fecha más antigua cargada: dice hasta dónde alcanza la ventana.
-    const masAntiguo = lotes.length > 0
-        ? lotes.reduce((min, l) => (l.fecha_fabricacion < min ? l.fecha_fabricacion : min), lotes[0].fecha_fabricacion)
-        : null
-
-    const visibles = useMemo(() => {
-        const q = filtro.trim().toUpperCase()
-        if (!q) return lotes
-        return lotes.filter(l =>
-            (l.codigo_producto || '').toUpperCase().includes(q) ||
-            (l.lote_producto || '').toUpperCase().includes(q) ||
-            (l.nombre_preparador || '').toUpperCase().includes(q)
-        )
-    }, [lotes, filtro])
-
-    // Los lotes inyectados a mano no traen mediciones del operador: no hay nada
-    // contra qué comparar, así que no se pueden auditar.
-    const auditable = (l: any) => l.estado_calidad !== 'SIN MEDICION'
 
     const toggle = (id: string) => {
         setSeleccion(prev => {
@@ -121,12 +63,6 @@ export default function NuevaAuditoriaPage() {
             next.has(id) ? next.delete(id) : next.add(id)
             return next
         })
-    }
-
-    const toggleTodos = () => {
-        const elegibles: string[] = visibles.filter(auditable).map(l => l.id)
-        const todosPuestos = elegibles.every(id => seleccion.has(id))
-        setSeleccion(todosPuestos ? new Set() : new Set(elegibles))
     }
 
     const crear = async () => {
@@ -149,25 +85,10 @@ export default function NuevaAuditoriaPage() {
                 .single()
             if (errAud) throw errAud
 
-            // Se copian los valores del operador: el registro original puede
-            // editarse después y el reporte debe conservar lo que decía hoy.
-            const elegidos = lotes.filter(l => seleccion.has(l.id))
-            const filas = elegidos.map(l => ({
-                auditoria_id: auditoria.id,
-                measurement_id: l.id,
-                lote_producto: l.lote_producto,
-                codigo_producto: l.codigo_producto,
-                nombre_preparador: l.nombre_preparador,
-                fecha_fabricacion: l.fecha_fabricacion,
-                tamano_lote: l.tamano_lote,
-                ph_operador: l.ph,
-                solidos_1_operador: l.solidos_medicion_1,
-                solidos_2_operador: l.solidos_medicion_2,
-                apariencia_operador: l.apariencia,
-                color_operador: l.color,
-                aroma_operador: l.aroma,
-                resultado: 'PENDIENTE',
-            }))
+            const filas = filasDesdeLotes(
+                auditoria.id,
+                lotes.filter(l => seleccion.has(l.id))
+            )
 
             const { error: errLotes } = await supabase.from('auditoria_lotes').insert(filas)
             if (errLotes) throw errLotes
@@ -218,142 +139,35 @@ export default function NuevaAuditoriaPage() {
                             className="block text-sm border border-slate-300 dark:border-slate-600 rounded-full px-4 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
                         />
                     </div>
-                    {lotes.length > 0 && (
-                        <div className="space-y-1.5 flex-1 min-w-[12rem]">
-                            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Buscar</label>
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                <input
-                                    value={filtro}
-                                    onChange={e => setFiltro(e.target.value)}
-                                    placeholder="Código, lote o preparador"
-                                    className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-full pl-9 pr-4 py-2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
-                                />
-                            </div>
-                        </div>
-                    )}
                 </CardContent>
             </Card>
 
-            {cargando ? (
-                <div className="h-64 flex items-center justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                </div>
-            ) : !sucursal ? (
+            {!sucursal ? (
                 <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
                     <CardHeader>
                         <CardTitle className="text-lg font-bold">Elige una sucursal</CardTitle>
-                        <CardDescription>Se mostrarán sus últimos 60 lotes registrados.</CardDescription>
-                    </CardHeader>
-                </Card>
-            ) : lotes.length === 0 ? (
-                <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
-                    <CardHeader>
-                        <CardTitle className="text-lg font-bold">Sin lotes registrados</CardTitle>
-                        <CardDescription>{sucursal} no tiene registros en la bitácora.</CardDescription>
+                        <CardDescription>Se mostrarán sus últimos {PASOS[0]} lotes registrados.</CardDescription>
                     </CardHeader>
                 </Card>
             ) : (
-                <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
-                    <CardHeader className="pb-3">
-                        <div className="flex flex-wrap items-center gap-3">
-                            <div>
-                                <CardTitle className="text-lg font-bold">Últimos lotes de {sucursal}</CardTitle>
-                                <CardDescription>
-                                    {visibles.length} lote{visibles.length === 1 ? '' : 's'} · más recientes primero
-                                    {masAntiguo && <> · alcanza hasta el {formatFecha(masAntiguo)}</>}
-                                </CardDescription>
-                            </div>
-                            <Button variant="outline" size="sm" className="rounded-full ml-auto" onClick={toggleTodos}>
-                                Seleccionar todos
-                            </Button>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b border-slate-200 dark:border-slate-700">
-                                        <th className="w-10 px-2 py-2" />
-                                        <th className="text-left px-2 py-2 font-semibold text-slate-500 dark:text-slate-400">Lote</th>
-                                        <th className="text-left px-2 py-2 font-semibold text-slate-500 dark:text-slate-400">Producto</th>
-                                        <th className="text-left px-2 py-2 font-semibold text-slate-500 dark:text-slate-400">Fecha</th>
-                                        <th className="text-left px-2 py-2 font-semibold text-slate-500 dark:text-slate-400">Preparador</th>
-                                        <th className="text-right px-2 py-2 font-semibold text-slate-500 dark:text-slate-400">pH</th>
-                                        <th className="text-right px-2 py-2 font-semibold text-slate-500 dark:text-slate-400">Sólidos</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {visibles.map(l => {
-                                        const puede = auditable(l)
-                                        const prom = promedioSolidos(l.solidos_medicion_1, l.solidos_medicion_2)
-                                        return (
-                                            <tr
-                                                key={l.id}
-                                                onClick={() => puede && toggle(l.id)}
-                                                className={`border-b border-slate-100 dark:border-slate-800 last:border-0 ${puede ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50' : 'opacity-50'} ${seleccion.has(l.id) ? 'bg-blue-50 dark:bg-blue-950/30' : ''}`}
-                                            >
-                                                <td className="px-2 py-2.5">
-                                                    <Checkbox
-                                                        checked={seleccion.has(l.id)}
-                                                        disabled={!puede}
-                                                        onCheckedChange={() => puede && toggle(l.id)}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                    />
-                                                </td>
-                                                <td className="px-2 py-2.5 font-mono text-xs text-slate-600 dark:text-slate-300">
-                                                    {l.lote_producto || '—'}
-                                                    {!puede && (
-                                                        <Badge className="ml-2 bg-slate-400 text-white border-none rounded-full text-[10px] px-2">
-                                                            SIN MEDICIÓN
-                                                        </Badge>
-                                                    )}
-                                                </td>
-                                                <td className="px-2 py-2.5 font-semibold text-slate-800 dark:text-slate-200">{l.codigo_producto}</td>
-                                                <td className="px-2 py-2.5 text-slate-500">{formatFecha(l.fecha_fabricacion)}</td>
-                                                <td className="px-2 py-2.5 text-slate-500 truncate max-w-[10rem]">{l.nombre_preparador || '—'}</td>
-                                                <td className="px-2 py-2.5 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                                                    {l.ph ?? '—'}
-                                                </td>
-                                                <td className="px-2 py-2.5 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                                                    {prom === null ? '—' : prom.toFixed(2)}
-                                                </td>
-                                            </tr>
-                                        )
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div className="flex flex-col items-center gap-2 pt-4">
-                            {hayMas ? (
-                                <>
-                                    <Button
-                                        variant="outline"
-                                        className="rounded-full gap-2"
-                                        onClick={() => setLimite(siguientePaso!)}
-                                        disabled={cargando}
-                                    >
-                                        {cargando ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronDown className="h-4 w-4" />}
-                                        Cargar {siguientePaso} lotes
-                                    </Button>
-                                    <p className="text-[11px] text-slate-400">
-                                        Lo que ya seleccionaste se conserva.
-                                    </p>
-                                </>
-                            ) : (
-                                <p className="text-[11px] text-slate-400">
-                                    {lotes.length < limite
-                                        ? `Son todos los lotes registrados en ${sucursal}.`
-                                        : `Tope de ${limite} lotes alcanzado.`}
-                                </p>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
+                <TablaLotes
+                    // Remonta al cambiar de sucursal, para que el filtro de búsqueda
+                    // no quede aplicado sobre los lotes de otra.
+                    key={sucursal}
+                    sucursal={sucursal}
+                    lotes={lotes}
+                    cargando={cargando}
+                    seleccion={seleccion}
+                    onToggle={toggle}
+                    onReemplazar={ids => setSeleccion(new Set(ids))}
+                    hayMas={hayMas}
+                    siguientePaso={siguientePaso}
+                    masAntiguo={masAntiguo}
+                    onAmpliar={() => siguientePaso && setLimite(siguientePaso)}
+                    limite={limite}
+                />
             )}
 
-            {/* Barra de acción fija: la tabla puede ser larga */}
             {seleccion.size > 0 && (
                 <div className="fixed bottom-0 left-0 right-0 z-30 p-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-200 dark:border-slate-700">
                     <div className="max-w-5xl mx-auto flex items-center gap-4">
