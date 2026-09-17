@@ -8,6 +8,7 @@ import {
     Activity,
     Settings,
     Beaker,
+    ShieldCheck,
     ArrowRight,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -27,6 +28,7 @@ export default function HomePage() {
     const showCalidad = !forbiddenCalidad.includes(role)
 
     const showAnalisis = ['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras'].includes(role)
+    const showAuditorias = ['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras', 'gerente_sucursal', 'gerente'].includes(role)
     const showFTQFY = ['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras', 'preparador', 'gerente_sucursal', 'gerente'].includes(role)
 
     return (
@@ -147,7 +149,31 @@ export default function HomePage() {
                     </Link>
                 )}
 
-                {/* 4. Catálogo */}
+                {/* 5. Auditorías Presenciales */}
+                {showAuditorias && (
+                    <Link href="/auditorias" className="group block">
+                        <Card className="h-full border-2 border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-sm hover:shadow-md hover:border-blue-500/50 transition-all bg-[#FFFBF7] dark:bg-slate-900">
+                            <CardContent className="p-8 flex flex-col items-start gap-4 h-full">
+                                <div className="h-14 w-14 rounded-2xl bg-[#0e0c9b] flex items-center justify-center mb-2 shadow-blue-900/20 shadow-lg group-hover:scale-110 transition-transform">
+                                    <ShieldCheck className="h-7 w-7 text-white" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2 group-hover:text-blue-900 transition-colors">
+                                        Auditorías Presenciales
+                                    </h3>
+                                    <p className="text-slate-500 text-sm leading-relaxed mb-6">
+                                        Verificación en sitio de las mediciones del operador, detección de discrepancias y reporte de confiabilidad por sucursal.
+                                    </p>
+                                </div>
+                                <div className="mt-auto flex items-center text-blue-700 font-bold text-sm">
+                                    Ver auditorías <ArrowRight className="ml-2 h-4 w-4" />
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </Link>
+                )}
+
+                {/* 6. Catálogo */}
                 <Link href="/catalog" className="group block">
                     <Card className="h-full border-2 border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-sm hover:shadow-md hover:border-blue-500/50 transition-all bg-[#FFFBF7] dark:bg-slate-900">
                         <CardContent className="p-8 flex flex-col items-start gap-4 h-full relative">

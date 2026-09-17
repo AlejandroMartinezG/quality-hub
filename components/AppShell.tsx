@@ -21,7 +21,8 @@ import {
     Package,
     LineChart,
     Activity,
-    Clock
+    Clock,
+    ShieldCheck
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
@@ -180,6 +181,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             <NavItem href="/reportes/fy" icon={Activity} label="Control de Calidad (FTQ/FY)" />
                         )}
 
+                        {/* Auditorías presenciales: verificación de Calidad, sin preparadores */}
+                        {['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras', 'gerente_sucursal', 'gerente'].includes(profile?.role?.toLowerCase() || '') && (
+                            <NavItem href="/auditorias" icon={ShieldCheck} label="Auditorías Presenciales" />
+                        )}
+
                         {/* Rezago de Captura: métrica de supervisión, sin preparadores */}
                         {['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras', 'gerente_sucursal', 'gerente'].includes(profile?.role?.toLowerCase() || '') && (
                             <NavItem href="/reportes/rezago" icon={Clock} label="Rezago de Captura" />
@@ -281,6 +287,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         {/* Control de Calidad FTQ/FY en Mobile */}
                         {['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras', 'preparador', 'gerente_sucursal', 'gerente'].includes(profile?.role?.toLowerCase() || '') && (
                             <MobileNavItem href="/reportes/fy" icon={Activity} label="Control de Calidad (FTQ/FY)" />
+                        )}
+
+                        {/* Auditorías Presenciales en Mobile */}
+                        {['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras', 'gerente_sucursal', 'gerente'].includes(profile?.role?.toLowerCase() || '') && (
+                            <MobileNavItem href="/auditorias" icon={ShieldCheck} label="Auditorías Presenciales" />
                         )}
 
                         {/* Rezago de Captura en Mobile */}
