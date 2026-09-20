@@ -12,6 +12,7 @@ import { Breadcrumbs } from "@/components/Breadcrumbs"
 import { formatFecha } from "@/lib/utils"
 import { useLotesSucursal, TablaLotes } from "../../components/selector-lotes"
 import { filasDesdeLotes, tieneMediciones } from "../../components/filas-auditoria"
+import { BUCKET } from "../../components/GaleriaEvidencia"
 
 const ROLES_AUDITORES = ['admin', 'gerente_calidad', 'coordinador']
 
@@ -21,6 +22,7 @@ export default function AjustarLotesPage({ params }: { params: { id: string } })
 
     const [auditoria, setAuditoria] = useState<any>(null)
     const [filasActuales, setFilasActuales] = useState<any[]>([])
+    const [evidencias, setEvidencias] = useState<any[]>([])
     const [seleccion, setSeleccion] = useState<Set<string>>(new Set())
     const [cargandoAud, setCargandoAud] = useState(true)
     const [guardando, setGuardando] = useState(false)
@@ -60,8 +62,17 @@ export default function AjustarLotesPage({ params }: { params: { id: string } })
                     .eq('auditoria_id', params.id)
                 if (errFilas) throw errFilas
 
+                // Las fotos se cargan aquí para poder avisar cuántas se pierden y
+                // borrar sus archivos del bucket: el CASCADE de la base se lleva
+                // los renglones, pero dejaría los objetos huérfanos ocupando disco.
+                const { data: evs } = await supabase
+                    .from('auditoria_evidencias')
+                    .select('id, lote_id, ruta, ruta_miniatura')
+                    .eq('auditoria_id', params.id)
+
                 setAuditoria(aud)
                 setFilasActuales(filas || [])
+                setEvidencias(evs || [])
                 setSeleccion(new Set((filas || []).map(f => f.measurement_id).filter(Boolean)))
             } catch (err: any) {
                 toast.error("No se pudo cargar la auditoría", { description: err.message })
@@ -117,17 +128,36 @@ export default function AjustarLotesPage({ params }: { params: { id: string } })
     const quitadosConDatos = quitados.filter(id => conDatos.has(id))
     const hayCambios = agregados.length > 0 || quitados.length > 0
 
+    /** Fotos que se perderían con los lotes que se van a quitar. */
+    const fotosEnRiesgo = useMemo(() => {
+        if (quitados.length === 0) return []
+        const lotesQuitados = new Set(
+            filasActuales.filter(f => quitados.includes(f.measurement_id)).map(f => f.id)
+        )
+        return evidencias.filter(e => e.lote_id && lotesQuitados.has(e.lote_id))
+    }, [quitados, filasActuales, evidencias])
+
     const guardar = async () => {
         if (!hayCambios) { toast.info("No hay cambios que guardar"); return }
 
-        if (quitadosConDatos.length > 0) {
+        if (quitadosConDatos.length > 0 || fotosEnRiesgo.length > 0) {
             const lista = filasActuales
                 .filter(f => quitadosConDatos.includes(f.measurement_id))
                 .map(f => `  • ${f.lote_producto || f.codigo_producto}`)
                 .join('\n')
+
+            const queSePierde = []
+            if (quitadosConDatos.length > 0) {
+                queSePierde.push(`${quitadosConDatos.length} lote${quitadosConDatos.length === 1 ? '' : 's'} con mediciones capturadas`)
+            }
+            if (fotosEnRiesgo.length > 0) {
+                queSePierde.push(`${fotosEnRiesgo.length} foto${fotosEnRiesgo.length === 1 ? '' : 's'} de evidencia`)
+            }
+
             const seguir = confirm(
-                `Vas a quitar ${quitadosConDatos.length} lote${quitadosConDatos.length === 1 ? '' : 's'} que ya ${quitadosConDatos.length === 1 ? 'tiene' : 'tienen'} mediciones capturadas:\n\n${lista}\n\n` +
-                `Esas mediciones se borran y no se pueden recuperar.\n\n¿Continuar?`
+                `Vas a borrar ${queSePierde.join(' y ')}.\n\n` +
+                (lista ? `Lotes afectados:\n${lista}\n\n` : '') +
+                `Nada de esto se puede recuperar.\n\n¿Continuar?`
             )
             if (!seguir) return
         }
@@ -135,6 +165,20 @@ export default function AjustarLotesPage({ params }: { params: { id: string } })
         setGuardando(true)
         try {
             if (quitados.length > 0) {
+                // Primero los archivos: si se borrara el renglón antes, el CASCADE
+                // se llevaría el registro y quedaríamos sin saber qué objetos borrar.
+                if (fotosEnRiesgo.length > 0) {
+                    const rutas = fotosEnRiesgo.flatMap(e => [e.ruta, e.ruta_miniatura])
+                    const { error: errStorage } = await supabase.storage.from(BUCKET).remove(rutas)
+                    // Un fallo aquí deja archivos huérfanos, no datos corruptos:
+                    // se avisa pero no se detiene el ajuste de lotes.
+                    if (errStorage) {
+                        toast.warning("Algunas fotos no se pudieron borrar del almacenamiento", {
+                            description: errStorage.message,
+                        })
+                    }
+                }
+
                 const { error } = await supabase
                     .from('auditoria_lotes')
                     .delete()
@@ -221,6 +265,11 @@ export default function AjustarLotesPage({ params }: { params: { id: string } })
                         {quitados.length > 0 && <span className="text-red-600 dark:text-red-400"> · −{quitados.length}</span>}
                         {quitadosConDatos.length > 0 && (
                             <span className="text-red-600 dark:text-red-400 font-semibold"> (con mediciones)</span>
+                        )}
+                        {fotosEnRiesgo.length > 0 && (
+                            <span className="text-red-600 dark:text-red-400 font-semibold">
+                                {' '}· {fotosEnRiesgo.length} foto{fotosEnRiesgo.length === 1 ? '' : 's'} se borra{fotosEnRiesgo.length === 1 ? '' : 'n'}
+                            </span>
                         )}
                     </span>
                     <Button

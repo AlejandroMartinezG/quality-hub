@@ -21,6 +21,13 @@ import {
 } from "@/lib/auditoria-utils"
 import { PrintReportWrapper } from "@/components/PrintReportWrapper"
 import ReporteAuditoria from "./ReporteAuditoria"
+import GaleriaEvidencia from "./GaleriaEvidencia"
+import { useEvidencias, rangoFotos } from "./use-evidencias"
+import { urlADataUri } from "@/lib/imagen-utils"
+
+/** Tope por bloque, para que el anexo del reporte no se vuelva inmanejable. */
+const MAX_FOTOS_LOTE = 4
+const MAX_FOTOS_GENERAL = 6
 
 // Mismo vocabulario que ofrece la Bitácora al operador, para que ambos lados
 // del reporte hablen igual.
@@ -34,6 +41,7 @@ interface Props {
     lotesIniciales: any[]
     puedeEditar: boolean
     nombreUsuario?: string
+    userId?: string
     onRecargar: () => void
 }
 
@@ -58,17 +66,24 @@ const PUNTO_NIVEL: Record<NivelParametro, string> = {
 }
 
 export default function HojaAuditoria({
-    auditoria, lotesIniciales, puedeEditar, nombreUsuario, onRecargar,
+    auditoria, lotesIniciales, puedeEditar, nombreUsuario, userId, onRecargar,
 }: Props) {
     const [lotes, setLotes] = useState<any[]>(lotesIniciales)
     const [observaciones, setObservaciones] = useState(auditoria.observaciones || '')
     const [guardando, setGuardando] = useState(false)
     const [cerrando, setCerrando] = useState(false)
     const [printView, setPrintView] = useState(false)
+    const [preparandoPdf, setPreparandoPdf] = useState(false)
     const [vistaPrevia, setVistaPrevia] = useState(false)
+    // Miniaturas embebidas como data: URI, indexadas por id de evidencia.
+    const [fotosPdf, setFotosPdf] = useState<Record<string, string>>({})
 
     const cerrada = auditoria.estado === 'CERRADA'
     const editable = puedeEditar && !cerrada
+
+    const ordenLotes = useMemo(() => lotes.map(l => l.id), [lotes])
+    const { porLote, generales, numeradas, recargar: recargarFotos } =
+        useEvidencias(auditoria.id, ordenLotes)
 
     // Comparación en vivo: se recalcula con cada tecla, así el auditor ve el
     // veredicto antes de guardar y no después.
@@ -174,6 +189,45 @@ export default function HojaAuditoria({
         }
     }
 
+    /**
+     * Abre la vista de impresión.
+     *
+     * `html2canvas` no rasteriza de forma confiable imágenes remotas: aunque
+     * `useCORS` esté activo, las URL firmadas suelen salir como recuadros en
+     * blanco. Por eso las miniaturas se descargan y se convierten a `data:` URI
+     * ANTES de montar el reporte, para que no haga ninguna petición de red.
+     */
+    const abrirReporte = async () => {
+        if (numeradas.length === 0) { setPrintView(true); return }
+
+        setPreparandoPdf(true)
+        try {
+            const pares = await Promise.all(
+                numeradas.map(async ev => [
+                    ev.id,
+                    ev.urlMiniatura ? await urlADataUri(ev.urlMiniatura) : null,
+                ] as const)
+            )
+
+            const mapa: Record<string, string> = {}
+            let fallidas = 0
+            for (const [id, uri] of pares) {
+                if (uri) mapa[id] = uri
+                else fallidas++
+            }
+            setFotosPdf(mapa)
+
+            if (fallidas > 0) {
+                toast.warning(`${fallidas} foto${fallidas === 1 ? '' : 's'} no se pudo preparar`, {
+                    description: "Aparecerán como espacio vacío en el anexo.",
+                })
+            }
+            setPrintView(true)
+        } finally {
+            setPreparandoPdf(false)
+        }
+    }
+
     /** Campo numérico de Calidad. Se apaga cuando el parámetro no aplica al producto. */
     const CampoNum = ({ lote, campo, aplica, paso = "0.1" }: any) => (
         <input
@@ -215,8 +269,9 @@ export default function HojaAuditoria({
                             </Button>
                         </Link>
                     )}
-                    <Button variant="outline" className="rounded-full gap-2" onClick={() => setPrintView(true)}>
-                        <FileDown className="h-4 w-4" /> Reporte
+                    <Button variant="outline" className="rounded-full gap-2" onClick={abrirReporte} disabled={preparandoPdf}>
+                        {preparandoPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+                        {preparandoPdf ? 'Preparando…' : 'Reporte'}
                     </Button>
                 </div>
             </div>
@@ -258,7 +313,15 @@ export default function HojaAuditoria({
                                             {lote.codigo_producto} · {lote.nombre_preparador || '—'} · {formatFecha(lote.fecha_fabricacion)}
                                         </CardDescription>
                                     </div>
-                                    <div className={`ml-auto px-4 py-1.5 rounded-full text-xs font-bold ${color.bg} ${color.text}`}>
+                                    {(() => {
+                                        const rango = rangoFotos(porLote.get(lote.id) || [])
+                                        return rango ? (
+                                            <span className="ml-auto text-[11px] font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                                                📷 {rango}
+                                            </span>
+                                        ) : null
+                                    })()}
+                                    <div className={`${rangoFotos(porLote.get(lote.id) || []) ? '' : 'ml-auto'} px-4 py-1.5 rounded-full text-xs font-bold ${color.bg} ${color.text}`}>
                                         {color.label}
                                     </div>
                                 </div>
@@ -414,6 +477,23 @@ export default function HojaAuditoria({
                                         className="mt-1 rounded-2xl text-sm min-h-[3rem]"
                                     />
                                 </div>
+
+                                <div>
+                                    <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                                        Evidencia fotográfica
+                                    </label>
+                                    <div className="mt-2">
+                                        <GaleriaEvidencia
+                                            auditoriaId={auditoria.id}
+                                            loteId={lote.id}
+                                            evidencias={porLote.get(lote.id) || []}
+                                            editable={editable}
+                                            maximo={MAX_FOTOS_LOTE}
+                                            userId={userId}
+                                            onCambio={recargarFotos}
+                                        />
+                                    </div>
+                                </div>
                             </CardContent>
                         </Card>
                     )
@@ -461,6 +541,27 @@ export default function HojaAuditoria({
                 </CardContent>
             </Card>
 
+            {/* Evidencia general de la visita */}
+            <Card className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem]">
+                <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-bold">Evidencia general de la visita</CardTitle>
+                    <CardDescription>
+                        Fotos que no pertenecen a un lote: área de producción, equipo de medición, almacén.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <GaleriaEvidencia
+                        auditoriaId={auditoria.id}
+                        loteId={null}
+                        evidencias={generales}
+                        editable={editable}
+                        maximo={MAX_FOTOS_GENERAL}
+                        userId={userId}
+                        onCambio={recargarFotos}
+                    />
+                </CardContent>
+            </Card>
+
             {/* Barra de acción */}
             {editable && (
                 <div className="fixed bottom-0 left-0 right-0 z-30 p-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-200 dark:border-slate-700">
@@ -493,6 +594,9 @@ export default function HojaAuditoria({
                         auditoria={{ ...auditoria, observaciones }}
                         lotes={lotes}
                         comparaciones={comparaciones}
+                        evidenciasPorLote={porLote}
+                        evidenciasGenerales={generales}
+                        fotosPdf={fotosPdf}
                     />
                 </PrintReportWrapper>
             )}

@@ -7,6 +7,8 @@ import {
     COLOR_RESULTADO_PDF, ETIQUETA_VEREDICTO, TOLERANCIAS,
     type Comparacion, type NivelParametro,
 } from "@/lib/auditoria-utils"
+import { rangoFotos } from "./use-evidencias"
+import type { Evidencia } from "./GaleriaEvidencia"
 
 /**
  * Vista imprimible de una auditoría.
@@ -20,6 +22,14 @@ interface Props {
     auditoria: any
     lotes: any[]
     comparaciones: Map<string, Comparacion>
+    evidenciasPorLote?: Map<string, Evidencia[]>
+    evidenciasGenerales?: Evidencia[]
+    /**
+     * Miniaturas ya convertidas a `data:` URI, por id de evidencia.
+     * html2canvas no rasteriza imágenes remotas de forma confiable, así que el
+     * reporte nunca recibe URLs: las recibe embebidas.
+     */
+    fotosPdf?: Record<string, string>
 }
 
 const COLOR_NIVEL: Record<NivelParametro, string> = {
@@ -27,6 +37,41 @@ const COLOR_NIVEL: Record<NivelParametro, string> = {
     desviacion: '#b45309',
     discrepancia: '#b91c1c',
     na: '#94a3b8',
+}
+
+/** Rejilla de miniaturas con su número y pie de foto. */
+function RejillaFotos({ fotos, fotosPdf }: { fotos: Evidencia[], fotosPdf: Record<string, string> }) {
+    return (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {fotos.map(ev => {
+                const src = fotosPdf[ev.id]
+                return (
+                    <div key={ev.id} style={{ width: '4.6cm' }}>
+                        <div style={{
+                            width: '100%', height: '3.4cm', borderRadius: '6px', overflow: 'hidden',
+                            border: '1px solid #e2e8f0', backgroundColor: '#f8fafc',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                            {src ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                    src={src}
+                                    alt={ev.descripcion || `Foto ${ev.numero}`}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                />
+                            ) : (
+                                <span style={{ fontSize: '7pt', color: '#cbd5e1' }}>Sin vista previa</span>
+                            )}
+                        </div>
+                        <div style={{ fontSize: '7.5pt', color: '#334155', marginTop: '2px' }}>
+                            <strong>Foto {ev.numero}</strong>
+                            {ev.descripcion && <span style={{ color: '#64748b' }}> · {ev.descripcion}</span>}
+                        </div>
+                    </div>
+                )
+            })}
+        </div>
+    )
 }
 
 const th: React.CSSProperties = {
@@ -40,7 +85,10 @@ const td: React.CSSProperties = {
     borderBottom: '1px solid #f1f5f9', verticalAlign: 'top',
 }
 
-export default function ReporteAuditoria({ auditoria, lotes, comparaciones }: Props) {
+export default function ReporteAuditoria({
+    auditoria, lotes, comparaciones,
+    evidenciasPorLote, evidenciasGenerales = [], fotosPdf = {},
+}: Props) {
     const vals = lotes.map(l => comparaciones.get(l.id)).filter(Boolean) as Comparacion[]
     const resumen = {
         total: vals.length,
@@ -145,6 +193,17 @@ export default function ReporteAuditoria({ auditoria, lotes, comparaciones }: Pr
                                     {lote.codigo_producto} · {lote.nombre_preparador || '—'} · fabricado {formatFecha(lote.fecha_fabricacion)}
                                 </div>
                             </div>
+                            {(() => {
+                                const rango = rangoFotos(evidenciasPorLote?.get(lote.id) || [])
+                                return rango ? (
+                                    <div style={{
+                                        fontSize: '8pt', fontWeight: 700, color: '#475569',
+                                        whiteSpace: 'nowrap', marginRight: '2px',
+                                    }}>
+                                        Fotos {rango}
+                                    </div>
+                                ) : null
+                            })()}
                             <div style={{
                                 padding: '3px 10px', borderRadius: '999px',
                                 backgroundColor: color.bg, color: color.fg,
@@ -260,6 +319,52 @@ export default function ReporteAuditoria({ auditoria, lotes, comparaciones }: Pr
                         : 'Sin observaciones registradas.'}
                 </div>
             </div>
+
+            {/* --- Anexo fotográfico --- */}
+            {/* Va al final y no junto a cada lote: así los bloques de comparación
+                conservan su alto y siguen cabiendo enteros en una página. */}
+            {(() => {
+                const grupos = lotes
+                    .map(l => ({ lote: l, fotos: evidenciasPorLote?.get(l.id) || [] }))
+                    .filter(g => g.fotos.length > 0)
+
+                if (grupos.length === 0 && evidenciasGenerales.length === 0) return null
+
+                return (
+                    <div style={{ marginTop: '20px' }}>
+                        <h3 style={{
+                            fontSize: '10pt', fontWeight: 800, margin: '0 0 8px', color: '#0e0c9b',
+                            borderTop: '2px solid #0e0c9b', paddingTop: '8px',
+                        }}>
+                            Anexo fotográfico
+                        </h3>
+
+                        {grupos.map(({ lote, fotos }) => (
+                            <div key={lote.id} className="print-no-break" style={{ marginBottom: '12px' }}>
+                                <div style={{
+                                    fontSize: '8.5pt', fontWeight: 700, color: '#334155',
+                                    fontFamily: 'monospace', marginBottom: '4px',
+                                }}>
+                                    {lote.lote_producto || lote.codigo_producto} · {lote.codigo_producto}
+                                </div>
+                                <RejillaFotos fotos={fotos} fotosPdf={fotosPdf} />
+                            </div>
+                        ))}
+
+                        {evidenciasGenerales.length > 0 && (
+                            <div className="print-no-break" style={{ marginBottom: '12px' }}>
+                                <div style={{
+                                    fontSize: '8.5pt', fontWeight: 700, color: '#334155',
+                                    textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '4px',
+                                }}>
+                                    Evidencia general de la visita
+                                </div>
+                                <RejillaFotos fotos={evidenciasGenerales} fotosPdf={fotosPdf} />
+                            </div>
+                        )}
+                    </div>
+                )
+            })()}
 
             {/* --- Firmas --- */}
             <div className="print-no-break" style={{ marginTop: '32px', display: 'flex', gap: '40px' }}>

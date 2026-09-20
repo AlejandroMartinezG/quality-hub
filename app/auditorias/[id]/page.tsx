@@ -95,6 +95,7 @@ export default function AuditoriaDetallePage({ params }: { params: { id: string 
                 lotesIniciales={lotes}
                 puedeEditar={puedeEditar}
                 nombreUsuario={profile?.full_name || undefined}
+                userId={user?.id}
                 onRecargar={fetchData}
             />
         </div>
