@@ -120,6 +120,10 @@ ON CONFLICT (id) DO UPDATE SET public = false;
 -- La ruta es `{auditoria_id}/{evidencia_id}.jpg`, así que el primer segmento
 -- de la carpeta identifica la auditoría y permite aplicar la misma regla de
 -- sucursal que en la tabla.
+--
+-- La comparación se hace en texto (`a.id::text = split_part(...)`) y no casteando
+-- la ruta a uuid: Postgres puede reordenar las condiciones del AND y evaluar esta
+-- expresión sobre objetos de otros buckets, donde el cast reventaría.
 
 DROP POLICY IF EXISTS "evidencia_auditorias_select" ON storage.objects;
 CREATE POLICY "evidencia_auditorias_select"
@@ -130,7 +134,7 @@ USING (
   AND EXISTS (
     SELECT 1 FROM public.auditorias_presenciales a
     JOIN public.profiles p ON p.id = auth.uid()
-    WHERE a.id = ((storage.foldername(name))[1])::uuid
+    WHERE a.id::text = split_part(name, '/', 1)
     AND (
       p.is_admin = true
       OR p.role IN ('admin', 'gerente_calidad', 'coordinador',

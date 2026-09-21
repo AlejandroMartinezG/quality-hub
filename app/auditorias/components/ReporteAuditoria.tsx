@@ -7,7 +7,6 @@ import {
     COLOR_RESULTADO_PDF, ETIQUETA_VEREDICTO, TOLERANCIAS,
     type Comparacion, type NivelParametro,
 } from "@/lib/auditoria-utils"
-import { rangoFotos } from "./use-evidencias"
 import type { Evidencia } from "./GaleriaEvidencia"
 
 /**
@@ -39,16 +38,26 @@ const COLOR_NIVEL: Record<NivelParametro, string> = {
     na: '#94a3b8',
 }
 
-/** Rejilla de miniaturas con su número y pie de foto. */
-function RejillaFotos({ fotos, fotosPdf }: { fotos: Evidencia[], fotosPdf: Record<string, string> }) {
+/**
+ * Rejilla de miniaturas con su número y pie de foto.
+ *
+ * `ancho` se achica para las fotos que van dentro del bloque de un lote: así
+ * caben cuatro en una fila sin desbordar el ancho útil de la página.
+ */
+function RejillaFotos({ fotos, fotosPdf, ancho = '4.6cm', alto = '3.4cm' }: {
+    fotos: Evidencia[]
+    fotosPdf: Record<string, string>
+    ancho?: string
+    alto?: string
+}) {
     return (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             {fotos.map(ev => {
                 const src = fotosPdf[ev.id]
                 return (
-                    <div key={ev.id} style={{ width: '4.6cm' }}>
+                    <div key={ev.id} style={{ width: ancho }}>
                         <div style={{
-                            width: '100%', height: '3.4cm', borderRadius: '6px', overflow: 'hidden',
+                            width: '100%', height: alto, borderRadius: '6px', overflow: 'hidden',
                             border: '1px solid #e2e8f0', backgroundColor: '#f8fafc',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
@@ -193,17 +202,6 @@ export default function ReporteAuditoria({
                                     {lote.codigo_producto} · {lote.nombre_preparador || '—'} · fabricado {formatFecha(lote.fecha_fabricacion)}
                                 </div>
                             </div>
-                            {(() => {
-                                const rango = rangoFotos(evidenciasPorLote?.get(lote.id) || [])
-                                return rango ? (
-                                    <div style={{
-                                        fontSize: '8pt', fontWeight: 700, color: '#475569',
-                                        whiteSpace: 'nowrap', marginRight: '2px',
-                                    }}>
-                                        Fotos {rango}
-                                    </div>
-                                ) : null
-                            })()}
                             <div style={{
                                 padding: '3px 10px', borderRadius: '999px',
                                 backgroundColor: color.bg, color: color.fg,
@@ -273,6 +271,21 @@ export default function ReporteAuditoria({
                                 <TextoFormateado texto={lote.notas} />
                             </div>
                         )}
+
+                        {(() => {
+                            const fotos = evidenciasPorLote?.get(lote.id) || []
+                            if (fotos.length === 0) return null
+                            return (
+                                <div style={{ padding: '6px 10px', borderTop: '1px solid #f1f5f9' }}>
+                                    <div style={{
+                                        fontSize: '8pt', color: '#64748b', fontWeight: 700, marginBottom: '4px',
+                                    }}>
+                                        Evidencia
+                                    </div>
+                                    <RejillaFotos fotos={fotos} fotosPdf={fotosPdf} ancho="3.8cm" alto="2.8cm" />
+                                </div>
+                            )
+                        })()}
                     </div>
                 )
             })}
@@ -320,51 +333,17 @@ export default function ReporteAuditoria({
                 </div>
             </div>
 
-            {/* --- Anexo fotográfico --- */}
-            {/* Va al final y no junto a cada lote: así los bloques de comparación
-                conservan su alto y siguen cabiendo enteros en una página. */}
-            {(() => {
-                const grupos = lotes
-                    .map(l => ({ lote: l, fotos: evidenciasPorLote?.get(l.id) || [] }))
-                    .filter(g => g.fotos.length > 0)
-
-                if (grupos.length === 0 && evidenciasGenerales.length === 0) return null
-
-                return (
-                    <div style={{ marginTop: '20px' }}>
-                        <h3 style={{
-                            fontSize: '10pt', fontWeight: 800, margin: '0 0 8px', color: '#0e0c9b',
-                            borderTop: '2px solid #0e0c9b', paddingTop: '8px',
-                        }}>
-                            Anexo fotográfico
-                        </h3>
-
-                        {grupos.map(({ lote, fotos }) => (
-                            <div key={lote.id} className="print-no-break" style={{ marginBottom: '12px' }}>
-                                <div style={{
-                                    fontSize: '8.5pt', fontWeight: 700, color: '#334155',
-                                    fontFamily: 'monospace', marginBottom: '4px',
-                                }}>
-                                    {lote.lote_producto || lote.codigo_producto} · {lote.codigo_producto}
-                                </div>
-                                <RejillaFotos fotos={fotos} fotosPdf={fotosPdf} />
-                            </div>
-                        ))}
-
-                        {evidenciasGenerales.length > 0 && (
-                            <div className="print-no-break" style={{ marginBottom: '12px' }}>
-                                <div style={{
-                                    fontSize: '8.5pt', fontWeight: 700, color: '#334155',
-                                    textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '4px',
-                                }}>
-                                    Evidencia general de la visita
-                                </div>
-                                <RejillaFotos fotos={evidenciasGenerales} fotosPdf={fotosPdf} />
-                            </div>
-                        )}
-                    </div>
-                )
-            })()}
+            {/* --- Evidencia general --- */}
+            {/* Las fotos de cada lote van dentro de su propio bloque; aquí solo
+                quedan las de la visita, que no pertenecen a ningún lote. */}
+            {evidenciasGenerales.length > 0 && (
+                <div className="print-no-break" style={{ marginTop: '16px' }}>
+                    <h3 style={{ fontSize: '10pt', fontWeight: 800, margin: '0 0 6px', color: '#0e0c9b' }}>
+                        Evidencia general de la visita
+                    </h3>
+                    <RejillaFotos fotos={evidenciasGenerales} fotosPdf={fotosPdf} />
+                </div>
+            )}
 
             {/* --- Firmas --- */}
             <div className="print-no-break" style={{ marginTop: '32px', display: 'flex', gap: '40px' }}>
