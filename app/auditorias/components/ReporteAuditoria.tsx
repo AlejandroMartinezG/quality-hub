@@ -43,35 +43,49 @@ const COLOR_NIVEL: Record<NivelParametro, string> = {
  *
  * `ancho` se achica para las fotos que van dentro del bloque de un lote: así
  * caben cuatro en una fila sin desbordar el ancho útil de la página.
+ *
+ * Las imágenes van a ancho fijo y ALTO NATURAL, sin caja de recorte ni
+ * `object-fit`: html2canvas no soporta bien `object-fit` dentro de un contenedor
+ * de altura fija con `overflow: hidden`, y las dibujaba en blanco en el PDF
+ * aunque en pantalla se vieran correctas. Las filas quedan algo desparejas según
+ * la foto sea horizontal o vertical, que es preferible a un recuadro vacío.
+ *
+ * El ancho va en píxeles y no en centímetros porque html2canvas trabaja en px;
+ * convertir unidades físicas es otra fuente de resultados raros al rasterizar.
  */
-function RejillaFotos({ fotos, fotosPdf, ancho = '4.6cm', alto = '3.4cm' }: {
+function RejillaFotos({ fotos, fotosPdf, ancho = 174 }: {
     fotos: Evidencia[]
     fotosPdf: Record<string, string>
-    ancho?: string
-    alto?: string
+    /** Ancho de cada miniatura en píxeles. */
+    ancho?: number
 }) {
     return (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'flex-start' }}>
             {fotos.map(ev => {
                 const src = fotosPdf[ev.id]
                 return (
-                    <div key={ev.id} style={{ width: ancho }}>
-                        <div style={{
-                            width: '100%', height: alto, borderRadius: '6px', overflow: 'hidden',
-                            border: '1px solid #e2e8f0', backgroundColor: '#f8fafc',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>
-                            {src ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                    src={src}
-                                    alt={ev.descripcion || `Foto ${ev.numero}`}
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                />
-                            ) : (
-                                <span style={{ fontSize: '7pt', color: '#cbd5e1' }}>Sin vista previa</span>
-                            )}
-                        </div>
+                    <div key={ev.id} style={{ width: `${ancho}px` }}>
+                        {src ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                                src={src}
+                                alt={ev.descripcion || `Foto ${ev.numero}`}
+                                style={{
+                                    width: `${ancho}px`, height: 'auto', display: 'block',
+                                    borderRadius: '6px', border: '1px solid #e2e8f0',
+                                }}
+                            />
+                        ) : (
+                            <div style={{
+                                width: `${ancho}px`, height: `${Math.round(ancho * 0.75)}px`,
+                                borderRadius: '6px', border: '1px solid #e2e8f0',
+                                backgroundColor: '#f8fafc',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: '7pt', color: '#cbd5e1',
+                            }}>
+                                Sin vista previa
+                            </div>
+                        )}
                         <div style={{ fontSize: '7.5pt', color: '#334155', marginTop: '2px' }}>
                             <strong>Foto {ev.numero}</strong>
                             {ev.descripcion && <span style={{ color: '#64748b' }}> · {ev.descripcion}</span>}
@@ -282,7 +296,7 @@ export default function ReporteAuditoria({
                                     }}>
                                         Evidencia
                                     </div>
-                                    <RejillaFotos fotos={fotos} fotosPdf={fotosPdf} ancho="3.8cm" alto="2.8cm" />
+                                    <RejillaFotos fotos={fotos} fotosPdf={fotosPdf} ancho={144} />
                                 </div>
                             )
                         })()}

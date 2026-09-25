@@ -80,24 +80,34 @@ export async function procesarFoto(file: File): Promise<ImagenProcesada> {
 }
 
 /**
- * Descarga una URL y la convierte a `data:` URI.
+ * Convierte un Blob a `data:` URI.
  *
  * Es lo que permite meter fotos al PDF: `html2canvas` no rasteriza de forma
  * confiable imágenes remotas —aunque `useCORS` esté activo, las URL firmadas
  * suelen terminar en recuadros blancos—, así que se embeben antes de abrir la
  * vista de impresión y nunca hace una petición de red.
  */
+export function blobADataUri(blob: Blob): Promise<string | null> {
+    return new Promise(resolve => {
+        const lector = new FileReader()
+        lector.onloadend = () => resolve(typeof lector.result === 'string' ? lector.result : null)
+        lector.onerror = () => resolve(null)
+        lector.readAsDataURL(blob)
+    })
+}
+
+/**
+ * Descarga una URL y la convierte a `data:` URI.
+ *
+ * Preferir `blobADataUri` con el blob que devuelve `supabase.storage.download()`:
+ * ese camino va por el cliente autenticado y no depende de la configuración de
+ * CORS del storage, que es un punto de falla silencioso.
+ */
 export async function urlADataUri(url: string): Promise<string | null> {
     try {
         const resp = await fetch(url)
         if (!resp.ok) return null
-        const blob = await resp.blob()
-        return await new Promise<string | null>(resolve => {
-            const lector = new FileReader()
-            lector.onloadend = () => resolve(typeof lector.result === 'string' ? lector.result : null)
-            lector.onerror = () => resolve(null)
-            lector.readAsDataURL(blob)
-        })
+        return await blobADataUri(await resp.blob())
     } catch {
         return null
     }

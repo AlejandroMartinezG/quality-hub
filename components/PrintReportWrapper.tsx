@@ -77,6 +77,20 @@ export function PrintReportWrapper({
         const filename = `${title.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`
 
         try {
+            // Las imágenes del clon son elementos nuevos: cloneNode copia el `src`
+            // pero no el mapa de bits ya decodificado. Si se rasteriza antes de que
+            // terminen, html2canvas las dibuja en blanco. Con el logo no se nota
+            // porque es chico y viene de caché; con varias fotos sí.
+            const imagenes = Array.from(clone.querySelectorAll('img'))
+            if (imagenes.length > 0) {
+                await Promise.all(imagenes.map(img => {
+                    if (img.complete && img.naturalWidth > 0) return Promise.resolve()
+                    // decode() rechaza en formatos que no puede decodificar; se ignora
+                    // para no abortar el PDF entero por una imagen rota.
+                    return img.decode().catch(() => undefined)
+                }))
+            }
+
             const html2pdf = (await import('html2pdf.js')).default
             await html2pdf()
                 .set({
