@@ -361,7 +361,7 @@ export default function ReporteAuditoria({
                         {lote.notas && (
                             <div style={{ padding: '6px 10px', fontSize: '8pt', color: '#475569', backgroundColor: '#fafafa', borderTop: '1px solid #f1f5f9', lineHeight: 1.4 }}>
                                 <div style={{ color: '#64748b', fontWeight: 700, marginBottom: '2px' }}>Notas</div>
-                                <TextoFormateado texto={lote.notas} />
+                                <TextoFormateado texto={lote.notas} paraPdf />
                             </div>
                         )}
 
@@ -421,7 +421,7 @@ export default function ReporteAuditoria({
                     lineHeight: 1.45,
                 }}>
                     {auditoria.observaciones
-                        ? <TextoFormateado texto={auditoria.observaciones} />
+                        ? <TextoFormateado texto={auditoria.observaciones} paraPdf />
                         : 'Sin observaciones registradas.'}
                 </div>
             </div>

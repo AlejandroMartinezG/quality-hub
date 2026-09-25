@@ -32,8 +32,15 @@ const INLINE = /(\*\*[^*\n]+\*\*|__[^_\n]+__|==[^=\n]+==|!![^!\n]+!!|\+\+[^+\n]+
 const ROJO = '#dc2626'
 const VERDE = '#059669'
 
-/** Aplica las marcas de énfasis dentro de una línea. */
-function conEnfasis(linea: string, clave: string): React.ReactNode[] {
+/**
+ * Aplica las marcas de énfasis dentro de una línea.
+ *
+ * `paraPdf` cambia el resaltado: html2canvas pinta mal el fondo de un elemento
+ * en línea cuando el texto se parte entre dos renglones —queda una barra de
+ * color vacía y el texto corrido—, así que en el PDF el resaltado se resuelve
+ * con color y negrita en vez de fondo.
+ */
+function conEnfasis(linea: string, clave: string, paraPdf: boolean): React.ReactNode[] {
     return linea.split(INLINE).filter(Boolean).map((parte, i) => {
         const k = `${clave}-${i}`
         const interior = (n: number) => parte.slice(n, -n)
@@ -45,11 +52,13 @@ function conEnfasis(linea: string, clave: string): React.ReactNode[] {
             return <u key={k} style={{ textDecoration: 'underline' }}>{interior(2)}</u>
 
         if (parte.startsWith('==') && parte.endsWith('==') && parte.length > 4)
-            return (
-                <mark key={k} style={{ backgroundColor: '#fef08a', color: '#713f12', padding: '0 2px', borderRadius: '2px' }}>
-                    {interior(2)}
-                </mark>
-            )
+            return paraPdf
+                ? <strong key={k} style={{ color: '#92400e', fontWeight: 700 }}>{interior(2)}</strong>
+                : (
+                    <mark key={k} style={{ backgroundColor: '#fef08a', color: '#713f12', padding: '0 2px', borderRadius: '2px' }}>
+                        {interior(2)}
+                    </mark>
+                )
 
         if (parte.startsWith('!!') && parte.endsWith('!!') && parte.length > 4)
             return <span key={k} style={{ color: ROJO, fontWeight: 600 }}>{interior(2)}</span>
@@ -121,7 +130,28 @@ function enBloques(texto: string): Bloque[] {
 
 const TAMANO_TITULO: Record<number, string> = { 1: '1.35em', 2: '1.18em', 3: '1.05em' }
 
-export function TextoFormateado({ texto }: { texto?: string | null }) {
+/**
+ * Si la línea ya empieza con un emoji, ese emoji hace de marcador y no se le
+ * antepone una viñeta: quedaría "• ✅ texto", con dos marcadores compitiendo.
+ *
+ * Se comprueba por rangos de código y no con `\p{Extended_Pictographic}`, que
+ * exige compilar contra ES2018 y este proyecto apunta más abajo.
+ */
+function empiezaConEmoji(linea: string): boolean {
+    const cp = linea.codePointAt(0)
+    if (cp === undefined) return false
+    return (
+        (cp >= 0x1f000 && cp <= 0x1faff) ||   // emoji modernos (🔴 🎯 📋 🟢)
+        (cp >= 0x2600 && cp <= 0x27bf) ||     // símbolos misceláneos y dingbats (✅ ⚠ ✔)
+        (cp >= 0x2b00 && cp <= 0x2bff)        // flechas y formas geométricas
+    )
+}
+
+export function TextoFormateado({ texto, paraPdf = false }: {
+    texto?: string | null
+    /** En el PDF se evitan los recursos que html2canvas no rasteriza bien. */
+    paraPdf?: boolean
+}) {
     if (!texto || !texto.trim()) return null
 
     return (
@@ -137,7 +167,7 @@ export function TextoFormateado({ texto }: { texto?: string | null }) {
                                 margin: b === 0 ? '0 0 6px' : '12px 0 6px',
                             }}
                         >
-                            {conEnfasis(bloque.lineas[0], `${b}-0`)}
+                            {conEnfasis(bloque.lineas[0], `${b}-0`, paraPdf)}
                         </div>
                     )
                 }
@@ -148,20 +178,35 @@ export function TextoFormateado({ texto }: { texto?: string | null }) {
                             {bloque.lineas.map((l, i) => (
                                 <React.Fragment key={i}>
                                     {i > 0 && <br />}
-                                    {conEnfasis(l, `${b}-${i}`)}
+                                    {conEnfasis(l, `${b}-${i}`, paraPdf)}
                                 </React.Fragment>
                             ))}
                         </p>
                     )
                 }
 
-                const Lista = bloque.tipo === 'vinetas' ? 'ul' : 'ol'
+                // Las listas NO usan <ul>/<ol>: html2canvas no dibuja los marcadores
+                // de `list-style`, así que en el PDF las viñetas desaparecían. Se
+                // arman a mano con flex, que sí rasteriza y además da sangría
+                // francesa —la segunda línea alinea con la primera, no con el punto.
                 return (
-                    <Lista key={b} style={{ margin: '0 0 8px', paddingLeft: '18px' }}>
-                        {bloque.lineas.map((l, i) => (
-                            <li key={i} style={{ marginBottom: '4px' }}>{conEnfasis(l, `${b}-${i}`)}</li>
-                        ))}
-                    </Lista>
+                    <div key={b} style={{ margin: '0 0 8px' }}>
+                        {bloque.lineas.map((l, i) => {
+                            const marcador = bloque.tipo === 'numerada'
+                                ? `${i + 1}.`
+                                : empiezaConEmoji(l.trim()) ? null : '•'
+                            return (
+                                <div key={i} style={{ display: 'flex', gap: '6px', marginBottom: '4px' }}>
+                                    {marcador && (
+                                        <span style={{ flexShrink: 0, minWidth: bloque.tipo === 'numerada' ? '1.2em' : undefined }}>
+                                            {marcador}
+                                        </span>
+                                    )}
+                                    <span style={{ flex: 1 }}>{conEnfasis(l, `${b}-${i}`, paraPdf)}</span>
+                                </div>
+                            )
+                        })}
+                    </div>
                 )
             })}
         </>
