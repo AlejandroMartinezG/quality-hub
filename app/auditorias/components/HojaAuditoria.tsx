@@ -67,6 +67,33 @@ const PUNTO_NIVEL: Record<NivelParametro, string> = {
     na: 'bg-slate-300 dark:bg-slate-600',
 }
 
+/**
+ * Campo numérico de Calidad.
+ *
+ * Va FUERA del componente a propósito: definido adentro, su identidad cambia en
+ * cada render, React lo trata como un componente distinto y lo remonta — el
+ * input perdía el foco después de cada tecla al capturar mediciones.
+ */
+function CampoNum({ valor, onChange, habilitado, aplica, paso }: {
+    valor: string | number
+    onChange: (v: string) => void
+    habilitado: boolean
+    aplica: boolean
+    paso: string
+}) {
+    return (
+        <input
+            type="number"
+            step={paso}
+            value={valor}
+            disabled={!habilitado}
+            onChange={e => onChange(e.target.value)}
+            placeholder={aplica ? '—' : 'n/a'}
+            className="w-20 text-sm text-right tabular-nums border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 disabled:bg-slate-100 dark:disabled:bg-slate-900 disabled:text-slate-400 disabled:cursor-not-allowed"
+        />
+    )
+}
+
 export default function HojaAuditoria({
     auditoria, lotesIniciales, puedeEditar, nombreUsuario, userId, onRecargar,
 }: Props) {
@@ -274,15 +301,13 @@ export default function HojaAuditoria({
     }
 
     /** Campo numérico de Calidad. Se apaga cuando el parámetro no aplica al producto. */
-    const CampoNum = ({ lote, campo, aplica, paso = "0.1" }: any) => (
-        <input
-            type="number"
-            step={paso}
-            value={lote[campo] ?? ''}
-            disabled={!editable || !aplica}
-            onChange={e => actualizar(lote.id, campo, e.target.value)}
-            placeholder={aplica ? '—' : 'n/a'}
-            className="w-20 text-sm text-right tabular-nums border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 disabled:bg-slate-100 dark:disabled:bg-slate-900 disabled:text-slate-400 disabled:cursor-not-allowed"
+    const campoNum = (lote: any, campo: string, aplica: boolean, paso = "0.1") => (
+        <CampoNum
+            valor={lote[campo] ?? ''}
+            onChange={v => actualizar(lote.id, campo, v)}
+            habilitado={editable && aplica}
+            aplica={aplica}
+            paso={paso}
         />
     )
 
@@ -380,7 +405,11 @@ export default function HojaAuditoria({
                                             {lote.lote_producto || lote.codigo_producto}
                                         </CardTitle>
                                         <CardDescription>
-                                            {lote.codigo_producto} · {lote.nombre_preparador || (sinRegistro ? 'preparador no identificado' : '—')} · {lote.fecha_fabricacion ? formatFecha(lote.fecha_fabricacion) : 'sin fecha'}
+                                            {lote.codigo_producto} · {lote.nombre_preparador || (sinRegistro ? 'preparador no identificado' : '—')}
+                                            {' · '}
+                                            {sinRegistro
+                                                ? `inspeccionado ${formatFecha(auditoria.fecha_auditoria)}`
+                                                : formatFecha(lote.fecha_fabricacion)}
                                         </CardDescription>
                                     </div>
                                     {sinRegistro && editable && (
@@ -441,7 +470,7 @@ export default function HojaAuditoria({
                                                         {lote.ph_operador ?? '—'}
                                                     </td>
                                                     <td className="px-2 py-2.5 text-center">
-                                                        <CampoNum lote={lote} campo="ph_calidad" aplica={aplica.ph} />
+                                                        {campoNum(lote, "ph_calidad", aplica.ph)}
                                                     </td>
                                                     <td className={`px-2 py-2.5 text-right tabular-nums font-semibold ${COLOR_NIVEL[c.parametros.find(p => p.clave === 'ph')?.nivel || 'na']}`}>
                                                         {(() => {
@@ -473,12 +502,12 @@ export default function HojaAuditoria({
                                                     </td>
                                                     <td className="px-2 py-2.5">
                                                         <div className="flex items-center justify-center gap-1">
-                                                            <CampoNum lote={lote} campo="solidos_1_calidad" aplica={aplica.solidos} paso="0.01" />
-                                                            <CampoNum lote={lote} campo="solidos_2_calidad" aplica={aplica.solidos} paso="0.01" />
+                                                            {campoNum(lote, "solidos_1_calidad", aplica.solidos, "0.01")}
+                                                            {campoNum(lote, "solidos_2_calidad", aplica.solidos, "0.01")}
                                                         </div>
                                                         <div className="flex items-center justify-center gap-1 mt-1">
-                                                            <CampoNum lote={lote} campo="temp_1_calidad" aplica={aplica.solidos} />
-                                                            <CampoNum lote={lote} campo="temp_2_calidad" aplica={aplica.solidos} />
+                                                            {campoNum(lote, "temp_1_calidad", aplica.solidos)}
+                                                            {campoNum(lote, "temp_2_calidad", aplica.solidos)}
                                                         </div>
                                                         <div className="text-[10px] text-slate-400 text-center mt-0.5">M1 / M2 · T1 / T2</div>
                                                     </td>

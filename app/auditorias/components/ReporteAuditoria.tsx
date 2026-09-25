@@ -220,8 +220,8 @@ export default function ReporteAuditoria({
                         <thead>
                             <tr>
                                 <th style={{ ...th, borderBottom: '1px solid #d8b4fe', color: '#6b21a8' }}>Producto</th>
-                                <th style={{ ...th, borderBottom: '1px solid #d8b4fe', color: '#6b21a8' }}>Lote</th>
-                                <th style={{ ...th, borderBottom: '1px solid #d8b4fe', color: '#6b21a8' }}>Fabricado</th>
+                                <th style={{ ...th, borderBottom: '1px solid #d8b4fe', color: '#6b21a8' }}>Tamaño</th>
+                                <th style={{ ...th, borderBottom: '1px solid #d8b4fe', color: '#6b21a8' }}>Inspeccionado</th>
                                 <th style={{ ...th, borderBottom: '1px solid #d8b4fe', color: '#6b21a8' }}>Preparador</th>
                                 <th style={{ ...th, borderBottom: '1px solid #d8b4fe', color: '#6b21a8' }}>Medición de Calidad</th>
                             </tr>
@@ -236,11 +236,11 @@ export default function ReporteAuditoria({
                                         <td style={{ ...td, borderBottom: '1px solid #f3e8ff', fontWeight: 700 }}>
                                             {l.codigo_producto}
                                         </td>
-                                        <td style={{ ...td, borderBottom: '1px solid #f3e8ff', fontFamily: 'monospace', fontSize: '8pt' }}>
-                                            {l.lote_producto || '—'}
+                                        <td style={{ ...td, borderBottom: '1px solid #f3e8ff', fontSize: '8pt' }}>
+                                            {l.tamano_lote ? `${l.tamano_lote} L` : '—'}
                                         </td>
                                         <td style={{ ...td, borderBottom: '1px solid #f3e8ff', fontSize: '8pt' }}>
-                                            {l.fecha_fabricacion ? formatFecha(l.fecha_fabricacion) : '—'}
+                                            {formatFecha(auditoria.fecha_auditoria)}
                                         </td>
                                         <td style={{ ...td, borderBottom: '1px solid #f3e8ff', fontSize: '8pt' }}>
                                             {l.nombre_preparador || <span style={{ color: '#a78bfa' }}>no identificado</span>}

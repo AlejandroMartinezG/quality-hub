@@ -26,10 +26,12 @@ const OPCIONES_APARIENCIA = [
     "PARTICULAS SUSPENDIDAS", "SEPARACION DE COMPONENTES",
 ]
 
+// No se piden número de lote ni fecha de fabricación: si el operador nunca
+// capturó el lote, no hay número que anotar, y la fecha en que se fabricó es
+// justamente lo que se desconoce. La fecha que aplica es la de la visita, que
+// ya vive en la auditoría.
 const VACIO = {
     codigo_producto: '',
-    lote_producto: '',
-    fecha_fabricacion: '',
     tamano_lote: '',
     nombre_preparador: '',
     ph_calidad: '',
@@ -41,6 +43,37 @@ const VACIO = {
     color_calidad: '',
     aroma_calidad: '',
     notas: '',
+}
+
+/**
+ * Campo de texto del formulario.
+ *
+ * Va FUERA del componente a propósito: definido adentro, su identidad cambia en
+ * cada render, React lo trata como un componente distinto y lo remonta — el
+ * input pierde el foco después de cada tecla y solo se alcanza a escribir un
+ * carácter por clic.
+ */
+function Campo({ label, valor, onChange, tipo = 'text', paso, ayuda }: {
+    label: string
+    valor: string
+    onChange: (v: string) => void
+    tipo?: string
+    paso?: string
+    ayuda?: string
+}) {
+    return (
+        <div className="space-y-1">
+            <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">{label}</label>
+            <Input
+                type={tipo}
+                step={paso}
+                value={valor}
+                onChange={e => onChange(e.target.value)}
+                className="rounded-full"
+            />
+            {ayuda && <p className="text-[10px] text-slate-400">{ayuda}</p>}
+        </div>
+    )
 }
 
 interface Props {
@@ -85,8 +118,10 @@ export default function DialogLoteSinRegistro({ auditoriaId, abierto, onCerrar, 
                 origen: 'SIN_REGISTRO',
                 resultado: 'SIN_REGISTRO',
                 codigo_producto: form.codigo_producto,
-                lote_producto: txt(form.lote_producto),
-                fecha_fabricacion: txt(form.fecha_fabricacion),
+                // Sin número de lote ni fecha de fabricación: no existen. La fecha
+                // que aplica es la de la visita, que ya está en la auditoría.
+                lote_producto: null,
+                fecha_fabricacion: null,
                 nombre_preparador: txt(form.nombre_preparador),
                 tamano_lote: num(form.tamano_lote),
                 ph_calidad: num(form.ph_calidad),
@@ -114,19 +149,11 @@ export default function DialogLoteSinRegistro({ auditoriaId, abierto, onCerrar, 
         }
     }
 
-    const Campo = ({ label, campo, tipo = 'text', paso, ayuda }: any) => (
-        <div className="space-y-1">
-            <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">{label}</label>
-            <Input
-                type={tipo}
-                step={paso}
-                value={(form as any)[campo]}
-                onChange={e => set(campo, e.target.value)}
-                className="rounded-full"
-            />
-            {ayuda && <p className="text-[10px] text-slate-400">{ayuda}</p>}
-        </div>
-    )
+    /** Atajo para no repetir el cableado de cada campo. */
+    const campo = (nombre: keyof typeof VACIO) => ({
+        valor: form[nombre],
+        onChange: (v: string) => set(nombre, v),
+    })
 
     return (
         <Dialog open={abierto} onOpenChange={o => !o && onCerrar()}>
@@ -161,11 +188,15 @@ export default function DialogLoteSinRegistro({ auditoriaId, abierto, onCerrar, 
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <Campo label="Número de lote" campo="lote_producto" ayuda="Como venga en la etiqueta física" />
-                        <Campo label="Fecha de fabricación" campo="fecha_fabricacion" tipo="date" />
-                        <Campo label="Tamaño de lote" campo="tamano_lote" tipo="number" paso="1" />
-                        <Campo label="Preparador" campo="nombre_preparador" ayuda="Si lo pudiste identificar" />
+                        <Campo label="Tamaño de lote" {...campo('tamano_lote')} tipo="number" paso="1" ayuda="Si lo puedes estimar" />
+                        <Campo label="Preparador" {...campo('nombre_preparador')} ayuda="Si lo pudiste identificar" />
                     </div>
+
+                    <p className="text-[11px] text-slate-400 px-1">
+                        No se piden número de lote ni fecha de fabricación: si nunca se registró,
+                        no hay lote que anotar y la fecha de elaboración es justo lo que se desconoce.
+                        El hallazgo queda con la <strong>fecha de la visita</strong>.
+                    </p>
 
                     {form.codigo_producto && (
                         <div className="rounded-2xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
@@ -176,19 +207,19 @@ export default function DialogLoteSinRegistro({ auditoriaId, abierto, onCerrar, 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 {aplica.ph && (
                                     <Campo
-                                        label="pH" campo="ph_calidad" tipo="number" paso="0.1"
+                                        label="pH" {...campo('ph_calidad')} tipo="number" paso="0.1"
                                         ayuda={stdPh ? `Ref: ${stdPh.min === stdPh.max ? stdPh.min : `${stdPh.min}–${stdPh.max}`}` : undefined}
                                     />
                                 )}
                                 {aplica.solidos && (
                                     <>
                                         <Campo
-                                            label="Sólidos M1" campo="solidos_1_calidad" tipo="number" paso="0.01"
+                                            label="Sólidos M1" {...campo('solidos_1_calidad')} tipo="number" paso="0.01"
                                             ayuda={stdSol ? `Ref: ${stdSol.min}–${stdSol.max}%` : undefined}
                                         />
-                                        <Campo label="Temp T1" campo="temp_1_calidad" tipo="number" paso="0.1" />
-                                        <Campo label="Sólidos M2" campo="solidos_2_calidad" tipo="number" paso="0.01" />
-                                        <Campo label="Temp T2" campo="temp_2_calidad" tipo="number" paso="0.1" />
+                                        <Campo label="Temp T1" {...campo('temp_1_calidad')} tipo="number" paso="0.1" />
+                                        <Campo label="Sólidos M2" {...campo('solidos_2_calidad')} tipo="number" paso="0.01" />
+                                        <Campo label="Temp T2" {...campo('temp_2_calidad')} tipo="number" paso="0.1" />
                                     </>
                                 )}
                             </div>
