@@ -261,6 +261,33 @@ export default function ReporteAuditoria({
                             })}
                         </tbody>
                     </table>
+
+                    {/* La evidencia de estos lotes es lo que prueba que el producto
+                        existía. Va debajo de la tabla y no dentro de una celda, que
+                        desalinearía los renglones. */}
+                    {sinRegistro.some(l => (evidenciasPorLote?.get(l.id) || []).length > 0) && (
+                        <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid #d8b4fe' }}>
+                            <div style={{
+                                fontSize: '8pt', fontWeight: 700, color: '#6b21a8', marginBottom: '6px',
+                            }}>
+                                Evidencia fotográfica
+                            </div>
+                            {sinRegistro.map(l => {
+                                const fotos = evidenciasPorLote?.get(l.id) || []
+                                if (fotos.length === 0) return null
+                                return (
+                                    <div key={l.id} style={{ marginBottom: '8px' }}>
+                                        <div style={{
+                                            fontSize: '8pt', fontWeight: 700, color: '#334155', marginBottom: '3px',
+                                        }}>
+                                            {l.codigo_producto}
+                                        </div>
+                                        <RejillaFotos fotos={fotos} fotosPdf={fotosPdf} ancho={144} />
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )}
                 </div>
             )}
 
