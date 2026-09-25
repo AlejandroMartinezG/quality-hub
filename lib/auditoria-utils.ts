@@ -15,7 +15,16 @@ export const TOLERANCIAS = {
     solidos: 0.5,   // puntos porcentuales sobre el promedio de M1/M2
 }
 
-export type ResultadoLote = 'PENDIENTE' | 'COINCIDE' | 'DESVIACION' | 'DISCREPANCIA'
+export type ResultadoLote = 'PENDIENTE' | 'COINCIDE' | 'DESVIACION' | 'DISCREPANCIA' | 'SIN_REGISTRO'
+
+/**
+ * De dónde salió el renglón.
+ *
+ * `SIN_REGISTRO` es un lote que Calidad encontró físicamente en sucursal y que
+ * no tenía captura en la plataforma. Es un hallazgo de otro eje: no mide si el
+ * operador midió bien, sino si registró.
+ */
+export type OrigenLote = 'REGISTRADO' | 'SIN_REGISTRO'
 
 /** 🟢 coincide · 🟡 mismo veredicto pero Δ fuera de tolerancia · 🔴 el veredicto cambia */
 export type NivelParametro = 'ok' | 'desviacion' | 'discrepancia' | 'na'
@@ -215,6 +224,8 @@ export const COLOR_RESULTADO: Record<ResultadoLote, { bg: string, text: string, 
     COINCIDE:     { bg: 'bg-emerald-100 dark:bg-emerald-900/40', text: 'text-emerald-700 dark:text-emerald-400', label: 'Coincide' },
     DESVIACION:   { bg: 'bg-amber-100 dark:bg-amber-900/40', text: 'text-amber-700 dark:text-amber-400', label: 'Desviación' },
     DISCREPANCIA: { bg: 'bg-red-100 dark:bg-red-900/40', text: 'text-red-700 dark:text-red-400', label: 'Discrepancia' },
+    // Morado y no rojo a propósito: es otro eje, no una discrepancia más grave.
+    SIN_REGISTRO: { bg: 'bg-purple-100 dark:bg-purple-900/40', text: 'text-purple-700 dark:text-purple-400', label: 'Sin registro' },
 }
 
 /** Colores planos para el PDF, donde no hay Tailwind ni tema oscuro. */
@@ -223,6 +234,7 @@ export const COLOR_RESULTADO_PDF: Record<ResultadoLote, { bg: string, fg: string
     COINCIDE:     { bg: '#d1fae5', fg: '#047857', label: 'Coincide' },
     DESVIACION:   { bg: '#fef3c7', fg: '#b45309', label: 'Desviación' },
     DISCREPANCIA: { bg: '#fee2e2', fg: '#b91c1c', label: 'Discrepancia' },
+    SIN_REGISTRO: { bg: '#f3e8ff', fg: '#7e22ce', label: 'Sin registro' },
 }
 
 export const ETIQUETA_VEREDICTO: Record<ConformityLevel, string> = {
@@ -233,11 +245,18 @@ export const ETIQUETA_VEREDICTO: Record<ConformityLevel, string> = {
 }
 
 /**
- * Porcentaje de lotes con discrepancia. Devuelve también `n` porque con pocos
- * lotes auditados el porcentaje engaña: 1 de 3 es 33% y no significa nada.
+ * Porcentaje de lotes con discrepancia — el eje de EXACTITUD.
+ *
+ * Excluye los `SIN_REGISTRO`: no tienen medición del operador, así que no pueden
+ * ser una discrepancia. Si entraran al denominador diluirían el indicador —
+ * justamente al revés de lo que interesa, porque una sucursal con muchos
+ * faltantes se vería *mejor* en exactitud.
+ *
+ * Devuelve también `n` porque con pocos lotes el porcentaje engaña: 1 de 3 es
+ * 33% y no significa nada.
  */
 export function tasaDiscrepancia(lotes: { resultado: ResultadoLote }[]): { pct: number, n: number, confiable: boolean } {
-    const evaluados = lotes.filter(l => l.resultado !== 'PENDIENTE')
+    const evaluados = lotes.filter(l => l.resultado !== 'PENDIENTE' && l.resultado !== 'SIN_REGISTRO')
     const n = evaluados.length
     const rojos = evaluados.filter(l => l.resultado === 'DISCREPANCIA').length
     return {
@@ -245,4 +264,106 @@ export function tasaDiscrepancia(lotes: { resultado: ResultadoLote }[]): { pct: 
         n,
         confiable: n >= 5,
     }
+}
+
+/**
+ * Porcentaje de lotes inspeccionados que sí tenían registro — el eje de
+ * CUMPLIMIENTO.
+ *
+ * Cuenta TODOS los lotes de la auditoría, incluidos los que quedaron sin medir:
+ * un lote que se seleccionó de la plataforma pero no se alcanzó a medir sí
+ * estaba registrado, que es lo único que este eje mide.
+ *
+ * Ojo con cómo se lee: el denominador es lo que el auditor revisó en campo, no
+ * la producción real de la sucursal. El sistema no puede saber cuánto se fabricó
+ * sin registrar; un 60% significa "de lo que revisé, el 60% estaba registrado".
+ */
+export function tasaCumplimiento(lotes: { origen?: OrigenLote | null }[]): {
+    pct: number
+    registrados: number
+    sinRegistro: number
+    n: number
+} {
+    // Las filas anteriores a la migración no traen `origen`: son registradas.
+    const sinRegistro = lotes.filter(l => l.origen === 'SIN_REGISTRO').length
+    const n = lotes.length
+    const registrados = n - sinRegistro
+    return {
+        pct: n > 0 ? (registrados / n) * 100 : 100,
+        registrados,
+        sinRegistro,
+        n,
+    }
+}
+
+/**
+ * Evalúa un lote sin registro contra los estándares del producto.
+ *
+ * No hay comparación posible —falta el lado del operador— pero sí importa si el
+ * producto además está fuera de especificación: sin registro Y no conforme es el
+ * caso peor, y debe distinguirse de un simple faltante.
+ */
+export function conformidadSinRegistro(codigo: string, calidad: Mediciones): {
+    nivel: 'conforme' | 'no-conforme' | 'sin-medir'
+    parametros: ComparacionParametro[]
+} {
+    const aplica = PARAMETER_APPLICABILITY[codigo] || { solidos: false, ph: false }
+    const esperaApariencia = Boolean(APPEARANCE_STANDARDS[codigo])
+    const a = analyzeRecord(paraAnalizar(codigo, calidad)).analysis
+
+    const parametros: ComparacionParametro[] = []
+    const agregar = (
+        nombre: string,
+        clave: ComparacionParametro['clave'],
+        valor: string,
+        veredicto: ConformityLevel | null
+    ) => {
+        parametros.push({
+            nombre, clave,
+            valorOperador: '—',
+            valorCalidad: valor,
+            delta: null,
+            veredictoOperador: null,
+            veredictoCalidad: veredicto,
+            nivel: veredicto === null || veredicto === 'na'
+                ? 'na'
+                : veredicto === 'conforme' ? 'ok'
+                : veredicto === 'semi-conforme' ? 'desviacion'
+                : 'discrepancia',
+        })
+    }
+
+    if (aplica.ph) {
+        const v = num(calidad.ph)
+        agregar('pH', 'ph', numeroTexto(v, 1), v === null ? null : a.phStatus)
+    }
+    if (aplica.solidos) {
+        const v = promedioSolidos(calidad.solidos_medicion_1, calidad.solidos_medicion_2)
+        agregar('Sólidos', 'solidos', numeroTexto(v), v === null ? null : a.solidsStatus)
+    }
+    if (esperaApariencia) {
+        const v = calidad.apariencia || null
+        agregar('Apariencia', 'apariencia', texto(v), v === null ? null : a.appearanceStatus)
+    }
+    for (const [clave, nombre] of [['color', 'Color'], ['aroma', 'Aroma']] as const) {
+        const v = (calidad[clave] || '').toString().toUpperCase() || null
+        parametros.push({
+            nombre, clave,
+            valorOperador: '—',
+            valorCalidad: texto(calidad[clave]),
+            delta: null,
+            veredictoOperador: null,
+            veredictoCalidad: null,
+            nivel: !v ? 'na' : (v === 'CONFORME' ? 'ok' : 'discrepancia'),
+        })
+    }
+
+    const medidos = parametros.filter(p => p.nivel !== 'na')
+    const nivel = medidos.length === 0
+        ? 'sin-medir'
+        : medidos.some(p => p.nivel === 'discrepancia' || p.nivel === 'desviacion')
+            ? 'no-conforme'
+            : 'conforme'
+
+    return { nivel, parametros }
 }

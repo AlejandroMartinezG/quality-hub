@@ -57,7 +57,7 @@ export default function AuditoriasPage() {
             // para los conteos y el bloque de confiabilidad, nada más.
             let query = supabase
                 .from('auditorias_presenciales')
-                .select('id, sucursal, fecha_auditoria, auditor_nombre, estado, created_at, cerrada_at, auditoria_lotes(id, resultado, nombre_preparador)')
+                .select('id, sucursal, fecha_auditoria, auditor_nombre, estado, created_at, cerrada_at, auditoria_lotes(id, resultado, nombre_preparador, origen)')
             if (isGerente && profile?.sucursal) query = query.eq('sucursal', profile.sucursal)
             const { data, error } = await query.order('fecha_auditoria', { ascending: false })
             if (error) throw error

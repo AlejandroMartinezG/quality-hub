@@ -11,14 +11,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select"
-import { Loader2, ShieldCheck, Save, Lock, FileDown, CheckCircle2, Eye, PenLine, ListPlus } from 'lucide-react'
+import { Loader2, ShieldCheck, Save, Lock, FileDown, CheckCircle2, Eye, PenLine, ListPlus, FileWarning, Trash2 } from 'lucide-react'
 import { formatFecha } from "@/lib/utils"
 import { TextoFormateado, AYUDA_FORMATO } from "@/lib/texto-formato"
 import { PARAMETER_APPLICABILITY, APPEARANCE_STANDARDS, PRODUCT_STANDARDS, PH_STANDARDS } from "@/lib/production-constants"
 import {
-    compararMediciones, COLOR_RESULTADO, ETIQUETA_VEREDICTO,
+    compararMediciones, conformidadSinRegistro, tasaCumplimiento,
+    COLOR_RESULTADO, ETIQUETA_VEREDICTO,
     type Comparacion, type NivelParametro,
 } from "@/lib/auditoria-utils"
+import DialogLoteSinRegistro from "./DialogLoteSinRegistro"
 import { PrintReportWrapper } from "@/components/PrintReportWrapper"
 import ReporteAuditoria from "./ReporteAuditoria"
 import GaleriaEvidencia from "./GaleriaEvidencia"
@@ -75,6 +77,7 @@ export default function HojaAuditoria({
     const [printView, setPrintView] = useState(false)
     const [preparandoPdf, setPreparandoPdf] = useState(false)
     const [vistaPrevia, setVistaPrevia] = useState(false)
+    const [dialogSinRegistro, setDialogSinRegistro] = useState(false)
     // Miniaturas embebidas como data: URI, indexadas por id de evidencia.
     const [fotosPdf, setFotosPdf] = useState<Record<string, string>>({})
 
@@ -90,6 +93,28 @@ export default function HojaAuditoria({
     const comparaciones = useMemo(() => {
         const mapa = new Map<string, Comparacion>()
         for (const l of lotes) {
+            // Un lote sin registro no se compara: no hay lado del operador. Se
+            // evalúa solo contra el estándar, para distinguir el caso peor
+            // —sin registro y además fuera de especificación— del simple faltante.
+            if (l.origen === 'SIN_REGISTRO') {
+                const { parametros } = conformidadSinRegistro(l.codigo_producto, {
+                    ph: l.ph_calidad,
+                    solidos_medicion_1: l.solidos_1_calidad,
+                    solidos_medicion_2: l.solidos_2_calidad,
+                    apariencia: l.apariencia_calidad,
+                    color: l.color_calidad,
+                    aroma: l.aroma_calidad,
+                })
+                mapa.set(l.id, {
+                    resultado: 'SIN_REGISTRO',
+                    parametros,
+                    parametrosAfectados: parametros
+                        .filter(p => p.nivel === 'discrepancia' || p.nivel === 'desviacion')
+                        .map(p => p.clave),
+                })
+                continue
+            }
+
             mapa.set(l.id, compararMediciones(
                 l.codigo_producto,
                 {
@@ -115,17 +140,37 @@ export default function HojaAuditoria({
 
     const resumen = useMemo(() => {
         const vals = Array.from(comparaciones.values())
+        const cumplimiento = tasaCumplimiento(lotes)
         return {
             total: vals.length,
             ok: vals.filter(c => c.resultado === 'COINCIDE').length,
             amarillo: vals.filter(c => c.resultado === 'DESVIACION').length,
             rojo: vals.filter(c => c.resultado === 'DISCREPANCIA').length,
             pendiente: vals.filter(c => c.resultado === 'PENDIENTE').length,
+            sinRegistro: cumplimiento.sinRegistro,
+            pctCumplimiento: cumplimiento.pct,
         }
-    }, [comparaciones])
+    }, [comparaciones, lotes])
 
     const actualizar = (id: string, campo: string, valor: any) => {
         setLotes(prev => prev.map(l => l.id === id ? { ...l, [campo]: valor } : l))
+    }
+
+    /**
+     * Los lotes sin registro se borran desde aquí y no desde Ajustar lotes: ese
+     * flujo trabaja sobre `measurement_id`, que en estos renglones es NULL.
+     */
+    const borrarSinRegistro = async (lote: any) => {
+        const nombre = lote.lote_producto || lote.codigo_producto
+        if (!confirm(`¿Quitar ${nombre} de la auditoría?\n\nSe pierden sus mediciones y sube el % de cumplimiento.`)) return
+        try {
+            const { error } = await supabase.from('auditoria_lotes').delete().eq('id', lote.id)
+            if (error) throw error
+            setLotes(prev => prev.filter(l => l.id !== lote.id))
+            toast.success("Lote quitado")
+        } catch (err: any) {
+            toast.error("No se pudo quitar", { description: err.message })
+        }
     }
 
     const guardar = async () => {
@@ -263,11 +308,20 @@ export default function HojaAuditoria({
                         <Badge className="bg-amber-500 text-white border-none rounded-full">En proceso</Badge>
                     )}
                     {editable && (
-                        <Link href={`/auditorias/${auditoria.id}/lotes`}>
-                            <Button variant="outline" className="rounded-full gap-2">
-                                <ListPlus className="h-4 w-4" /> Ajustar lotes
+                        <>
+                            <Link href={`/auditorias/${auditoria.id}/lotes`}>
+                                <Button variant="outline" className="rounded-full gap-2">
+                                    <ListPlus className="h-4 w-4" /> Ajustar lotes
+                                </Button>
+                            </Link>
+                            <Button
+                                variant="outline"
+                                className="rounded-full gap-2 border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400"
+                                onClick={() => setDialogSinRegistro(true)}
+                            >
+                                <FileWarning className="h-4 w-4" /> Lote sin registro
                             </Button>
-                        </Link>
+                        </>
                     )}
                     <Button variant="outline" className="rounded-full gap-2" onClick={abrirReporte} disabled={preparandoPdf}>
                         {preparandoPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
@@ -289,6 +343,18 @@ export default function HojaAuditoria({
                         <div className="text-[11px] font-semibold uppercase tracking-wide">{k.label}</div>
                     </div>
                 ))}
+
+                {/* Eje aparte: no mide si midió bien, sino si registró. */}
+                {resumen.sinRegistro > 0 && (
+                    <div className="px-5 py-3 rounded-2xl bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400">
+                        <div className="text-3xl font-black tabular-nums">{resumen.sinRegistro}</div>
+                        <div className="text-[11px] font-semibold uppercase tracking-wide">Sin registro</div>
+                    </div>
+                )}
+                <div className={`px-5 py-3 rounded-2xl ${resumen.pctCumplimiento < 100 ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>
+                    <div className="text-3xl font-black tabular-nums">{resumen.pctCumplimiento.toFixed(0)}%</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wide">Cumplimiento</div>
+                </div>
             </div>
 
             {/* Lotes */}
@@ -300,9 +366,13 @@ export default function HojaAuditoria({
                     const stdPh = PH_STANDARDS[lote.codigo_producto]
                     const esperaApariencia = Boolean(APPEARANCE_STANDARDS[lote.codigo_producto])
                     const color = COLOR_RESULTADO[c.resultado]
+                    const sinRegistro = lote.origen === 'SIN_REGISTRO'
 
                     return (
-                        <Card key={lote.id} className="border-none shadow-sm dark:bg-slate-900 rounded-[2rem] overflow-hidden">
+                        <Card
+                            key={lote.id}
+                            className={`border-none shadow-sm dark:bg-slate-900 rounded-[2rem] overflow-hidden ${sinRegistro ? 'ring-2 ring-purple-300 dark:ring-purple-800' : ''}`}
+                        >
                             <CardHeader className="pb-3">
                                 <div className="flex flex-wrap items-center gap-3">
                                     <div>
@@ -310,9 +380,19 @@ export default function HojaAuditoria({
                                             {lote.lote_producto || lote.codigo_producto}
                                         </CardTitle>
                                         <CardDescription>
-                                            {lote.codigo_producto} · {lote.nombre_preparador || '—'} · {formatFecha(lote.fecha_fabricacion)}
+                                            {lote.codigo_producto} · {lote.nombre_preparador || (sinRegistro ? 'preparador no identificado' : '—')} · {lote.fecha_fabricacion ? formatFecha(lote.fecha_fabricacion) : 'sin fecha'}
                                         </CardDescription>
                                     </div>
+                                    {sinRegistro && editable && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="rounded-full text-xs text-red-600 hover:text-red-700"
+                                            onClick={() => borrarSinRegistro(lote)}
+                                        >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                    )}
                                     {(() => {
                                         const rango = rangoFotos(porLote.get(lote.id) || [])
                                         return rango ? (
@@ -327,6 +407,14 @@ export default function HojaAuditoria({
                                 </div>
                             </CardHeader>
                             <CardContent className="space-y-4">
+                                {sinRegistro && (
+                                    <div className="px-4 py-2.5 rounded-2xl bg-purple-50 dark:bg-purple-950/30 text-xs text-purple-800 dark:text-purple-300">
+                                        Este lote <strong>no tenía registro en la plataforma</strong>. La columna
+                                        de Operador va vacía porque no hay captura contra qué comparar: tus
+                                        mediciones se evalúan directamente contra el estándar del producto.
+                                    </div>
+                                )}
+
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-sm min-w-[36rem]">
                                         <thead>
@@ -362,7 +450,7 @@ export default function HojaAuditoria({
                                                         })()}
                                                     </td>
                                                     <td className="px-2 py-2.5">
-                                                        <Veredicto p={c.parametros.find(p => p.clave === 'ph')} />
+                                                        <Veredicto p={c.parametros.find(p => p.clave === 'ph')} sinRegistro={sinRegistro} />
                                                     </td>
                                                 </tr>
                                             )}
@@ -401,7 +489,7 @@ export default function HojaAuditoria({
                                                         })()}
                                                     </td>
                                                     <td className="px-2 py-2.5">
-                                                        <Veredicto p={c.parametros.find(p => p.clave === 'solidos')} />
+                                                        <Veredicto p={c.parametros.find(p => p.clave === 'solidos')} sinRegistro={sinRegistro} />
                                                     </td>
                                                 </tr>
                                             )}
@@ -433,7 +521,7 @@ export default function HojaAuditoria({
                                                     </td>
                                                     <td className="px-2 py-2.5 text-right text-slate-300">—</td>
                                                     <td className="px-2 py-2.5">
-                                                        <Veredicto p={c.parametros.find(p => p.clave === 'apariencia')} />
+                                                        <Veredicto p={c.parametros.find(p => p.clave === 'apariencia')} sinRegistro={sinRegistro} />
                                                     </td>
                                                 </tr>
                                             )}
@@ -459,7 +547,7 @@ export default function HojaAuditoria({
                                                     </td>
                                                     <td className="px-2 py-2.5 text-right text-slate-300">—</td>
                                                     <td className="px-2 py-2.5">
-                                                        <Veredicto p={c.parametros.find(p => p.clave === clave)} />
+                                                        <Veredicto p={c.parametros.find(p => p.clave === clave)} sinRegistro={sinRegistro} />
                                                     </td>
                                                 </tr>
                                             ))}
@@ -581,6 +669,13 @@ export default function HojaAuditoria({
                 </div>
             )}
 
+            <DialogLoteSinRegistro
+                auditoriaId={auditoria.id}
+                abierto={dialogSinRegistro}
+                onCerrar={() => setDialogSinRegistro(false)}
+                onGuardado={onRecargar}
+            />
+
             {printView && (
                 <PrintReportWrapper
                     title={`Auditoría presencial — ${auditoria.sucursal}`}
@@ -605,9 +700,27 @@ export default function HojaAuditoria({
 }
 
 /** Veredicto de un parámetro: punto de color + "operador → calidad". */
-function Veredicto({ p }: { p?: { nivel: NivelParametro, veredictoOperador: any, veredictoCalidad: any } }) {
+function Veredicto({ p, sinRegistro }: {
+    p?: { nivel: NivelParametro, veredictoOperador: any, veredictoCalidad: any }
+    sinRegistro?: boolean
+}) {
     if (!p) return <span className="text-slate-300">—</span>
     if (p.nivel === 'na') return <span className="text-xs text-slate-300 dark:text-slate-600">sin medir</span>
+
+    // Sin registro no hay comparación: el veredicto es contra el estándar, así
+    // que "coincide/difiere" no aplica — sería comparar contra nada.
+    if (sinRegistro) {
+        return (
+            <div className="flex items-center gap-2">
+                <span className={`h-2 w-2 rounded-full shrink-0 ${PUNTO_NIVEL[p.nivel]}`} />
+                <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    {p.veredictoCalidad
+                        ? ETIQUETA_VEREDICTO[p.veredictoCalidad as keyof typeof ETIQUETA_VEREDICTO]
+                        : (p.nivel === 'ok' ? 'conforme' : 'no conforme')}
+                </span>
+            </div>
+        )
+    }
 
     const mismo = p.veredictoOperador === p.veredictoCalidad
     return (

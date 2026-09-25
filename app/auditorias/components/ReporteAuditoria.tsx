@@ -4,7 +4,7 @@ import { formatFecha } from "@/lib/utils"
 import { TextoFormateado } from "@/lib/texto-formato"
 import { APPEARANCE_STANDARDS, PRODUCT_STANDARDS, PH_STANDARDS } from "@/lib/production-constants"
 import {
-    COLOR_RESULTADO_PDF, ETIQUETA_VEREDICTO, TOLERANCIAS,
+    COLOR_RESULTADO_PDF, ETIQUETA_VEREDICTO, TOLERANCIAS, tasaCumplimiento,
     type Comparacion, type NivelParametro,
 } from "@/lib/auditoria-utils"
 import type { Evidencia } from "./GaleriaEvidencia"
@@ -112,7 +112,13 @@ export default function ReporteAuditoria({
     auditoria, lotes, comparaciones,
     evidenciasPorLote, evidenciasGenerales = [], fotosPdf = {},
 }: Props) {
-    const vals = lotes.map(l => comparaciones.get(l.id)).filter(Boolean) as Comparacion[]
+    // Los lotes sin registro se separan: no tienen lado del operador, así que no
+    // entran en la tabla de comparaciones ni en el porcentaje de discrepancia.
+    const sinRegistro = lotes.filter(l => l.origen === 'SIN_REGISTRO')
+    const registrados = lotes.filter(l => l.origen !== 'SIN_REGISTRO')
+    const cumplimiento = tasaCumplimiento(lotes)
+
+    const vals = registrados.map(l => comparaciones.get(l.id)).filter(Boolean) as Comparacion[]
     const resumen = {
         total: vals.length,
         ok: vals.filter(c => c.resultado === 'COINCIDE').length,
@@ -127,7 +133,7 @@ export default function ReporteAuditoria({
         new Set(lotes.map(l => l.nombre_preparador).filter(Boolean))
     )
 
-    const conDiscrepancia = lotes.filter(l => comparaciones.get(l.id)?.resultado === 'DISCREPANCIA')
+    const conDiscrepancia = registrados.filter(l => comparaciones.get(l.id)?.resultado === 'DISCREPANCIA')
 
     return (
         <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1e293b' }}>
@@ -161,6 +167,12 @@ export default function ReporteAuditoria({
                         { label: 'Desviación', valor: resumen.amarillo, bg: '#fef3c7', fg: '#b45309' },
                         { label: 'Discrepancia', valor: resumen.rojo, bg: '#fee2e2', fg: '#b91c1c' },
                         { label: '% discrepancia', valor: `${pctRojo.toFixed(0)}%`, bg: '#f8fafc', fg: '#334155' },
+                        {
+                            label: '% cumplimiento registro',
+                            valor: `${cumplimiento.pct.toFixed(0)}%`,
+                            bg: cumplimiento.pct < 100 ? '#f3e8ff' : '#f8fafc',
+                            fg: cumplimiento.pct < 100 ? '#7e22ce' : '#334155',
+                        },
                     ].map(k => (
                         <div key={k.label} style={{
                             flex: '1 1 0', minWidth: '90px', padding: '8px 10px',
@@ -182,15 +194,82 @@ export default function ReporteAuditoria({
                     Criterio: <strong>Discrepancia</strong> = la medición de Calidad cambia el veredicto de conformidad.
                     {' '}<strong>Desviación</strong> = mismo veredicto, pero la diferencia supera la tolerancia
                     (pH ±{TOLERANCIAS.ph} · sólidos ±{TOLERANCIAS.solidos} pp).
+                    {' '}<strong>Cumplimiento de registro</strong> = proporción de los lotes inspeccionados en campo
+                    que sí tenían captura en la plataforma.
                 </p>
             </div>
+
+            {/* --- Lotes sin registro --- */}
+            {/* Va ANTES del detalle de lotes verificados: es el hallazgo que se
+                pierde si queda al final o dentro de las observaciones. */}
+            {sinRegistro.length > 0 && (
+                <div className="print-no-break" style={{
+                    marginBottom: '16px', padding: '10px 12px',
+                    backgroundColor: '#faf5ff', border: '1.5px solid #d8b4fe', borderRadius: '8px',
+                }}>
+                    <h3 style={{ fontSize: '11pt', fontWeight: 800, margin: '0 0 4px', color: '#7e22ce' }}>
+                        Lotes sin registro en la plataforma
+                    </h3>
+                    <p style={{ fontSize: '8.5pt', color: '#6b21a8', margin: '0 0 8px' }}>
+                        Producto encontrado físicamente en sucursal del que <strong>no existe captura
+                        en la Bitácora de Producción y Calidad</strong>. Sin registro no hay trazabilidad
+                        del lote ni forma de contrastar las mediciones del operador.
+                    </p>
+
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr>
+                                <th style={{ ...th, borderBottom: '1px solid #d8b4fe', color: '#6b21a8' }}>Producto</th>
+                                <th style={{ ...th, borderBottom: '1px solid #d8b4fe', color: '#6b21a8' }}>Lote</th>
+                                <th style={{ ...th, borderBottom: '1px solid #d8b4fe', color: '#6b21a8' }}>Fabricado</th>
+                                <th style={{ ...th, borderBottom: '1px solid #d8b4fe', color: '#6b21a8' }}>Preparador</th>
+                                <th style={{ ...th, borderBottom: '1px solid #d8b4fe', color: '#6b21a8' }}>Medición de Calidad</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {sinRegistro.map(l => {
+                                const c = comparaciones.get(l.id)
+                                const fuera = c?.parametros.filter(p => p.nivel === 'discrepancia' || p.nivel === 'desviacion') || []
+                                const medidos = c?.parametros.filter(p => p.nivel !== 'na') || []
+                                return (
+                                    <tr key={l.id}>
+                                        <td style={{ ...td, borderBottom: '1px solid #f3e8ff', fontWeight: 700 }}>
+                                            {l.codigo_producto}
+                                        </td>
+                                        <td style={{ ...td, borderBottom: '1px solid #f3e8ff', fontFamily: 'monospace', fontSize: '8pt' }}>
+                                            {l.lote_producto || '—'}
+                                        </td>
+                                        <td style={{ ...td, borderBottom: '1px solid #f3e8ff', fontSize: '8pt' }}>
+                                            {l.fecha_fabricacion ? formatFecha(l.fecha_fabricacion) : '—'}
+                                        </td>
+                                        <td style={{ ...td, borderBottom: '1px solid #f3e8ff', fontSize: '8pt' }}>
+                                            {l.nombre_preparador || <span style={{ color: '#a78bfa' }}>no identificado</span>}
+                                        </td>
+                                        <td style={{ ...td, borderBottom: '1px solid #f3e8ff', fontSize: '8pt' }}>
+                                            {medidos.length === 0 ? (
+                                                <span style={{ color: '#a78bfa' }}>sin medir</span>
+                                            ) : fuera.length > 0 ? (
+                                                <strong style={{ color: '#b91c1c' }}>
+                                                    fuera de especificación — {fuera.map(p => `${p.nombre} ${p.valorCalidad}`).join(' · ')}
+                                                </strong>
+                                            ) : (
+                                                <span style={{ color: '#047857' }}>dentro de especificación</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                )
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            )}
 
             {/* --- Detalle por lote --- */}
             <h3 style={{ fontSize: '11pt', fontWeight: 800, margin: '0 0 8px', color: '#0e0c9b' }}>
                 Lotes verificados
             </h3>
 
-            {lotes.map(lote => {
+            {registrados.map(lote => {
                 const c = comparaciones.get(lote.id)
                 if (!c) return null
                 const color = COLOR_RESULTADO_PDF[c.resultado]

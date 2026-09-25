@@ -24,6 +24,9 @@ export function filasDesdeLotes(auditoriaId: string, lotes: any[]) {
         color_operador: l.color,
         aroma_operador: l.aroma,
         resultado: 'PENDIENTE',
+        // Explícito aunque la base lo pone por omisión: estos lotes vienen de la
+        // plataforma, a diferencia de los que Calidad captura como faltantes.
+        origen: 'REGISTRADO',
     }))
 }
 
