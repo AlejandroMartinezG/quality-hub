@@ -54,11 +54,16 @@ const COLOR_NIVEL: Record<NivelParametro, string> = {
  * convertir unidades físicas es otra fuente de resultados raros al rasterizar.
  */
 function RejillaFotos({ fotos, fotosPdf, ancho = 174 }: {
-    fotos: Evidencia[]
+    fotos: (Evidencia & { contexto?: string })[]
     fotosPdf: Record<string, string>
     /** Ancho de cada miniatura en píxeles. */
     ancho?: number
 }) {
+    // Tope de altura para que una foto vertical de celular no se coma media
+    // página. Con maxWidth + maxHeight y ambas dimensiones en auto, el navegador
+    // la encoge conservando la proporción, sin necesidad de recortar.
+    const altoMax = Math.round(ancho * 1.15)
+
     return (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'flex-start' }}>
             {fotos.map(ev => {
@@ -71,7 +76,9 @@ function RejillaFotos({ fotos, fotosPdf, ancho = 174 }: {
                                 src={src}
                                 alt={ev.descripcion || `Foto ${ev.numero}`}
                                 style={{
-                                    width: `${ancho}px`, height: 'auto', display: 'block',
+                                    maxWidth: '100%', maxHeight: `${altoMax}px`,
+                                    width: 'auto', height: 'auto',
+                                    display: 'block', margin: '0 auto',
                                     borderRadius: '6px', border: '1px solid #e2e8f0',
                                 }}
                             />
@@ -88,6 +95,10 @@ function RejillaFotos({ fotos, fotosPdf, ancho = 174 }: {
                         )}
                         <div style={{ fontSize: '7.5pt', color: '#334155', marginTop: '2px' }}>
                             <strong>Foto {ev.numero}</strong>
+                            {/* El contexto reemplaza al encabezado por lote: así todas
+                                las fotos caben en una sola rejilla y siguen diciendo
+                                a cuál pertenecen. */}
+                            {ev.contexto && <span style={{ fontWeight: 700, color: '#6b21a8' }}> · {ev.contexto}</span>}
                             {ev.descripcion && <span style={{ color: '#64748b' }}> · {ev.descripcion}</span>}
                         </div>
                     </div>
@@ -264,30 +275,29 @@ export default function ReporteAuditoria({
 
                     {/* La evidencia de estos lotes es lo que prueba que el producto
                         existía. Va debajo de la tabla y no dentro de una celda, que
-                        desalinearía los renglones. */}
-                    {sinRegistro.some(l => (evidenciasPorLote?.get(l.id) || []).length > 0) && (
-                        <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid #d8b4fe' }}>
-                            <div style={{
-                                fontSize: '8pt', fontWeight: 700, color: '#6b21a8', marginBottom: '6px',
-                            }}>
-                                Evidencia fotográfica
+                        desalinearía los renglones.
+                        Todas en UNA rejilla, no un bloque por lote: con un encabezado
+                        por producto cada foto ocupaba su propio renglón y el anexo se
+                        comía páginas enteras. El código va en el pie de cada foto. */}
+                    {(() => {
+                        const fotosFaltantes = sinRegistro.flatMap(l =>
+                            (evidenciasPorLote?.get(l.id) || []).map(ev => ({
+                                ...ev,
+                                contexto: l.codigo_producto,
+                            }))
+                        )
+                        if (fotosFaltantes.length === 0) return null
+                        return (
+                            <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid #d8b4fe' }}>
+                                <div style={{
+                                    fontSize: '8pt', fontWeight: 700, color: '#6b21a8', marginBottom: '6px',
+                                }}>
+                                    Evidencia fotográfica
+                                </div>
+                                <RejillaFotos fotos={fotosFaltantes} fotosPdf={fotosPdf} ancho={130} />
                             </div>
-                            {sinRegistro.map(l => {
-                                const fotos = evidenciasPorLote?.get(l.id) || []
-                                if (fotos.length === 0) return null
-                                return (
-                                    <div key={l.id} style={{ marginBottom: '8px' }}>
-                                        <div style={{
-                                            fontSize: '8pt', fontWeight: 700, color: '#334155', marginBottom: '3px',
-                                        }}>
-                                            {l.codigo_producto}
-                                        </div>
-                                        <RejillaFotos fotos={fotos} fotosPdf={fotosPdf} ancho={144} />
-                                    </div>
-                                )
-                            })}
-                        </div>
-                    )}
+                        )
+                    })()}
                 </div>
             )}
 
