@@ -53,8 +53,12 @@ plantilla_formulas.xlsx
 gerentes_sucursal_correos.xlsx
 insert_gerentes.sql
 
+# Cargas manuales de producción: traen datos de operación y nombres de
+# preparadores. Los generadores sí se versionan; sus insumos y salidas no.
 plantilla_produccion_manual.xlsx
 insert_produccion_manual.sql
+REPORTE DE PRODUCCION *.xlsx
+insert_reporte_produccion.sql
 
 # Archivos temporales de Excel
 ~$*
