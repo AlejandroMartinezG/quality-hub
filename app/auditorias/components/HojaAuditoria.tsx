@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select"
-import { Loader2, ShieldCheck, Save, Lock, FileDown, CheckCircle2, Eye, PenLine, ListPlus, FileWarning, Trash2 } from 'lucide-react'
+import { Loader2, ShieldCheck, Save, Lock, FileDown, CheckCircle2, Eye, PenLine, ListPlus, FileWarning, X } from 'lucide-react'
 import { formatFecha } from "@/lib/utils"
 import { TextoFormateado, AYUDA_FORMATO } from "@/lib/texto-formato"
 import { PARAMETER_APPLICABILITY, APPEARANCE_STANDARDS, PRODUCT_STANDARDS, PH_STANDARDS } from "@/lib/production-constants"
@@ -23,7 +23,7 @@ import {
 import DialogLoteSinRegistro from "./DialogLoteSinRegistro"
 import { PrintReportWrapper } from "@/components/PrintReportWrapper"
 import ReporteAuditoria from "./ReporteAuditoria"
-import GaleriaEvidencia from "./GaleriaEvidencia"
+import GaleriaEvidencia, { BUCKET } from "./GaleriaEvidencia"
 import { useEvidencias, rangoFotos } from "./use-evidencias"
 import { urlADataUri } from "@/lib/imagen-utils"
 
@@ -184,17 +184,52 @@ export default function HojaAuditoria({
     }
 
     /**
-     * Los lotes sin registro se borran desde aquí y no desde Ajustar lotes: ese
-     * flujo trabaja sobre `measurement_id`, que en estos renglones es NULL.
+     * Quita un lote de la auditoría desde la hoja misma.
+     *
+     * Existe aquí y no solo en Ajustar lotes porque aquel depende de la ventana
+     * de últimos N lotes de la sucursal: un lote agregado hace tiempo se sale de
+     * esa ventana conforme la sucursal registra producción nueva, y entonces ya
+     * no hay forma de desmarcarlo. Desde la hoja siempre se puede, porque lo que
+     * se ve es la auditoría y no el historial.
+     *
+     * Los lotes SIN_REGISTRO tampoco aparecen nunca allá: su `measurement_id`
+     * es NULL y el diff de aquel flujo trabaja sobre esa columna.
      */
-    const borrarSinRegistro = async (lote: any) => {
+    const quitarLote = async (lote: any) => {
         const nombre = lote.lote_producto || lote.codigo_producto
-        if (!confirm(`¿Quitar ${nombre} de la auditoría?\n\nSe pierden sus mediciones y sube el % de cumplimiento.`)) return
+        const fotos = porLote.get(lote.id) || []
+        const c = comparaciones.get(lote.id)
+        const medido = c && c.resultado !== 'PENDIENTE'
+
+        const pierde = []
+        if (medido) pierde.push('sus mediciones de Calidad')
+        if (fotos.length) pierde.push(`${fotos.length} foto${fotos.length === 1 ? '' : 's'} de evidencia`)
+
+        const aviso = pierde.length
+            ? `Se borran ${pierde.join(' y ')}. No se puede recuperar.`
+            : 'Todavía no tiene mediciones capturadas.'
+
+        if (!confirm(`¿Quitar ${nombre} de la auditoría?\n\n${aviso}`)) return
+
         try {
+            // Primero los archivos: el CASCADE se lleva el registro de la foto y
+            // nos dejaría sin saber qué objetos borrar del bucket.
+            if (fotos.length) {
+                const rutas = fotos.flatMap(f => [f.ruta, f.ruta_miniatura])
+                const { error: errStorage } = await supabase.storage.from(BUCKET).remove(rutas)
+                if (errStorage) {
+                    toast.warning("Algunas fotos no se pudieron borrar del almacenamiento", {
+                        description: errStorage.message,
+                    })
+                }
+            }
+
             const { error } = await supabase.from('auditoria_lotes').delete().eq('id', lote.id)
             if (error) throw error
+
             setLotes(prev => prev.filter(l => l.id !== lote.id))
-            toast.success("Lote quitado")
+            recargarFotos()
+            toast.success(`${nombre} quitado de la auditoría`)
         } catch (err: any) {
             toast.error("No se pudo quitar", { description: err.message })
         }
@@ -412,16 +447,6 @@ export default function HojaAuditoria({
                                                 : formatFecha(lote.fecha_fabricacion)}
                                         </CardDescription>
                                     </div>
-                                    {sinRegistro && editable && (
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="rounded-full text-xs text-red-600 hover:text-red-700"
-                                            onClick={() => borrarSinRegistro(lote)}
-                                        >
-                                            <Trash2 className="h-3.5 w-3.5" />
-                                        </Button>
-                                    )}
                                     {(() => {
                                         const rango = rangoFotos(porLote.get(lote.id) || [])
                                         return rango ? (
@@ -433,6 +458,20 @@ export default function HojaAuditoria({
                                     <div className={`${rangoFotos(porLote.get(lote.id) || []) ? '' : 'ml-auto'} px-4 py-1.5 rounded-full text-xs font-bold ${color.bg} ${color.text}`}>
                                         {color.label}
                                     </div>
+                                    {/* Quitar desde aquí y no solo desde Ajustar lotes: aquel
+                                        depende de la ventana de últimos lotes de la sucursal, y
+                                        un lote viejo termina quedando fuera de alcance. */}
+                                    {editable && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="rounded-full h-8 w-8 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
+                                            onClick={() => quitarLote(lote)}
+                                            title="Quitar este lote de la auditoría"
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    )}
                                 </div>
                             </CardHeader>
                             <CardContent className="space-y-4">

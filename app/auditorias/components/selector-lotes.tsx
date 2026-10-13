@@ -183,7 +183,8 @@ export function TablaLotes({
                     <div className="mb-4 px-4 py-3 rounded-2xl bg-blue-50 dark:bg-blue-950/30 text-xs text-blue-800 dark:text-blue-300">
                         <strong>{fueraDeVentana} lote{fueraDeVentana === 1 ? '' : 's'} de esta auditoría</strong> {fueraDeVentana === 1 ? 'es más antiguo' : 'son más antiguos'} que
                         la ventana cargada y no {fueraDeVentana === 1 ? 'aparece' : 'aparecen'} en esta lista.
-                        {' '}Siguen incluidos en la auditoría. Carga más lotes si necesitas quitarlos.
+                        {' '}Siguen incluidos en la auditoría. Para quitar alguno, usa la <strong>✕</strong> que
+                        tiene cada lote en la hoja de auditoría — ahí no depende de esta ventana.
                     </div>
                 )}
 
