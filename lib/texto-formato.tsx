@@ -147,6 +147,16 @@ function empiezaConEmoji(linea: string): boolean {
     )
 }
 
+/**
+ * Cada bloque sale marcado con `print-no-break`.
+ *
+ * html2pdf arma un solo lienzo y lo rebana por altura: solo evita partir
+ * elementos que su lista de `avoid` reconoce. Un bloque de texto largo sin
+ * marcas internas no le ofrece ningún límite, así que el corte caía a media
+ * línea —la mitad de arriba en una página y la de abajo en la siguiente—.
+ * Marcando párrafo por párrafo, empuja el párrafo entero a la hoja siguiente,
+ * que es lo que ya hacía bien con los recuadros de cada lote.
+ */
 export function TextoFormateado({ texto, paraPdf = false }: {
     texto?: string | null
     /** En el PDF se evitan los recursos que html2canvas no rasteriza bien. */
@@ -161,10 +171,12 @@ export function TextoFormateado({ texto, paraPdf = false }: {
                     return (
                         <div
                             key={b}
+                            className="print-no-break"
                             style={{
                                 fontSize: TAMANO_TITULO[bloque.nivel] || '1em',
                                 fontWeight: 800,
                                 margin: b === 0 ? '0 0 6px' : '12px 0 6px',
+                                pageBreakAfter: 'avoid',
                             }}
                         >
                             {conEnfasis(bloque.lineas[0], `${b}-0`, paraPdf)}
@@ -174,7 +186,7 @@ export function TextoFormateado({ texto, paraPdf = false }: {
 
                 if (bloque.tipo === 'parrafo') {
                     return (
-                        <p key={b} style={{ margin: '0 0 6px' }}>
+                        <p key={b} className="print-no-break" style={{ margin: '0 0 6px' }}>
                             {bloque.lineas.map((l, i) => (
                                 <React.Fragment key={i}>
                                     {i > 0 && <br />}
@@ -196,7 +208,7 @@ export function TextoFormateado({ texto, paraPdf = false }: {
                                 ? `${i + 1}.`
                                 : empiezaConEmoji(l.trim()) ? null : '•'
                             return (
-                                <div key={i} style={{ display: 'flex', gap: '6px', marginBottom: '4px' }}>
+                                <div key={i} className="print-no-break" style={{ display: 'flex', gap: '6px', marginBottom: '4px' }}>
                                     {marcador && (
                                         <span style={{ flexShrink: 0, minWidth: bloque.tipo === 'numerada' ? '1.2em' : undefined }}>
                                             {marcador}
