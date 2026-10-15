@@ -9,6 +9,12 @@ import { getBasePath } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Printer, FileDown, X, Loader2 } from "lucide-react"
 
+/** Ancho de hoja carta en centímetros, la unidad con la que se arma el PDF. */
+const ANCHO_CARTA_CM = 21.59
+
+/** Margen de página: arriba, derecha, abajo, izquierda. */
+const MARGEN_CM: [number, number, number, number] = [1.5, 2, 1.5, 2]
+
 interface PrintReportWrapperProps {
     title: string
     dateFrom: string
@@ -61,6 +67,16 @@ export function PrintReportWrapper({
         clone.style.boxShadow = 'none'
         clone.style.margin = '0'
 
+        // En pantalla el contenedor simula una hoja: ancho de carta y padding
+        // propio. Para el PDF eso estorba — ese padding existe UNA sola vez, al
+        // inicio y al final de todo el elemento, así que de la segunda página en
+        // adelante el contenido quedaba pegado al borde y el corte caía donde
+        // fuera. El margen de página lo pone html2pdf (MARGEN_CM), que lo reserva
+        // en cada hoja; aquí solo se deja el ancho útil, sin relleno vertical.
+        clone.style.padding = '0'
+        clone.style.width = `${ANCHO_CARTA_CM - MARGEN_CM[1] - MARGEN_CM[3]}cm`
+        clone.style.minHeight = 'auto'
+
         const footer = clone.querySelector('.print-footer') as HTMLElement | null
         if (footer) {
             footer.style.position = 'static'
@@ -94,7 +110,10 @@ export function PrintReportWrapper({
             const html2pdf = (await import('html2pdf.js')).default
             await html2pdf()
                 .set({
-                    margin: 0,
+                    // Margen por PÁGINA, no del elemento: html2pdf lo reserva en
+                    // todas las hojas al rebanar el lienzo, que es justo lo que el
+                    // padding del contenedor no podía hacer.
+                    margin: MARGEN_CM,
                     filename,
                     image: { type: 'jpeg', quality: 0.98 },
                     html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
