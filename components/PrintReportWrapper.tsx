@@ -99,7 +99,12 @@ export function PrintReportWrapper({
                     image: { type: 'jpeg', quality: 0.98 },
                     html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
                     jsPDF: { unit: 'cm', format: 'letter', orientation: 'portrait' },
-                    pagebreak: { mode: ['css', 'avoid-all'], avoid: ['.print-no-break', '.print-chart-container', 'tr'] }
+                    // Sin 'avoid-all': ese modo intenta no partir NINGÚN elemento, y
+                    // cuando uno es más alto que la página no puede cumplirlo — en vez
+                    // de partirlo lo desborda, y el contenido sale cortado o repetido
+                    // en el límite. Con la lista explícita se protege lo que sí cabe
+                    // entero y el resto fluye entre páginas.
+                    pagebreak: { mode: ['css'], avoid: ['.print-no-break', '.print-chart-container', 'tr'] }
                 })
                 .from(clone)
                 .save()

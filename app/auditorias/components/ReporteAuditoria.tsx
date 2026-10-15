@@ -69,7 +69,9 @@ function RejillaFotos({ fotos, fotosPdf, ancho = 174 }: {
             {fotos.map(ev => {
                 const src = fotosPdf[ev.id]
                 return (
-                    <div key={ev.id} style={{ width: `${ancho}px` }}>
+                    // print-no-break por foto: la imagen y su pie viajan juntos,
+                    // aunque la rejilla completa sí pueda partirse entre páginas.
+                    <div key={ev.id} className="print-no-break" style={{ width: `${ancho}px` }}>
                         {src ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -213,12 +215,17 @@ export default function ReporteAuditoria({
             {/* --- Lotes sin registro --- */}
             {/* Va ANTES del detalle de lotes verificados: es el hallazgo que se
                 pierde si queda al final o dentro de las observaciones. */}
+            {/* Sin print-no-break: con varios faltantes y sus fotos pasa de una
+                página. Las filas de la tabla y cada foto sí se mantienen enteras. */}
             {sinRegistro.length > 0 && (
-                <div className="print-no-break" style={{
+                <div style={{
                     marginBottom: '16px', padding: '10px 12px',
                     backgroundColor: '#faf5ff', border: '1.5px solid #d8b4fe', borderRadius: '8px',
                 }}>
-                    <h3 style={{ fontSize: '11pt', fontWeight: 800, margin: '0 0 4px', color: '#7e22ce' }}>
+                    <h3 style={{
+                        fontSize: '11pt', fontWeight: 800, margin: '0 0 4px', color: '#7e22ce',
+                        pageBreakAfter: 'avoid',
+                    }}>
                         Lotes sin registro en la plataforma
                     </h3>
                     <p style={{ fontSize: '8.5pt', color: '#6b21a8', margin: '0 0 8px' }}>
@@ -421,12 +428,17 @@ export default function ReporteAuditoria({
             })}
 
             {/* --- Hallazgos --- */}
+            {/* Con muchas discrepancias esta lista pasa de una página, así que no
+                lleva print-no-break; cada renglón sí se mantiene entero. */}
             {conDiscrepancia.length > 0 && (
-                <div className="print-no-break" style={{
+                <div style={{
                     marginTop: '16px', padding: '10px 12px',
                     backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px',
                 }}>
-                    <h3 style={{ fontSize: '10pt', fontWeight: 800, margin: '0 0 6px', color: '#b91c1c' }}>
+                    <h3 style={{
+                        fontSize: '10pt', fontWeight: 800, margin: '0 0 6px', color: '#b91c1c',
+                        pageBreakAfter: 'avoid',
+                    }}>
                         Hallazgos que requieren atención
                     </h3>
                     <ul style={{ margin: 0, paddingLeft: '16px', fontSize: '8.5pt', color: '#7f1d1d' }}>
@@ -434,7 +446,7 @@ export default function ReporteAuditoria({
                             const c = comparaciones.get(l.id)!
                             const params = c.parametros.filter(p => p.nivel === 'discrepancia')
                             return (
-                                <li key={l.id} style={{ marginBottom: '3px' }}>
+                                <li key={l.id} className="print-no-break" style={{ marginBottom: '3px' }}>
                                     <strong style={{ fontFamily: 'monospace' }}>{l.lote_producto || l.codigo_producto}</strong>
                                     {' — '}
                                     {params.map(p => `${p.nombre}: ${p.valorOperador} → ${p.valorCalidad}`).join(' · ')}
@@ -447,8 +459,15 @@ export default function ReporteAuditoria({
             )}
 
             {/* --- Observaciones --- */}
-            <div className="print-no-break" style={{ marginTop: '16px' }}>
-                <h3 style={{ fontSize: '10pt', fontWeight: 800, margin: '0 0 6px', color: '#0e0c9b' }}>
+            {/* SIN print-no-break: el texto del auditor puede ocupar más de una
+                página entera. Forzar que no se parta hace que html2pdf lo desborde
+                y salga cortado en el límite. El título sí se mantiene pegado a lo
+                que sigue, para que no quede huérfano al pie de una hoja. */}
+            <div style={{ marginTop: '16px' }}>
+                <h3 style={{
+                    fontSize: '10pt', fontWeight: 800, margin: '0 0 6px', color: '#0e0c9b',
+                    pageBreakAfter: 'avoid',
+                }}>
                     Observaciones de la visita
                 </h3>
                 <div style={{
@@ -467,8 +486,11 @@ export default function ReporteAuditoria({
             {/* Las fotos de cada lote van dentro de su propio bloque; aquí solo
                 quedan las de la visita, que no pertenecen a ningún lote. */}
             {evidenciasGenerales.length > 0 && (
-                <div className="print-no-break" style={{ marginTop: '16px' }}>
-                    <h3 style={{ fontSize: '10pt', fontWeight: 800, margin: '0 0 6px', color: '#0e0c9b' }}>
+                <div style={{ marginTop: '16px' }}>
+                    <h3 style={{
+                        fontSize: '10pt', fontWeight: 800, margin: '0 0 6px', color: '#0e0c9b',
+                        pageBreakAfter: 'avoid',
+                    }}>
                         Evidencia general de la visita
                     </h3>
                     <RejillaFotos fotos={evidenciasGenerales} fotosPdf={fotosPdf} />
