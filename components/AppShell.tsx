@@ -35,13 +35,40 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
     const basePath = getBasePath()
-    const { user, profile, loading, signOut } = useAuth()
+    const { user, profile, loading, signOut, refreshProfile } = useAuth()
     const { setTheme, theme } = useTheme()
     const [mounted, setMounted] = useState(false)
+    // Sesión viva pero sin perfil: hay que avisarlo, no dejar que parezca normal.
+    const [sesionIncompleta, setSesionIncompleta] = useState(false)
+    const [reconectando, setReconectando] = useState(false)
 
     useEffect(() => {
         setMounted(true)
     }, [])
+
+    /**
+     * Con usuario pero sin perfil, la app se ve casi normal: solo cambia el
+     * nombre de arriba. Un operador no tiene cómo notarlo y se entera hasta que
+     * intenta guardar un lote que ya midió. Se espera unos segundos para no
+     * parpadear durante la carga legítima.
+     */
+    useEffect(() => {
+        if (loading || !user || profile) {
+            setSesionIncompleta(false)
+            return
+        }
+        const t = setTimeout(() => setSesionIncompleta(true), 6000)
+        return () => clearTimeout(t)
+    }, [user, profile, loading])
+
+    const reconectar = async () => {
+        setReconectando(true)
+        try {
+            await refreshProfile()
+        } finally {
+            setReconectando(false)
+        }
+    }
 
     const isLoginPage = pathname === "/login" || pathname === "/login/"
 
@@ -116,6 +143,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
     return (
         <div className="flex min-h-screen bg-[#FDFDFD] dark:bg-zinc-950">
+            {sesionIncompleta && (
+                <div className="fixed top-0 left-0 right-0 z-[9999] bg-amber-500 text-amber-950 px-4 py-2.5 flex flex-wrap items-center gap-3 shadow-lg">
+                    <span className="text-sm font-semibold">
+                        No se pudo cargar tu perfil. No captures lotes en este estado: quedarían sin tu sucursal ni tu nombre.
+                    </span>
+                    <div className="flex gap-2 ml-auto">
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="rounded-full bg-white/90 border-amber-700/30 text-amber-950 hover:bg-white gap-2"
+                            onClick={reconectar}
+                            disabled={reconectando}
+                        >
+                            {reconectando && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                            Reconectar
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            className="rounded-full text-amber-950 hover:bg-amber-600/30"
+                            onClick={signOut}
+                        >
+                            Volver a entrar
+                        </Button>
+                    </div>
+                </div>
+            )}
             {/* Desktop Sidebar */}
             <aside
                 className={cn(
