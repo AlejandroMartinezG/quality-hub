@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, useRef, useCallback } f
 import { supabase } from "@/lib/supabase"
 import { User, Session } from "@supabase/supabase-js"
 import { useRouter, usePathname } from "next/navigation"
+import { toast } from "sonner"
 
 interface Profile {
     id: string
@@ -35,6 +36,22 @@ const AuthContext = createContext<AuthContextType>({
     refreshProfile: async () => { },
 })
 
+/**
+ * Esperas antes de cada intento de traer el perfil.
+ *
+ * El primero sale de inmediato; los siguientes dan margen a que termine la
+ * renovación del token o a que el servidor responda. Al recargar la página con
+ * el token ya vencido, la primera consulta sale con el token viejo y el servidor
+ * la rechaza — sin reintento el perfil se quedaba en null para siempre.
+ */
+const ESPERAS_MS = [0, 1000, 3000]
+
+/** Tope por intento. Sin él, una consulta colgada dejaba trabada la bandera. */
+const LIMITE_MS = 8000
+
+/** Código de PostgREST cuando `.single()` no encuentra ninguna fila. */
+const SIN_FILAS = 'PGRST116'
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null)
     const [profile, setProfile] = useState<Profile | null>(null)
@@ -54,6 +71,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const pathnameRef = useRef(pathname)
     pathnameRef.current = pathname
 
+    const limpiarEstado = useCallback(() => {
+        setUser(null)
+        setProfile(null)
+        setSession(null)
+        lastFetchedProfileId.current = null
+    }, [])
+
+    /**
+     * Último recurso cuando el perfil no carga.
+     *
+     * Automatiza lo que antes se hacía a mano —borrar el almacenamiento desde
+     * DevTools y volver a entrar—. Quedarse dentro de la app sin perfil es lo
+     * que producía registros con atribución dudosa, así que se corta ahí.
+     */
+    const cerrarPorPerfilIrrecuperable = useCallback(async () => {
+        console.error("AuthProvider: el perfil no cargó tras varios intentos; cerrando sesión")
+        toast.error("Tu sesión expiró", {
+            description: "Vuelve a entrar para continuar capturando.",
+            duration: 10000,
+        })
+        try {
+            await supabase.auth.signOut()
+        } catch (e) {
+            console.error("AuthProvider: error al cerrar sesión:", e)
+        }
+        limpiarEstado()
+        router.push('/login')
+    }, [router, limpiarEstado])
+
     const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
         // On the invite page the user has no profile yet — don't interfere
         if (pathnameRef.current.replace(/\/$/, '') === '/auth/invite') return null
@@ -62,42 +108,70 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         fetchingProfile.current = true
 
         try {
-            const { data: profileData, error } = await supabase
-                .from('profiles')
-                .select('id, full_name, area, position, role, is_admin, approved, sucursal, avatar_url')
-                .eq('id', userId)
-                .single()
-
-            if (error) {
-                console.error("Error fetching profile:", error)
-                return null
-            }
-
-            if (profileData) {
-                if (!profileData.approved) {
-                    console.warn("AuthProvider: User not approved, signing out.")
-                    await supabase.auth.signOut()
-                    setUser(null)
-                    setProfile(null)
-                    setSession(null)
-                    return null
+            for (let intento = 0; intento < ESPERAS_MS.length; intento++) {
+                if (ESPERAS_MS[intento] > 0) {
+                    await new Promise(r => setTimeout(r, ESPERAS_MS[intento]))
                 }
-                setProfile(profileData)
-                lastFetchedProfileId.current = userId
-                lastFetchTime.current = Date.now()
-                return profileData
+
+                const corte = new AbortController()
+                const temporizador = setTimeout(() => corte.abort(), LIMITE_MS)
+
+                try {
+                    const { data: profileData, error } = await supabase
+                        .from('profiles')
+                        .select('id, full_name, area, position, role, is_admin, approved, sucursal, avatar_url')
+                        .eq('id', userId)
+                        .abortSignal(corte.signal)
+                        .single()
+
+                    clearTimeout(temporizador)
+
+                    if (error) {
+                        // Sin fila no es un fallo pasajero: el usuario fue invitado y
+                        // todavía no completa su alta. Reintentar no cambiaría nada.
+                        if (error.code === SIN_FILAS) {
+                            router.push('/auth/invite')
+                            return null
+                        }
+                        console.warn(
+                            "AuthProvider: intento " + (intento + 1) + "/" + ESPERAS_MS.length +
+                            " al traer el perfil falló — " + (error.code || 'sin código') + ": " + error.message
+                        )
+                        continue
+                    }
+
+                    if (profileData) {
+                        if (!profileData.approved) {
+                            console.warn("AuthProvider: User not approved, signing out.")
+                            await supabase.auth.signOut()
+                            limpiarEstado()
+                            return null
+                        }
+                        setProfile(profileData)
+                        lastFetchedProfileId.current = userId
+                        lastFetchTime.current = Date.now()
+                        return profileData
+                    }
+                } catch (err: any) {
+                    clearTimeout(temporizador)
+                    const agotado = corte.signal.aborted
+                    console.warn(
+                        "AuthProvider: intento " + (intento + 1) + "/" + ESPERAS_MS.length + " al traer el perfil " +
+                        (agotado
+                            ? "superó el límite de " + LIMITE_MS + " ms"
+                            : "lanzó excepción: " + (err?.message || err))
+                    )
+                }
             }
 
-            // No profile — invited user, redirect to setup page
-            router.push('/auth/invite')
-            return null
-        } catch (err) {
-            console.error("Exception fetching profile:", err)
+            await cerrarPorPerfilIrrecuperable()
             return null
         } finally {
+            // Siempre, incluso si se abortó: dejarla en true bloqueaba todo intento
+            // posterior y el perfil ya no se recuperaba nunca.
             fetchingProfile.current = false
         }
-    }, [router])
+    }, [router, limpiarEstado, cerrarPorPerfilIrrecuperable])
 
     const refreshProfile = useCallback(async () => {
         const { data } = await supabase.auth.getSession()
@@ -159,10 +233,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             // INITIAL_SESSION is fully handled by initializeAuth — skip it here always
             if (event === 'INITIAL_SESSION') return
 
-            // TOKEN_REFRESHED: session updated silently, profile already loaded — don't disrupt UI
             if (event === 'TOKEN_REFRESHED') {
                 setSession(currentSession)
                 setUser(currentSession?.user ?? null)
+
+                // Si el perfil nunca llegó a cargar, ESTE es el momento de pedirlo:
+                // al recargar con el token vencido la primera consulta salió con el
+                // token viejo y fue rechazada, y aquí ya hay uno válido. Antes se
+                // regresaba sin más, y el perfil quedaba en null de forma definitiva.
+                if (currentSession
+                    && lastFetchedProfileId.current !== currentSession.user.id
+                    && !fetchingProfile.current) {
+                    console.log("AuthProvider: token renovado y perfil ausente — recargándolo")
+                    await fetchProfile(currentSession.user.id)
+                }
                 return
             }
 
@@ -211,16 +295,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     }, [pathname]) // eslint-disable-line react-hooks/exhaustive-deps
 
+    /**
+     * Recuperación que no depende de navegar.
+     *
+     * El efecto de arriba solo corre cuando cambia la ruta, y al recargar la
+     * página la ruta no cambia: si el operador se quedaba capturando en la misma
+     * pantalla, nada volvía a intentarlo. Al recuperar el foco sí.
+     */
+    useEffect(() => {
+        if (!user) return
+
+        const recuperarPerfil = () => {
+            if (document.hidden || fetchingProfile.current) return
+            if (lastFetchedProfileId.current === user.id) return
+            console.log("AuthProvider: perfil ausente al recuperar el foco — reintentando")
+            fetchProfile(user.id)
+        }
+
+        document.addEventListener('visibilitychange', recuperarPerfil)
+        window.addEventListener('focus', recuperarPerfil)
+        return () => {
+            document.removeEventListener('visibilitychange', recuperarPerfil)
+            window.removeEventListener('focus', recuperarPerfil)
+        }
+    }, [user, fetchProfile])
+
     const signOut = async () => {
         try {
             await supabase.auth.signOut()
         } catch (e) {
             console.error("AuthProvider: Error al cerrar sesión:", e)
         } finally {
-            setUser(null)
-            setProfile(null)
-            setSession(null)
-            lastFetchedProfileId.current = null
+            limpiarEstado()
             router.push('/login')
         }
     }

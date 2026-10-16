@@ -194,6 +194,20 @@ export default function BitacoraPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
+        // Sin perfil cargado no se registra, aunque la sesión siga viva.
+        //
+        // Si el perfil no cargó, la sucursal y el nombre del preparador quedan
+        // vacíos y el operador puede llenarlos a mano: el registro pasa la
+        // validación pero entra con atribución dudosa. Eso fue lo que produjo
+        // los registros que "se mandaban pero no se guardaban bien".
+        if (!profile) {
+            toast.error("Tu perfil no está cargado", {
+                description: "No se puede registrar sin tu sucursal y nombre confirmados. Recarga la página o vuelve a entrar.",
+                duration: 10000,
+            })
+            return
+        }
+
         const combinedData = { ...generalInfo, ...formData }
 
         const validation = validateForm(BitacoraSchema, combinedData)
