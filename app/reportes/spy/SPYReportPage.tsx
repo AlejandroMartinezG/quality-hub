@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { esEspecial } from '@/lib/productos-especiales'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -150,8 +151,10 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
             // - Afectado = cualquier desviación de calidad (incluyendo solidos semi-conforme/ warning y no-conforme, ph no-conforme, apariencia no-conforme).
             // - Yield = descuenta únicamente los lotes calificados analíticamente como "No Conforme" totales (excluye los semi-conformes).
 
-            // Sin mediciones: solo cuenta como volumen producido, nunca como conforme
-            if (r.estado_calidad === 'SIN MEDICION') {
+            // Fuera del cálculo de calidad: suman volumen pero nunca conformidad.
+            // Son los lotes sin mediciones y los productos especiales, que se miden
+            // pero no tienen estándar oficial contra el cual declararlos conformes.
+            if (r.estado_calidad === 'SIN MEDICION' || esEspecial(r)) {
                 volumenSinMedicion += vol
                 lotesSinMedicion++
                 return
@@ -335,7 +338,7 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
             // Lotes sin mediciones: solo aportan volumen a su sucursal. Se sacan
             // antes de cualquier acumulador de calidad (pareto, radar, productos)
             // para que no diluyan porcentajes ni aparezcan como conformes.
-            if (r.estado_calidad === 'SIN MEDICION') {
+            if (r.estado_calidad === 'SIN MEDICION' || esEspecial(r)) {
                 const sucSM = r.sucursal || "Sin Sucursal"
                 if (!groupedSucursal[sucSM]) {
                     groupedSucursal[sucSM] = { name: sucSM, conformes: 0, semiConformes: 0, noConformes: 0, ftqVol: 0, fyVol: 0, noConformeVol: 0, totalVol: 0, sinMedicionVol: 0, sinMedicion: 0 }
@@ -736,7 +739,9 @@ export default function SPYReportPage({ records = [], profile }: SPYReportPagePr
                         <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" />
                         <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
                             <strong>{stats.volumenSinMedicion.toLocaleString()} L</strong> en {stats.lotesSinMedicion}{' '}
-                            {stats.lotesSinMedicion === 1 ? 'lote registrado' : 'lotes registrados'} sin mediciones de calidad.
+                            {stats.lotesSinMedicion === 1 ? 'lote' : 'lotes'} sin evaluar: los registrados sin mediciones
+                            de calidad y los <strong>productos especiales</strong>, que se miden pero no tienen un estándar
+                            oficial contra el cual declararlos conformes.
                             Cuentan en el volumen producido pero <strong>quedan fuera del cálculo de FTQ y Yield</strong>,
                             que se calculan sobre los {stats.volumenEvaluado.toLocaleString()} L efectivamente evaluados.
                         </p>

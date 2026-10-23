@@ -22,7 +22,8 @@ import {
     LineChart,
     Activity,
     Clock,
-    ShieldCheck
+    ShieldCheck,
+    Star
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
@@ -251,6 +252,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
                         <NavItem href="/catalog" icon={BookOpen} label="Catálogo" />
 
+                        {/* Productos especiales: solo quien asigna los códigos.
+                            Se contempla `is_admin` además del rol: un administrador
+                            puede tener cualquier rol y aun así debe verlo. */}
+                        {(profile?.is_admin || ['admin', 'gerente_calidad', 'coordinador'].includes(profile?.role?.toLowerCase() || '')) && (
+                            <NavItem href="/configuracion/especiales" icon={Star} label="Productos Especiales" />
+                        )}
+
                         <Link
                             href={`${basePath}/configuracion`}
                             className={cn(
@@ -355,6 +363,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
                         {/* Soporte Mobile Section */}
                         <MobileNavItem href="/catalog" icon={BookOpen} label="Catálogo" />
+                        {(profile?.is_admin || ["admin", "gerente_calidad", "coordinador"].includes(profile?.role?.toLowerCase() || "")) && (
+                            <MobileNavItem href="/configuracion/especiales" icon={Star} label="Productos Especiales" />
+                        )}
                         <MobileNavItem href="/configuracion" icon={Settings} label="Configuración" />
                     </div>
 

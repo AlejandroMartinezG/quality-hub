@@ -35,6 +35,9 @@ import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { BitacoraSchema, validateForm, getFirstError } from "@/lib/validations"
+import {
+    buscarEspecial, CATEGORIA_ESPECIAL, type ProductoEspecial
+} from "@/lib/productos-especiales"
 
 type SessionRecord = {
     lote: string
@@ -135,6 +138,42 @@ export default function BitacoraPage() {
     const [selectedFamilia, setSelectedFamilia] = useState<string | null>(null)
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
     const [formData, setFormData] = useState({ ...EMPTY_FORM })
+    // Configuración del producto especial que se esté capturando, si aplica.
+    const [especial, setEspecial] = useState<ProductoEspecial | null>(null)
+    const [buscandoEspecial, setBuscandoEspecial] = useState(false)
+
+    const esCategoriaEspecial = selectedCategory === CATEGORIA_ESPECIAL
+
+    /**
+     * Qué parámetros debe registrar este lote.
+     *
+     * Para los productos de línea sale del catálogo. Para los especiales no
+     * existe entrada en el catálogo —su código lo asigna Calidad al momento—,
+     * así que viene de lo que Calidad dio de alta para ese código.
+     */
+    const aplicabilidad = esCategoriaEspecial
+        ? { solidos: Boolean(especial?.mide_solidos), ph: Boolean(especial?.mide_ph) }
+        : (PARAMETER_APPLICABILITY[formData.codigo_producto] || { solidos: false, ph: false })
+
+    // El código especial se teclea, así que se busca con un respiro para no
+    // consultar en cada letra.
+    useEffect(() => {
+        if (!esCategoriaEspecial) { setEspecial(null); return }
+        const codigo = formData.codigo_producto.trim()
+        if (!codigo) { setEspecial(null); return }
+
+        let cancelado = false
+        setBuscandoEspecial(true)
+        const t = setTimeout(async () => {
+            const encontrado = await buscarEspecial(codigo)
+            if (!cancelado) {
+                setEspecial(encontrado)
+                setBuscandoEspecial(false)
+            }
+        }, 400)
+
+        return () => { cancelado = true; clearTimeout(t) }
+    }, [formData.codigo_producto, esCategoriaEspecial])
 
     const resetRecord = () => {
         setSelectedFamilia(null)
@@ -216,7 +255,24 @@ export default function BitacoraPage() {
             return
         }
 
-        const applicability = PARAMETER_APPLICABILITY[formData.codigo_producto] || { solidos: false, ph: false }
+        // Un código especial que no esté dado de alta no se puede capturar: nadie
+        // sabría después qué debía medírsele ni qué producto era.
+        if (esCategoriaEspecial && !especial) {
+            toast.error("Ese código especial no está dado de alta", {
+                description: "Pídele a Calidad que lo registre antes de capturar el lote.",
+                duration: 10000,
+            })
+            return
+        }
+        if (esCategoriaEspecial && especial && !especial.activo) {
+            toast.error(`El producto especial ${especial.codigo} está dado de baja`, {
+                description: "Confirma con Calidad antes de registrar producción con ese código.",
+                duration: 10000,
+            })
+            return
+        }
+
+        const applicability = aplicabilidad
 
         if (applicability.solidos) {
             if (!formData.solidos_medicion_1 || !formData.temp_med1 || !formData.solidos_medicion_2 || !formData.temp_med2) {
@@ -569,20 +625,75 @@ export default function BitacoraPage() {
                                         </div>
                                         <div className="space-y-2">
                                             <Label>Código del Producto</Label>
-                                            <Select
-                                                value={formData.codigo_producto}
-                                                onValueChange={(val) => handleSelectChange("codigo_producto", val)}
-                                                disabled={!selectedCategory}
-                                            >
-                                                <SelectTrigger className={cn("rounded-full", selectedCategory && !formData.codigo_producto ? "border-red-500" : "")}>
-                                                    <SelectValue placeholder={selectedCategory ? "Selecciona código" : "Primero elige categoría"} />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {(CATEGORY_PRODUCTS[selectedCategory || ""] || []).map((code) => (
-                                                        <SelectItem key={code} value={code}>{code}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                            {/* Los productos especiales están fuera de línea: no tienen
+                                                código en el catálogo, Calidad se lo asigna al momento.
+                                                Por eso aquí se escribe en vez de elegirse de una lista. */}
+                                            {selectedCategory === "Producto especial" ? (
+                                                <>
+                                                    <Input
+                                                        type="text"
+                                                        placeholder="Ej: ESPGIN01"
+                                                        value={formData.codigo_producto}
+                                                        maxLength={8}
+                                                        onChange={(e) => {
+                                                            const limpio = e.target.value
+                                                                .toUpperCase()
+                                                                .replace(/[^A-Z0-9-]/g, "")
+                                                                .slice(0, 8)
+                                                            handleSelectChange("codigo_producto", limpio)
+                                                        }}
+                                                        className={cn("rounded-full", !formData.codigo_producto ? "border-red-500" : "font-bold")}
+                                                    />
+                                                    {buscandoEspecial ? (
+                                                        <p className="text-[11px] text-slate-400">Buscando el código…</p>
+                                                    ) : especial ? (
+                                                        <div className={cn(
+                                                            "rounded-2xl px-3 py-2 text-[11px]",
+                                                            especial.activo
+                                                                ? "bg-purple-50 dark:bg-purple-950/30 text-purple-800 dark:text-purple-300"
+                                                                : "bg-red-50 dark:bg-red-950/30 text-red-800 dark:text-red-300"
+                                                        )}>
+                                                            <strong>{especial.nombre}</strong>
+                                                            {!especial.activo && <span> · dado de baja</span>}
+                                                            <span className="block mt-0.5">
+                                                                {[
+                                                                    especial.mide_ph && 'pH',
+                                                                    especial.mide_solidos && 'sólidos',
+                                                                    especial.mide_apariencia && 'apariencia',
+                                                                ].filter(Boolean).join(' · ') || 'Sin parámetros a registrar'}
+                                                            </span>
+                                                            {especial.notas && (
+                                                                <span className="block mt-0.5 opacity-80">{especial.notas}</span>
+                                                            )}
+                                                        </div>
+                                                    ) : formData.codigo_producto ? (
+                                                        <p className="text-[11px] text-red-600 dark:text-red-400">
+                                                            Ese código no está dado de alta. Pídele a Calidad que lo registre
+                                                            antes de capturar el lote.
+                                                        </p>
+                                                    ) : (
+                                                        <p className="text-[11px] text-slate-400">
+                                                            Hasta 8 caracteres, solo mayúsculas, números y guiones.
+                                                            Es el código que Calidad te indicó para este producto.
+                                                        </p>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <Select
+                                                    value={formData.codigo_producto}
+                                                    onValueChange={(val) => handleSelectChange("codigo_producto", val)}
+                                                    disabled={!selectedCategory}
+                                                >
+                                                    <SelectTrigger className={cn("rounded-full", selectedCategory && !formData.codigo_producto ? "border-red-500" : "")}>
+                                                        <SelectValue placeholder={selectedCategory ? "Selecciona código" : "Primero elige categoría"} />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {(CATEGORY_PRODUCTS[selectedCategory || ""] || []).map((code) => (
+                                                            <SelectItem key={code} value={code}>{code}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
                                         </div>
                                     </div>
 
@@ -648,19 +759,19 @@ export default function BitacoraPage() {
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="space-y-2">
                                                     <Label>% Sólidos - M1</Label>
-                                                    <Input name="solidos_medicion_1" type="number" step="0.01" value={formData.solidos_medicion_1} onChange={handleInputChange} disabled={!PARAMETER_APPLICABILITY[formData.codigo_producto]?.solidos} className="bg-white/50 dark:bg-slate-900/50 rounded-full" />
+                                                    <Input name="solidos_medicion_1" type="number" step="0.01" value={formData.solidos_medicion_1} onChange={handleInputChange} disabled={!aplicabilidad.solidos} className="bg-white/50 dark:bg-slate-900/50 rounded-full" />
                                                 </div>
                                                 <div className="space-y-2">
                                                     <Label>Temp - M1 (°C)</Label>
-                                                    <Input name="temp_med1" type="number" step="0.1" value={formData.temp_med1} onChange={handleInputChange} disabled={!PARAMETER_APPLICABILITY[formData.codigo_producto]?.solidos} className="bg-white/50 dark:bg-slate-900/50 rounded-full" />
+                                                    <Input name="temp_med1" type="number" step="0.1" value={formData.temp_med1} onChange={handleInputChange} disabled={!aplicabilidad.solidos} className="bg-white/50 dark:bg-slate-900/50 rounded-full" />
                                                 </div>
                                                 <div className="space-y-2">
                                                     <Label>% Sólidos - M2</Label>
-                                                    <Input name="solidos_medicion_2" type="number" step="0.01" value={formData.solidos_medicion_2} onChange={handleInputChange} disabled={!PARAMETER_APPLICABILITY[formData.codigo_producto]?.solidos} className="bg-white/50 dark:bg-slate-900/50 rounded-full" />
+                                                    <Input name="solidos_medicion_2" type="number" step="0.01" value={formData.solidos_medicion_2} onChange={handleInputChange} disabled={!aplicabilidad.solidos} className="bg-white/50 dark:bg-slate-900/50 rounded-full" />
                                                 </div>
                                                 <div className="space-y-2">
                                                     <Label>Temp - M2 (°C)</Label>
-                                                    <Input name="temp_med2" type="number" step="0.1" value={formData.temp_med2} onChange={handleInputChange} disabled={!PARAMETER_APPLICABILITY[formData.codigo_producto]?.solidos} className="bg-white/50 dark:bg-slate-900/50 rounded-full" />
+                                                    <Input name="temp_med2" type="number" step="0.1" value={formData.temp_med2} onChange={handleInputChange} disabled={!aplicabilidad.solidos} className="bg-white/50 dark:bg-slate-900/50 rounded-full" />
                                                 </div>
                                             </div>
                                             <div className="p-3 bg-white/50 dark:bg-slate-900/50 rounded-lg border text-[11px] text-muted-foreground italic leading-tight">
@@ -677,7 +788,7 @@ export default function BitacoraPage() {
                                             <div className="space-y-4">
                                                 <div className="space-y-2">
                                                     <Label>Valor medido de pH</Label>
-                                                    <Input name="ph" type="number" min="0" max="14" step="1" placeholder="Ej: 7" value={formData.ph} onChange={handleInputChange} disabled={!PARAMETER_APPLICABILITY[formData.codigo_producto]?.ph} className="bg-white/50 dark:bg-slate-900/50 font-bold text-lg rounded-full" />
+                                                    <Input name="ph" type="number" min="0" max="14" step="1" placeholder="Ej: 7" value={formData.ph} onChange={handleInputChange} disabled={!aplicabilidad.ph} className="bg-white/50 dark:bg-slate-900/50 font-bold text-lg rounded-full" />
                                                 </div>
                                                 <div className="p-3 bg-white/50 dark:bg-slate-900/50 rounded-lg border text-[11px] text-muted-foreground italic leading-tight">
                                                     Usar tiras reactivas de acuerdo a IO-DOP-OP-001
