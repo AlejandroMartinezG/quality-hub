@@ -73,6 +73,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
     const isLoginPage = pathname === "/login" || pathname === "/login/"
 
+    // Solo la pantalla de Configuración en sí, no lo que cuelga de ella.
+    const esConfiguracion = pathname === "/configuracion" || pathname === "/configuracion/"
+
     if (isLoginPage) {
         return (
             <div className="min-h-screen bg-background relative">
@@ -259,18 +262,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             <NavItem href="/configuracion/especiales" icon={Star} label="Productos Especiales" />
                         )}
 
+                        {/* Coincidencia exacta, no por prefijo: las pantallas que viven
+                            dentro de /configuracion/ —como Productos Especiales— tienen
+                            su propia entrada y marcaban las dos a la vez. */}
                         <Link
                             href={`${basePath}/configuracion`}
                             className={cn(
                                 "flex items-center gap-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group",
                                 isSidebarCollapsed ? "justify-center px-2" : "px-4",
-                                pathname?.startsWith("/configuracion")
+                                esConfiguracion
                                     ? "bg-[#1e2756] text-white shadow-md"
                                     : "text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-blue-900 dark:hover:text-blue-400"
                             )}
                             title={isSidebarCollapsed ? "Configuración" : undefined}
                         >
-                            <Settings className={cn("h-5 w-5", pathname?.startsWith("/configuracion") ? "text-white" : "text-slate-400 group-hover:text-blue-900 dark:group-hover:text-blue-400")} />
+                            <Settings className={cn("h-5 w-5", esConfiguracion ? "text-white" : "text-slate-400 group-hover:text-blue-900 dark:group-hover:text-blue-400")} />
                             {!isSidebarCollapsed && <span>Configuración</span>}
                         </Link>
                     </div>
@@ -366,7 +372,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         {(profile?.is_admin || ["admin", "gerente_calidad", "coordinador"].includes(profile?.role?.toLowerCase() || "")) && (
                             <MobileNavItem href="/configuracion/especiales" icon={Star} label="Productos Especiales" />
                         )}
-                        <MobileNavItem href="/configuracion" icon={Settings} label="Configuración" />
+                        <MobileNavItem href="/configuracion" icon={Settings} label="Configuración" exact />
                     </div>
 
                     <div className="p-4 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between pb-8">
