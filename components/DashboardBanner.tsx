@@ -30,26 +30,31 @@ export function DashboardBanner() {
         },
         {
             id: 3,
+            image: "/banners/slide_8.png",
+            alt: "Nueva fragancia CH-EMY-26 para suavizante: mantener identificada y almacenada, sin usarla en producción hasta recibir instrucciones",
+        },
+        {
+            id: 4,
             image: "/banners/recordatorio_calibracion.webp",
             alt: "Recordatorio de Calibración",
         },
         {
-            id: 4,
+            id: 5,
             image: "/banners/slide_4.webp",
             alt: "Calidad Garantizada",
         },
         {
-            id: 5,
+            id: 6,
             image: "/banners/slide_5.webp",
             alt: "Porrones Ambientador Retorno Ginez",
         },
         {
-            id: 6,
+            id: 7,
             image: "/banners/slide_6.webp",
             alt: "Porrón Colores Ginez",
         },
         {
-            id: 7,
+            id: 8,
             image: "/banners/slide_7.webp",
             alt: "Soluciones Integrales",
         },
