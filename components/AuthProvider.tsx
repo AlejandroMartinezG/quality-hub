@@ -41,6 +41,15 @@ interface Profile {
  */
 const ALIAS_DE_ROL: Record<string, string> = {
     finanzas: 'gerente_calidad',
+    // El gerente de sucursal pasó a consultar todas las sucursales, no solo la
+    // suya. Como efecto de heredar el rol, las ramas `isGerente` que acotaban
+    // los datos por sucursal —en Análisis de Operación, Control Calidad,
+    // FTQ/FY, Rezago, Auditorías y el candado de sucursal de los NCR— dejan de
+    // alcanzarse: nunca vuelven a ver el valor 'gerente_sucursal'. Se dejan en
+    // su lugar a propósito, para que quitar esta línea devuelva el
+    // comportamiento anterior sin tocar nada más.
+    gerente_sucursal: 'gerente_calidad',
+    gerente: 'gerente_calidad',
 }
 
 interface AuthContextType {
