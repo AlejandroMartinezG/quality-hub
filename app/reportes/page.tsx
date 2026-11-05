@@ -127,7 +127,8 @@ export default function ReportesPage() {
     // Permissions check
     useEffect(() => {
         if (!authLoading && profile) {
-            const allowedRoles = ['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras']
+            const allowedRoles = ['admin', 'gerente_calidad', 'coordinador', 'director_operaciones',
+                                  'director_compras', 'gerente_sucursal', 'gerente']
             const isAllowed = profile.is_admin || allowedRoles.includes(role)
             if (!isAllowed) {
                 toast.error("Acceso restringido", {

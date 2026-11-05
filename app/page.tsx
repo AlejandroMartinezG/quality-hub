@@ -27,7 +27,7 @@ export default function HomePage() {
     const forbiddenCalidad = ['mostrador', 'cajera', 'vendedor', 'director_compras']
     const showCalidad = !forbiddenCalidad.includes(role)
 
-    const showAnalisis = ['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras'].includes(role)
+    const showAnalisis = ['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras', 'gerente_sucursal', 'gerente'].includes(role)
     const showAuditorias = ['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras', 'gerente_sucursal', 'gerente'].includes(role)
     const showFTQFY = ['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras', 'preparador', 'gerente_sucursal', 'gerente'].includes(role)
 

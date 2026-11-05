@@ -229,8 +229,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             <NavItem href="/calidad" icon={Microscope} label="Control Calidad" />
                         )}
 
-                        {/* Análisis de Operación: solo roles gerenciales/admin */}
-                        {['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras'].includes(profile?.role?.toLowerCase() || '') && (
+                        {/* Análisis de Operación: roles gerenciales/admin. El gerente de
+                            sucursal entra, pero la pantalla le acota los datos a su
+                            sucursal y le oculta el filtro de sucursales. */}
+                        {['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras', 'gerente_sucursal', 'gerente'].includes(profile?.role?.toLowerCase() || '') && (
                             <NavItem href="/reportes" icon={BarChart3} label="Análisis de Operación" exact />
                         )}
 
@@ -348,7 +350,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         )}
 
                         {/* Análisis de Operación en Mobile */}
-                        {['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras'].includes(profile?.role?.toLowerCase() || '') && (
+                        {['admin', 'gerente_calidad', 'coordinador', 'director_operaciones', 'director_compras', 'gerente_sucursal', 'gerente'].includes(profile?.role?.toLowerCase() || '') && (
                             <MobileNavItem href="/reportes" icon={BarChart3} label="Análisis de Operación" exact />
                         )}
 
