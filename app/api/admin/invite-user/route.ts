@@ -7,6 +7,7 @@ import { EMAIL_FROM, fetchLogoAttachment, logoAttachments, logoSrc } from '@/lib
 const ROLE_LABELS: Record<string, string> = {
     admin: 'Administrador',
     gerente_calidad: 'Gerente de Calidad',
+    finanzas: 'Finanzas',
     coordinador: 'Coordinador',
     preparador: 'Preparador',
     gerente_sucursal: 'Gerente de Sucursal',

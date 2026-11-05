@@ -200,10 +200,17 @@ export default function ConfigurationPage() {
         'gerente_sucursal': 'Gerente de Sucursal',
         'director_operaciones': 'Director de Operaciones',
         'gerente_calidad': 'Gerente de Calidad',
+        'finanzas': 'Finanzas',
         'mostrador': 'Mostrador',
         'cajera': 'Cajera',
         'director_compras': 'Director de Compras'
     }
+
+    // El rol que se MUESTRA es el real, no el heredado. `profile.role` puede ser
+    // un alias de permisos (ver ALIAS_DE_ROL en AuthProvider): quien tiene el rol
+    // Finanzas recibe los permisos de gerente_calidad, pero en pantalla debe
+    // seguir leyendo "Finanzas".
+    const rolMostrado = profile?.rolReal || profile?.role || ''
 
     // Get unique action types from logs
     const uniqueActions = Array.from(new Set(logs.map(log => log.file_type))).filter(Boolean).sort()
@@ -366,6 +373,7 @@ export default function ConfigurationPage() {
                     'gerente_sucursal': 'Gerente de Sucursal',
                     'director_operaciones': 'Director de Operaciones',
                     'gerente_calidad': 'Gerente de Calidad',
+                    'finanzas': 'Finanzas',
                     'mostrador': 'Mostrador',
                     'cajera': 'Cajera',
                     'director_compras': 'Director de Compras'
@@ -569,10 +577,10 @@ export default function ConfigurationPage() {
 
                                         {/* Role and Sucursal Badges - Left Aligned */}
                                         <div className="flex flex-wrap justify-start gap-2 pt-1">
-                                            {profile?.role && (
+                                            {rolMostrado && (
                                                 <Badge className="gap-1.5 px-3 py-1 text-xs md:text-sm">
                                                     <Shield className="h-3.5 w-3.5" />
-                                                    {roleNames[profile.role] || profile.role}
+                                                    {roleNames[rolMostrado] || rolMostrado}
                                                 </Badge>
                                             )}
                                             {profile?.sucursal && (
@@ -648,7 +656,7 @@ export default function ConfigurationPage() {
                                             <div className="space-y-1">
                                                 <p className="text-xs text-muted-foreground">Rol Actual</p>
                                                 <p className="font-bold text-primary">
-                                                    {profile?.role ? (roleNames[profile.role] || profile.role) : 'No asignado'}
+                                                    {rolMostrado ? (roleNames[rolMostrado] || rolMostrado) : 'No asignado'}
                                                 </p>
                                             </div>
                                             <Shield className="h-4 w-4 text-primary mt-1" />
@@ -994,8 +1002,8 @@ export default function ConfigurationPage() {
                                 <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border">
                                     <Shield className="h-4 w-4 text-primary" />
                                     <span className="font-semibold text-sm">
-                                        {profile?.role ? (
-                                            roleNames[profile.role] || profile.role
+                                        {rolMostrado ? (
+                                            roleNames[rolMostrado] || rolMostrado
                                         ) : (
                                             'No asignado'
                                         )}

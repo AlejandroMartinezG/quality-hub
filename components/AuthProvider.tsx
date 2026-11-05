@@ -9,13 +9,38 @@ import { toast } from "sonner"
 interface Profile {
     id: string
     full_name: string
+    /**
+     * Rol para efectos de PERMISOS. Puede diferir del guardado en la base si el
+     * rol es un alias — ver ALIAS_DE_ROL. Las comprobaciones de acceso de toda
+     * la app leen este campo.
+     */
+    role: string
+    /** El rol tal como está en `profiles`. Para mostrarlo o depurar, no para permitir. */
+    rolReal: string
     area: string
     position: string
-    role: string
     is_admin: boolean
     approved: boolean
     sucursal?: string
     avatar_url?: string
+}
+
+/**
+ * Roles que heredan exactamente los permisos de otro.
+ *
+ * Los permisos viven en arreglos escritos a mano repartidos por unos treinta
+ * archivos. Agregar un rol a cada uno sería a la vez laborioso y frágil: basta
+ * olvidar uno para que el rol quede a medias, y nada avisaría.
+ *
+ * Resolviendo el alias aquí, donde el perfil se carga, cada comprobación de la
+ * app lo ve como el rol heredado y los permisos quedan idénticos por
+ * construcción — no por haberlos copiado bien treinta veces.
+ *
+ * El día que uno de estos roles necesite permisos PROPIOS, hay que sacarlo de
+ * aquí y declararlo explícitamente donde corresponda.
+ */
+const ALIAS_DE_ROL: Record<string, string> = {
+    finanzas: 'gerente_calidad',
 }
 
 interface AuthContextType {
@@ -165,10 +190,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                             limpiarEstado()
                             return null
                         }
-                        setProfile(profileData)
+                        const rolReal = profileData.role || ''
+                        const resuelto: Profile = {
+                            ...profileData,
+                            rolReal,
+                            role: ALIAS_DE_ROL[rolReal.toLowerCase()] || rolReal,
+                        }
+                        if (resuelto.role !== rolReal) {
+                            console.log(`AuthProvider: rol "${rolReal}" hereda los permisos de "${resuelto.role}"`)
+                        }
+
+                        setProfile(resuelto)
                         lastFetchedProfileId.current = userId
                         lastFetchTime.current = Date.now()
-                        return profileData
+                        return resuelto
                     }
                 } catch (err: any) {
                     clearTimeout(temporizador)

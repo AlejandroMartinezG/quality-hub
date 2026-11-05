@@ -74,6 +74,7 @@ const ACCESS_LEVEL_LABELS: Record<string, { label: string, color: string }> = {
 const FALLBACK_ROLES: UserRole[] = [
     { role_key: 'admin', role_name: 'Administrador', description: 'Acceso total al sistema' },
     { role_key: 'gerente_calidad', role_name: 'Gerente de Calidad', description: 'Gestión global de calidad' },
+    { role_key: 'finanzas', role_name: 'Finanzas', description: 'Mismos permisos que Gerente de Calidad' },
     { role_key: 'coordinador', role_name: 'Coordinador', description: 'Coordinación de sucursales' },
     { role_key: 'gerente_sucursal', role_name: 'Gerente de Sucursal', description: 'Gestión de una sucursal' },
     { role_key: 'preparador', role_name: 'Preparador', description: 'Registro de producción y calidad' },

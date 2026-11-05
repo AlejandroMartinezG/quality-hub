@@ -24,7 +24,7 @@ export const RegisterSchema = LoginSchema.extend({
         .max(100, "El nombre no puede exceder 100 caracteres")
         .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/, "El nombre solo puede contener letras y espacios"),
     role: z.enum(
-        ["preparador", "gerente_sucursal", "director_operaciones", "gerente_calidad", "mostrador", "cajera", "director_compras"],
+        ["preparador", "gerente_sucursal", "director_operaciones", "gerente_calidad", "finanzas", "mostrador", "cajera", "director_compras"],
         { errorMap: () => ({ message: "Selecciona un rol válido" }) }
     ),
     sucursal: z
