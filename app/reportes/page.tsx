@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/AuthProvider"
 import { supabase } from "@/lib/supabase"
@@ -41,6 +41,7 @@ import {
 } from "recharts"
 import { SUCURSALES, PRODUCT_STANDARDS, PH_STANDARDS, CATEGORY_PRODUCTS, PRODUCT_GROUPS, PRODUCT_CATEGORIES } from "@/lib/production-constants"
 import { soloFecha } from "@/lib/utils"
+import { useRangoFechas, haceMeses } from "@/lib/use-rango-fechas"
 
 // --- Helper functions ---
 
@@ -89,10 +90,11 @@ export default function ReportesPage() {
     const [selectedPreparer, setSelectedPreparer] = useState<string>("all")
     const [showAllProducts, setShowAllProducts] = useState(false)
     const [rankingCategoryFilter, setRankingCategoryFilter] = useState<string>("all")
-    const [filterDateFrom, setFilterDateFrom] = useState(() => {
-        const d = new Date(); d.setMonth(d.getMonth() - 3); return d.toISOString().split('T')[0]
-    })
-    const [filterDateTo, setFilterDateTo] = useState(() => new Date().toISOString().split('T')[0])
+    const rango = useRangoFechas(90, haceMeses(3))
+
+    /** Ver la nota en app/reportes/fy/page.tsx: sin esto, la consulta más lenta
+     *  pisa a la más nueva. */
+    const peticion = useRef(0)
 
     // Drill-down modal state
     const [drillDownFamily, setDrillDownFamily] = useState<string | null>(null)
@@ -141,13 +143,14 @@ export default function ReportesPage() {
 
     useEffect(() => {
         if (user && profile) {
-            fetchData(filterDateFrom || undefined, filterDateTo || undefined)
+            fetchData(rango.aplicado.desde, rango.aplicado.hasta)
         } else if (!authLoading) {
             setLoading(false)
         }
-    }, [user?.id, profile?.role, authLoading, filterDateFrom, filterDateTo])
+    }, [user?.id, profile?.role, authLoading, rango.aplicado])
 
     const fetchData = async (from?: string, to?: string) => {
+        const miPeticion = ++peticion.current
         setLoading(true)
         try {
             let query = supabase
@@ -165,6 +168,8 @@ export default function ReportesPage() {
 
             const { data, error } = await query.order('created_at', { ascending: true })
 
+            if (miPeticion !== peticion.current) return   // llegó tarde: ya hay una más nueva
+
             if (error) throw error
 
             if (data) {
@@ -172,11 +177,12 @@ export default function ReportesPage() {
                 setRecords(analyzed)
             }
         } catch (error: any) {
+            if (miPeticion !== peticion.current) return
             toast.error("Error al cargar datos", {
                 description: error.message || "Verifica tu conexión o contacta a soporte."
             })
         } finally {
-            setLoading(false)
+            if (miPeticion === peticion.current) setLoading(false)
         }
     }
 
@@ -202,13 +208,16 @@ export default function ReportesPage() {
             if (selectedProduct !== "all" && r.codigo_producto !== selectedProduct) return false
             if (selectedPreparer !== "all" && r.nombre_preparador !== selectedPreparer) return false
 
+            // Se recorta contra el rango APLICADO, no contra lo que hay escrito
+            // en los inputs: mientras se teclea una fecha, lo escrito todavía no
+            // corresponde a los datos que están en memoria.
             const fecha = r.fecha_fabricacion?.split('T')[0] ?? ''
-            if (filterDateFrom && fecha && fecha < filterDateFrom) return false
-            if (filterDateTo && fecha && fecha > filterDateTo) return false
+            if (rango.aplicado.desde && fecha && fecha < rango.aplicado.desde) return false
+            if (rango.aplicado.hasta && fecha && fecha > rango.aplicado.hasta) return false
 
             return true
         })
-    }, [records, selectedSucursal, selectedCategory, selectedProduct, selectedPreparer, filterDateFrom, filterDateTo])
+    }, [records, selectedSucursal, selectedCategory, selectedProduct, selectedPreparer, rango.aplicado])
 
     // Filter records by print date range
     const printFilteredRecords = useMemo(() => {
@@ -624,7 +633,10 @@ export default function ReportesPage() {
     // Corporate GINEZ colors - Red and Blue from logo
     const COLORS = ['#0b109f', '#e2211c', '#2a35b8', '#c02820', '#4352cc', '#a02019', '#5d6fd9', '#d43630'];
 
-    if (loading) {
+    // Solo en la primera carga se reemplaza la pantalla completa. En las
+    // recargas posteriores se conserva montado todo —incluida la barra de
+    // filtros— y el estado de la pantalla sobrevive al cambio de fechas.
+    if (loading && records.length === 0) {
         return (
             <div className="h-screen flex flex-col items-center justify-center space-y-4">
                 <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
@@ -717,38 +729,41 @@ export default function ReportesPage() {
                     <div className="flex items-center gap-1.5">
                         <input
                             type="date"
-                            value={filterDateFrom}
-                            onChange={e => setFilterDateFrom(e.target.value)}
+                            value={rango.desdeEditado}
+                            onChange={e => rango.editarDesde(e.target.value)}
                             className="h-9 rounded-lg border border-input bg-background px-2.5 text-xs text-foreground shadow-sm focus:outline-none focus:ring-1 focus:ring-ring w-[138px]"
                             title="Fecha de inicio"
                         />
                         <span className="text-xs text-muted-foreground">–</span>
                         <input
                             type="date"
-                            value={filterDateTo}
-                            onChange={e => setFilterDateTo(e.target.value)}
+                            value={rango.hastaEditado}
+                            onChange={e => rango.editarHasta(e.target.value)}
                             className="h-9 rounded-lg border border-input bg-background px-2.5 text-xs text-foreground shadow-sm focus:outline-none focus:ring-1 focus:ring-ring w-[138px]"
                             title="Fecha de fin"
                         />
-                        {(filterDateFrom || filterDateTo) && (
-                            <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground" onClick={() => { setFilterDateFrom(""); setFilterDateTo("") }} title="Limpiar fechas">
+                        {!rango.historial && (
+                            <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground" onClick={rango.todoElHistorial} title="Limpiar fechas">
                                 <XCircle className="h-4 w-4" />
                             </Button>
                         )}
                     </div>
 
-                    <Button variant="outline" size="icon" onClick={() => fetchData(filterDateFrom || undefined, filterDateTo || undefined)} title="Actualizar datos">
+                    <Button variant="outline" size="icon" onClick={() => fetchData(rango.aplicado.desde, rango.aplicado.hasta)} title="Actualizar datos">
                         <RefreshCcw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                     </Button>
                 </div>
             </div>
 
-            {loading ? (
-                <div className="h-64 flex items-center justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                </div>
-            ) : (
-                <div className="space-y-6">
+            {(
+                /* El contenido se mantiene montado mientras recarga: el velo
+                   tapa las cifras viejas sin tirar el estado de la pantalla. */
+                <div className="space-y-6 relative">
+                            {loading && (
+                                <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 dark:bg-slate-950/70">
+                                    <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                                </div>
+                            )}
                             {/* Print Button */}
                             <div className="flex justify-end">
                                 <Button

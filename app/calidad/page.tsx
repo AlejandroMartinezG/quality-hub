@@ -32,6 +32,7 @@ import {
 } from "@/lib/production-constants"
 import { analyzeRecord } from "@/lib/analysis-utils"
 import { cn, getBasePath, formatFecha } from "@/lib/utils"
+import { useRangoFechas } from "@/lib/use-rango-fechas"
 
 const PdfViewer = dynamic(() => import("@/components/PdfViewer").then(mod => mod.PdfViewer), { ssr: false })
 
@@ -79,10 +80,11 @@ export default function CalidadPage() {
     const [statusFilter, setStatusFilter] = useState("all")
     // 30 días: los preparadores capturan rezago de semanas atrás y con 7 días
     // esos registros quedaban invisibles y se daban por perdidos.
-    const [filterDateFrom, setFilterDateFrom] = useState(() => {
-        const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().split('T')[0]
-    })
-    const [filterDateTo, setFilterDateTo] = useState(() => new Date().toISOString().split('T')[0])
+    const rango = useRangoFechas(30)
+
+    /** Ver la nota en app/reportes/fy/page.tsx: sin esto, la consulta más lenta
+     *  pisa a la más nueva. */
+    const peticion = useRef(0)
     const [categoriaFilter, setCategoriaFilter] = useState("all")
     const [productoFilter, setProductoFilter] = useState("all")
     const [editingRecord, setEditingRecord] = useState<BitacoraRecord | null>(null)
@@ -131,11 +133,12 @@ export default function CalidadPage() {
     }, [profile, authLoading, router])
 
     useEffect(() => {
-        if (user && !authLoading && profile) fetchRecords(filterDateFrom || undefined, filterDateTo || undefined)
-    }, [user?.id, isAdmin, profile?.role, profile?.sucursal, authLoading, filterDateFrom, filterDateTo])
+        if (user && !authLoading && profile) fetchRecords(rango.aplicado.desde, rango.aplicado.hasta)
+    }, [user?.id, isAdmin, profile?.role, profile?.sucursal, authLoading, rango.aplicado])
 
     const fetchRecords = async (from?: string, to?: string) => {
         if (!user) return
+        const miPeticion = ++peticion.current
         try {
             setLoading(true)
             let query = supabase.from('bitacora_produccion_calidad').select('id, created_at, lote_producto, codigo_producto, sucursal, fecha_fabricacion, ph, solidos_medicion_1, solidos_medicion_2, temp_med1, temp_med2, temperatura, apariencia, color, aroma, nombre_preparador, familia_producto, tamano_lote, observaciones, user_id, estado_calidad')
@@ -148,13 +151,15 @@ export default function CalidadPage() {
             if (from) query = query.gte('fecha_fabricacion', from)
             if (to)   query = query.lte('fecha_fabricacion', to + 'T23:59:59')
             const { data, error } = await query.order('created_at', { ascending: false })
+            if (miPeticion !== peticion.current) return   // llegó tarde: ya hay una más nueva
             if (error) throw error
             setRecords(data || [])
             fetchUnreadChats()
         } catch {
+            if (miPeticion !== peticion.current) return
             toast.error("Error al cargar los registros. Intenta de nuevo.")
         } finally {
-            setLoading(false)
+            if (miPeticion === peticion.current) setLoading(false)
         }
     }
 
@@ -380,7 +385,8 @@ export default function CalidadPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [records])
 
-    useEffect(() => { setCurrentPage(0) }, [searchTerm, sucursalFilter, statusFilter, filterDateFrom, filterDateTo, categoriaFilter, productoFilter])
+    useEffect(() => { setCurrentPage(0) }, [searchTerm, sucursalFilter, statusFilter, rango.aplicado, categoriaFilter, productoFilter])
+
 
     const getStatusInfo = (record: BitacoraRecord): 'success' | 'warning' | 'error' => {
         const std = PRODUCT_STANDARDS[record.codigo_producto]
@@ -417,9 +423,12 @@ export default function CalidadPage() {
         const matchesCategoria = categoriaFilter === "all" || (r.familia_producto || '') === categoriaFilter
         const matchesProducto = productoFilter === "all" || r.codigo_producto === productoFilter
         let matchesTime = true
+        // Contra el rango APLICADO, no contra lo escrito en los inputs: mientras
+        // se teclea una fecha, lo escrito aún no corresponde a lo que hay en
+        // memoria.
         const fecha = r.fecha_fabricacion?.split('T')[0] ?? ''
-        if (filterDateFrom && fecha && fecha < filterDateFrom) matchesTime = false
-        if (filterDateTo && fecha && fecha > filterDateTo) matchesTime = false
+        if (rango.aplicado.desde && fecha && fecha < rango.aplicado.desde) matchesTime = false
+        if (rango.aplicado.hasta && fecha && fecha > rango.aplicado.hasta) matchesTime = false
         return matchesSearch && matchesSucursal && matchesStatus && matchesTime && matchesCategoria && matchesProducto
     })
 
@@ -500,7 +509,10 @@ export default function CalidadPage() {
         else if ((role === 'gerente_sucursal' || role === 'gerente') && profile?.sucursal)
             query = query.eq('sucursal', profile.sucursal)
         if (exportDateFrom) query = query.gte('fecha_fabricacion', exportDateFrom)
-        if (exportDateTo) query = query.lte('fecha_fabricacion', exportDateTo)
+        // Con 'T23:59:59', igual que la consulta de pantalla. Sin esto, si la
+        // columna llega a ser timestamp, el CSV se come los registros del
+        // último día del rango.
+        if (exportDateTo) query = query.lte('fecha_fabricacion', exportDateTo + 'T23:59:59')
         const { data } = await query.order('fecha_fabricacion', { ascending: false })
         return (data || []) as BitacoraRecord[]
     }
@@ -554,13 +566,11 @@ export default function CalidadPage() {
         finally { setExporting(false) }
     }
 
-    const today = new Date().toISOString().split('T')[0]
-    const sevenDaysAgo = (() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().split('T')[0] })()
-    const isDefault7Days = filterDateFrom === sevenDaysAgo && filterDateTo === today
-    const isAllHistory = !filterDateFrom && !filterDateTo
+    const isDefault7Days = rango.esUltimosDias(7)
+    const isAllHistory = rango.historial
 
-    const resetTo7Days = () => { setFilterDateFrom(sevenDaysAgo); setFilterDateTo(today) }
-    const clearDateRange = () => { setFilterDateFrom(""); setFilterDateTo("") }
+    const resetTo7Days = () => rango.ultimosDias(7)
+    const clearDateRange = () => rango.todoElHistorial()
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto pb-12">
@@ -584,7 +594,7 @@ export default function CalidadPage() {
                         <Download className="h-4 w-4" />
                         Exportar datos
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => fetchRecords(filterDateFrom || undefined, filterDateTo || undefined)} className="gap-2" disabled={loading}>
+                    <Button variant="outline" size="sm" onClick={() => fetchRecords(rango.aplicado.desde, rango.aplicado.hasta)} className="gap-2" disabled={loading}>
                         <RotateCcw className={cn("h-4 w-4", loading && "animate-spin")} />
                         Actualizar
                     </Button>
@@ -600,16 +610,16 @@ export default function CalidadPage() {
                 <div className="flex items-center gap-1.5">
                     <input
                         type="date"
-                        value={filterDateFrom}
-                        onChange={e => setFilterDateFrom(e.target.value)}
+                        value={rango.desdeEditado}
+                        onChange={e => rango.editarDesde(e.target.value)}
                         className="h-9 px-3 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                         title="Fecha desde"
                     />
                     <span className="text-slate-400 text-sm">—</span>
                     <input
                         type="date"
-                        value={filterDateTo}
-                        onChange={e => setFilterDateTo(e.target.value)}
+                        value={rango.hastaEditado}
+                        onChange={e => rango.editarHasta(e.target.value)}
                         className="h-9 px-3 rounded-lg border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                         title="Fecha hasta"
                     />
@@ -919,13 +929,18 @@ export default function CalidadPage() {
                     <CardDescription className="text-slate-600 dark:text-slate-400">Comparados con límites de control de % Sólidos y pH.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {loading ? (
+                    {loading && records.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 space-y-4">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
                             <p className="text-muted-foreground">Cargando registros...</p>
                         </div>
                     ) : (
-                        <>
+                        <div className="relative">
+                            {loading && (
+                                <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 dark:bg-slate-900/70">
+                                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                </div>
+                            )}
                             {/* Desktop */}
                             <div className="hidden md:block rounded-2xl overflow-hidden shadow-sm">
                                 <Table>
@@ -1442,7 +1457,7 @@ export default function CalidadPage() {
                                     </div>
                                 )}
                             </div>
-                        </>
+                        </div>
                     )}
                 </CardContent>
             </Card>

@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/AuthProvider"
 import { supabase } from "@/lib/supabase"
+import { useRangoFechas } from "@/lib/use-rango-fechas"
 import { Loader2, XCircle, Clock } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -35,11 +36,11 @@ export default function RezagoPage() {
     const role = (profile?.role || '').toLowerCase()
     const isGerente = role === 'gerente_sucursal' || role === 'gerente'
 
-    const [filterDateFrom, setFilterDateFrom] = useState(() => {
-        const d = new Date(); d.setDate(d.getDate() - 90)
-        return d.toISOString().split('T')[0]
-    })
-    const [filterDateTo, setFilterDateTo] = useState(() => new Date().toISOString().split('T')[0])
+    const rango = useRangoFechas(90)
+
+    /** Ver la nota en app/reportes/fy/page.tsx: sin esto, la consulta más lenta
+     *  pisa a la más nueva. */
+    const peticion = useRef(0)
 
     useEffect(() => {
         if (!authLoading && profile) {
@@ -51,6 +52,7 @@ export default function RezagoPage() {
     }, [profile, authLoading, role, router])
 
     const fetchData = async (from?: string, to?: string) => {
+        const miPeticion = ++peticion.current
         setLoading(true)
         try {
             // Solo lo indispensable para calcular el rezago — payload mínimo
@@ -61,25 +63,21 @@ export default function RezagoPage() {
             if (from) query = query.gte('fecha_fabricacion', from)
             if (to) query = query.lte('fecha_fabricacion', to + 'T23:59:59')
             const { data, error } = await query
+            if (miPeticion !== peticion.current) return
             if (error) throw error
             setRecords(data || [])
         } catch (err: any) {
+            if (miPeticion !== peticion.current) return
             toast.error("Error al cargar datos", { description: err.message })
         } finally {
-            setLoading(false)
+            if (miPeticion === peticion.current) setLoading(false)
         }
     }
 
     useEffect(() => {
-        if (user && profile) fetchData(filterDateFrom || undefined, filterDateTo || undefined)
+        if (user && profile) fetchData(rango.aplicado.desde, rango.aplicado.hasta)
         else if (!authLoading) setLoading(false)
-    }, [user?.id, profile?.role, authLoading, filterDateFrom, filterDateTo])
-
-    const today = new Date().toISOString().split('T')[0]
-    const daysAgo = (n: number) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split('T')[0] }
-    const is30 = filterDateFrom === daysAgo(30) && filterDateTo === today
-    const is90 = filterDateFrom === daysAgo(90) && filterDateTo === today
-    const isCustom = !is30 && !is90 && (filterDateFrom || filterDateTo)
+    }, [user?.id, profile?.role, authLoading, rango.aplicado])
 
     return (
         <div className="space-y-6 pb-12">
@@ -100,20 +98,20 @@ export default function RezagoPage() {
                 <div className="flex items-center gap-2">
                     <input
                         type="date"
-                        value={filterDateFrom}
-                        onChange={e => setFilterDateFrom(e.target.value)}
+                        value={rango.desdeEditado}
+                        onChange={e => rango.editarDesde(e.target.value)}
                         className="text-sm border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
                     />
                     <span className="text-slate-400 text-sm">—</span>
                     <input
                         type="date"
-                        value={filterDateTo}
-                        onChange={e => setFilterDateTo(e.target.value)}
+                        value={rango.hastaEditado}
+                        onChange={e => rango.editarHasta(e.target.value)}
                         className="text-sm border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
                     />
-                    {isCustom ? (
+                    {rango.esPersonalizado ? (
                         <button
-                            onClick={() => { setFilterDateFrom(daysAgo(90)); setFilterDateTo(today) }}
+                            onClick={() => rango.ultimosDias(90)}
                             className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                             title="Limpiar"
                         >
@@ -122,23 +120,32 @@ export default function RezagoPage() {
                     ) : null}
                 </div>
                 <div className="flex gap-2 ml-auto">
-                    <Button size="sm" variant={is30 ? "default" : "outline"} className="rounded-full text-xs"
-                        onClick={() => { setFilterDateFrom(daysAgo(30)); setFilterDateTo(today) }}>
+                    <Button size="sm" variant={rango.esUltimos30 ? "default" : "outline"} className="rounded-full text-xs"
+                        onClick={() => rango.ultimosDias(30)}>
                         Últimos 30 días
                     </Button>
-                    <Button size="sm" variant={is90 ? "default" : "outline"} className="rounded-full text-xs"
-                        onClick={() => { setFilterDateFrom(daysAgo(90)); setFilterDateTo(today) }}>
+                    <Button size="sm" variant={rango.esUltimos90 ? "default" : "outline"} className="rounded-full text-xs"
+                        onClick={() => rango.ultimosDias(90)}>
                         Últimos 90 días
                     </Button>
                 </div>
             </div>
 
-            {loading ? (
+            {loading && records.length === 0 ? (
                 <div className="h-64 flex items-center justify-center">
                     <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
                 </div>
             ) : (
-                <CaptureLagPanel records={records} />
+                <div className="relative">
+                    {loading && (
+                        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/60 dark:bg-slate-950/60">
+                            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                        </div>
+                    )}
+                    <div className={loading ? "opacity-40 pointer-events-none" : undefined}>
+                        <CaptureLagPanel records={records} />
+                    </div>
+                </div>
             )}
         </div>
     )
